@@ -19,6 +19,9 @@ core.md
 questions.md
 !vault_template/**
 !tests/fixtures/**
+# code packages named like vault folders
+!src/brain/vault/
+!tests/vault/
 
 # Secrets / local config
 .env
