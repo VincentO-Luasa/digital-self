@@ -1,0 +1,47 @@
+# --- Personal data must never enter this public repo ---
+# The vault lives outside the repo (~/brain-vault). These patterns catch accidents.
+brain-vault/
+vault/
+raw/
+episodes/
+journal/
+reviews/
+wiki/
+inbox/
+.brain/
+.privacy/
+*.sqlite
+*.sqlite3
+*.db
+*.jsonl
+transcripts/
+core.md
+questions.md
+!vault_template/**
+!tests/fixtures/**
+
+# Secrets / local config
+.env
+.env.*
+config.local.*
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+
+# OS / editors
+.DS_Store
+.obsidian/
+.idea/
+.vscode/
+
+# Claude Code machine-local files
+.claude/settings.local.json
