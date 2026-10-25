@@ -77,7 +77,7 @@ kept, and the diff is appended to the journal. This is the human-readable `core.
 1. Alias trie (Aho-Corasick) over every entity name and alias → entity ids.
 2. Embed the turn (Qwen3-Embedding-0.6B) → update `c_t`.
 3. FTS5 BM25 over the turn's content words.
-4. Time expressions → an "as-of" date for bi-temporal filtering ("when I was in Madrid", "last spring").
+4. Time expressions → an "as-of" date for bi-temporal filtering ("when I lived in Lisbon", "last spring").
 5. Intention triggers.
 
 ### L3: activation scoring

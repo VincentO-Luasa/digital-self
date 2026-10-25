@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": ["brain"],
+  "permissions": {
+    "allow": [
+      "mcp__brain__*"
+    ],
+    "ask": [
+      "Bash"
+    ],
+    "deny": [
+      "Grep",
+      "Glob",
+      "Read(/raw/**)",
+      "Read(/wiki/**)",
+      "Read(/journal/**)",
+      "Read(/episodes/**)",
+      "Read(/reviews/**)",
+      "Read(/.brain/**)",
+      "Read(/.privacy/**)",
+      "Read(/.git/**)",
+      "Read(/core.md)",
+      "Read(/index.md)",
+      "Read(/log.md)",
+      "Read(/questions.md)",
+      "Read(/intentions.md)",
+      "Edit(/**)"
+    ]
+  },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"{{REPO_DIR}}\" brain hook session-end",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "brain": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "{{REPO_DIR}}", "brain", "mcp"],
+      "env": {
+        "BRAIN_VAULT": "{{VAULT_DIR}}"
+      }
+    }
+  }
+}

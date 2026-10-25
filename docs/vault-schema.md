@@ -173,14 +173,15 @@ are never silently dropped.
 
 Every change the pipeline is not allowed to auto-apply becomes a review file: a JSON block of
 operations (`create_entity`, `add_fact`, `supersede_fact`, `merge_entities`, `update_summary`,
-`add_alias`) plus a human-readable diff. Auto-applied: plain stated/observed facts with no
+`add_alias`, `add_intention`). The canonical JSON shape of each operation is the Pydantic model in
+`brain.vault.ops` (Phase 1); `vault_template/CLAUDE.md` mirrors it. plus a human-readable diff. Auto-applied: plain stated/observed facts with no
 contradiction. Queued: inferred facts, relationship changes, supersessions, merges, anything on a
 `private` page created by Claude.
 
 ## Privacy
 
-- Default `privacy: private` for regions `relationships.*`, `self.health`, `self.traits`, and any
-  page you mark. The MCP server never returns private content to Claude; private facts reach Claude
+- Default `privacy: private` for the regions marked `privacy: private` in `config/life-map.yaml`
+  (family, friends, traits, health) and any page you mark. Colleagues are `normal` by default. The MCP server never returns private content to Claude; private facts reach Claude
   only inside a handoff packet you confirmed.
 - `.privacy/denylist.txt` (one term per line, generated from private pages' titles and aliases +
   manual entries) is read by the code repo's pre-commit hook to block accidental leaks.

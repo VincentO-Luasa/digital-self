@@ -141,3 +141,17 @@ and retrieved context under ~1.5k tokens.
 | 4 | nightly consolidation, reflections, `core.md`, lint, decay, launchd jobs |
 | 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI |
 | 6 | "graph of my life" visualisation (interactive, time slider, region filters) |
+
+## Open items (from Phase 0 review)
+
+- `brain init-vault` substitutes an absolute `uv` path into `.mcp.json` and the hook, because
+  Claude Code launched from the desktop app or an IDE may not have `uv` on PATH.
+- Deduplicate Claude's `brain_propose` operations against later extraction of the same session's
+  transcript (`raw/claude/`). Tag reviews with the Claude session id and skip facts already proposed
+  in that session.
+- The handoff packet format in `vault_template/CLAUDE.md` is the target for the `handoff` module.
+- Claude-ingested documents (`brain-ingest-doc`) cite the Claude transcript as their source. Phase 3
+  decides whether a copy also goes to `raw/docs/`.
+- The predicate list is mirrored in `vault_template/CLAUDE.md`. Keep it in sync when the schema
+  version changes (a `brain lint` check).
+
