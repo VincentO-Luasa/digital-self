@@ -38,3 +38,11 @@ vault-generated denylist, and gitleaks.
 Why: populating the graph should be a conversation, not an autobiography. Coverage over a life map
 (regions × slots) picks what to ask; each conversation is segmented into topic episodes so
 extraction is small, focused and reviewable.
+
+## 2026-10-25 — Human-memory-inspired retrieval (proposed)
+Schema card always in context (impression + current situation + marking facts), a 4-slot
+working memory, cue-driven spreading activation (Personalized PageRank) combined with ACT-R
+base-level activation, similarity and importance, gist-first packing, and gated proactive
+surfacing. No LLM call in the hot path. Why: lets a ~3B-active model work from a small, ranked,
+pre-digested context. HippoRAG 2, Synapse and EM-LLM report gains from the same mechanisms.
+Weights are priors to be fitted on the personal eval. Details in `docs/retrieval.md`.

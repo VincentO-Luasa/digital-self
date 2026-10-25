@@ -32,7 +32,7 @@ handed to Claude. Every conversation — local or Claude — flows back into mem
 | `llm` | thin OpenAI-compatible client: chat, JSON-schema calls, tool calls, embeddings, rerank. The only module that knows about the runtime. |
 | `vault` | parse/render pages, fact lines, episodes, journal; **the single writer** (all mutations go through operations applied here, then a git commit) |
 | `index` | SQLite: FTS5, sqlite-vec embeddings, `entities`, `facts`, `links`, `access_log`; `reindex` rebuilds from the vault |
-| `retrieval` | hybrid search (BM25 + vector + alias match) → rerank → graph expansion (1 hop over links/facts) → scoring by relevance × recency-of-access × importance |
+| `retrieval` | human-memory-inspired retrieval (`docs/retrieval.md`): schema card (L0), working memory (L1), cues → spreading activation (PPR) + base-level activation + similarity + importance (L3), surfacing (L4); no LLM call in the hot path |
 | `router` | pre-route rules, coverage check, answer validation, escalation decision + reason |
 | `chat` | the conversation loop, prompt assembly (`core.md` + retrieved facts + recent turns), commands |
 | `interview` | coverage scoring over `life-map.yaml`, region selection, question planning |
@@ -49,7 +49,8 @@ No agent framework: the control flow is explicit Python with Pydantic schemas.
    queries + keyword features → category. Categories that always escalate: coding, maths /
    multi-step reasoning, current events, long-document analysis, high-stakes
    (medical/legal/financial), long-form writing.
-2. **Retrieve**: hybrid search + rerank; record access (reinforces recency).
+2. **Retrieve** (`docs/retrieval.md`): extract cues, update working memory, score candidates by
+   activation, pack ≤1k tokens of gists and facts, maybe surface one related memory; record access.
 3. **Coverage check**: if the question needs personal knowledge and too little relevant memory is
    found, escalate (or offer to learn it: "I don't know that yet — want to tell me?").
 4. **Answer** with an enforced JSON schema:

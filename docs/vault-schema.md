@@ -25,6 +25,7 @@ brain-vault/
   index.md             # catalog: one line per wiki page, grouped by region (generated)
   log.md               # append-only timeline of every operation (generated)
   questions.md         # open knowledge gaps the brain wants to ask about (generated + manual)
+  intentions.md        # prospective memory: "bring up X when Y comes up / on date D"
   life-map.yaml        # optional override of config/life-map.yaml (regions + slots)
   raw/                 # IMMUTABLE sources — episodic ground truth
     docs/              #   imported documents: CV, website snapshot, exports
@@ -127,11 +128,26 @@ channel: interview                 # chat | interview | claude | import
 regions: [career.current_job]
 entities: ["[[orgs/northwind-labs]]", "[[people/sam-okafor]]"]
 importance: 6                      # 1–10, scored at segmentation time
+gist: Alex worries the Atlas migration deadline is unrealistic   # ≤30 tokens, used by retrieval
 started: 2026-10-25T14:12
 status: extracted                  # pending | extracted | consolidated
 ---
 <3–6 sentence summary of what was said>
 ```
+
+## Intentions (intentions.md)
+
+Prospective memory — things to bring up when a cue appears or a date arrives:
+
+```markdown
+- [ ] Ask how the Atlas go-live went (when:: [[projects/atlas-migration]]) (after:: 2026-11-15) (src:: [[ep-20261025-1412-career]]) ^i-p2m7wd
+```
+
+## Access log (derived, not in markdown)
+
+Retrieval keeps per-item access timestamps in `.brain/access.sqlite` (base-level activation,
+co-use edges). It cannot be rebuilt from markdown. Losing it only resets activation to
+creation time, so it is backed up but not versioned.
 
 ## Journal (journal/YYYY-MM.md)
 
