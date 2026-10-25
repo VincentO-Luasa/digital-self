@@ -31,7 +31,7 @@ def _words(text: str) -> frozenset[str]:
 # Predicate vocabulary (docs/vault-schema.md). Single-valued per subject unless listed as multi.
 SINGLE_VALUED = _words(
     "name born hometown lives_in role team manager met_at last_seen owner status goal deadline "
-    "member_of located_in part_of"
+    "located_in part_of"
 )
 RELATIONSHIP_PREDICATES = _words("family_of partner_of friend_of colleague_of mentor_of knows")
 SELF_PREDICATES = _words(
@@ -40,7 +40,7 @@ SELF_PREDICATES = _words(
 MULTI_VALUED = (
     _words(
         "nationality speaks works_at responsibility worked_on studied_at degree certification "
-        "has_skill stakeholder uses related_to note"
+        "has_skill stakeholder uses member_of related_to note"
     )
     | RELATIONSHIP_PREDICATES
     | (SELF_PREDICATES - {"goal"})

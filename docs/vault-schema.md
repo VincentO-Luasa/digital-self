@@ -1,4 +1,4 @@
-# Vault schema (v0.1)
+# Vault schema (v0.2)
 
 The vault is the brain's long-term memory and the **single source of truth**. It is a folder of
 Obsidian-compatible markdown, versioned with a *local-only* git repo, living **outside** this code
@@ -107,7 +107,7 @@ Rules:
 - **Inferred facts** (traits, patterns, flaws) always go through the review queue.
 - Hand-edits in Obsidian are allowed; `brain lint` validates and normalises the format.
 
-### Predicate vocabulary (v0.1)
+### Predicate vocabulary (v0.2)
 
 Single-valued per subject unless marked *(multi)*:
 
@@ -118,7 +118,7 @@ Single-valued per subject unless marked *(multi)*:
 - relationships: `family_of`, `partner_of`, `friend_of`, `colleague_of`, `mentor_of`, `knows` *(all multi; optional `rel::` e.g. sister)*; `met_at`, `last_seen`
 - projects: `owner`, `status`, `goal`, `stakeholder` *(multi)*, `deadline`, `uses` *(multi)*
 - self: `has_strength`, `has_flaw`, `values`, `goal`, `habit`, `interest`, `likes`, `dislikes`, `fears`, `health` *(all multi)*
-- generic: `member_of`, `located_in`, `part_of`, `related_to` *(multi)*, `note` *(multi, last resort)*
+- generic: `member_of` *(multi: clubs, communities, groups)*, `located_in`, `part_of`, `related_to` *(multi)*, `note` *(multi, last resort)*
 
 New predicates are added here first (bump the schema version), never invented ad hoc by the LLM.
 

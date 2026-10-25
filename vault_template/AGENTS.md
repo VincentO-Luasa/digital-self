@@ -91,7 +91,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
   "Proposed 2 updates (review r-…), approve with `brain review`."
 - Leave out `rec`, `src` and block ids. The pipeline sets them, and `src` becomes the review id.
 
-### Operations (fact fields follow vault schema v0.1, see `SCHEMA.md`)
+### Operations (fact fields follow vault schema v0.2, see `SCHEMA.md`)
 
 ```json
 {"op": "create_entity", "id": "projects/atlas-migration", "type": "project", "title": "Atlas Migration", "aliases": ["Atlas"], "regions": ["projects"]}
@@ -107,7 +107,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
 `subject` is an entity id or `self`. Dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. If the
 `brain_propose` tool schema differs from these examples, the tool schema wins.
 
-### Predicates (v0.1). Use only these, never invent new ones
+### Predicates (v0.2). Use only these, never invent new ones
 
 - identity: `name` `born` `hometown` `lives_in` `nationality`* `speaks`*
 - work: `works_at`* `role` `team` `manager` `responsibility`* `worked_on`*
@@ -115,7 +115,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
 - relationships: `family_of` `partner_of` `friend_of` `colleague_of` `mentor_of` `knows` (all *, optional `rel`); `met_at` `last_seen`
 - projects: `owner` `status` `goal` `stakeholder`* `deadline` `uses`*
 - self (all *): `has_strength` `has_flaw` `values` `goal` `habit` `interest` `likes` `dislikes` `fears` `health`
-- generic: `member_of` `located_in` `part_of` `related_to`* `note`* (last resort)
+- generic: `member_of`* `located_in` `part_of` `related_to`* `note`* (last resort)
 
 `*` = multi-valued. Nothing fits? Use `note`, or `brain_capture` the context instead.
 
