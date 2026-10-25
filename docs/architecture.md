@@ -197,3 +197,15 @@ and retrieved context under ~1.5k tokens.
   Phase 3 decides whether a copy also goes to `raw/docs/`.
 - The predicate list is mirrored in `vault_template/AGENTS.md`. Keep it in sync when the schema
   version changes (a `brain lint` check).
+
+## Open items (from the Phase 1 writer review)
+
+- Enforce `evidence::` on inferred facts (the schema requires it; `AGENTS.md` asks for at least two).
+- After `merge_entities`, reconcile clashing facts from the two pages and repoint pending reviews
+  that still name the merged id.
+- Vault commits use `git add -A`, so uncommitted hand edits ride along in the brain's commit.
+  Commit only the paths the writer touched, and commit hand edits separately (`brain lint`).
+- `models.check_partial_date` should reject impossible calendar dates itself (the writer does it
+  today); `gitops` needs a public helper to unstage paths (rollback uses a private one).
+- An approved fact's `rec::` is the approval date, while an observation keeps the change set's
+  date. Decide which "learned at" the brain means.
