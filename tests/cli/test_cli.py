@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
@@ -21,9 +22,13 @@ FIXTURE = sorted(
 runner = CliRunner()
 
 
-def recorded_extraction() -> str:
-    data = json.loads(FIXTURE[0].read_text())
-    return data["response"]["choices"][0]["message"]["content"]
+def recorded_extractions() -> list[str]:
+    """The recorded extraction of each chunk of the fictional homepage, in order."""
+    contents = []
+    for path in FIXTURE:
+        data = json.loads(path.read_text())
+        contents.append(data["response"]["choices"][0]["message"]["content"])
+    return contents
 
 
 @pytest.fixture
@@ -77,10 +82,11 @@ def test_ingest_review_and_chat(env) -> None:
     settings, state = env
     invoke("init-vault")
     state["llm"] = FakeLLM(
-        structured_responses=[recorded_extraction()], chat_responses=["You work at Northwind Labs."]
+        structured_responses=recorded_extractions(), chat_responses=["You work at Northwind Labs."]
     )
     out = invoke("ingest", str(DOCS / "alex-rivera.html")).output
-    assert "chunk 1/1" in out and "raw copy: raw/docs/" in out and "review: r-" in out
+    assert "chunk 1/2" in out and "chunk 2/2" in out
+    assert "raw copy: raw/docs/" in out and "review: r-" in out
     vault = Vault(settings.vault)
     assert vault.page("orgs/northwind-labs") is not None
 
@@ -99,10 +105,44 @@ def test_ingest_review_and_chat(env) -> None:
     assert "You work at Northwind Labs." in out and "transcript: raw/conversations/" in out
 
 
+def test_ingest_url_and_bad_sources(env, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings, state = env
+    invoke("init-vault")
+    homepage = (DOCS / "alex-rivera.html").read_bytes()
+    index = b'<html><body><h1>Alex</h1><a href="/cv">CV</a><a href="/gone">Gone</a></body></html>'
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        pages = {"/": index, "/cv": homepage}
+        if request.url.path not in pages:
+            return httpx.Response(404)
+        return httpx.Response(
+            200, content=pages[request.url.path], headers={"content-type": "text/html"}
+        )
+
+    transport = httpx.MockTransport(handler)
+    monkeypatch.setattr(cli, "make_http", lambda: httpx.Client(transport=transport))
+    empty = {"reasoning": "r", "owner_names": [], "entities": [], "facts": []}
+    state["llm"] = FakeLLM(structured_responses=[empty, *recorded_extractions()])
+    out = invoke("ingest", "https://alex.example/", "--follow", "2").output
+    assert "page 1/3 https://alex.example/" in out and "page 2/3 https://alex.example/cv" in out
+    assert "raw copy: raw/docs/2026" in out and "alex-example-cv.html" in out
+    assert "skipped linked page https://alex.example/gone: HTTP" in out
+    assert Vault(settings.vault).page("orgs/northwind-labs") is not None
+
+    for args, message in (
+        (["https://alex.example/missing"], "HTTP 404"),
+        (["ftp://alex.example/cv"], "only http(s) URLs"),
+        (["no/such/file.html"], "no such file"),
+        ([str(DOCS / "alex-rivera.html"), "--follow", "1"], "--follow needs a URL"),
+    ):
+        result = runner.invoke(cli.app, ["ingest", *args])
+        assert result.exit_code == 1 and message in result.output, result.output
+
+
 def test_review_reject_and_skip(env) -> None:
     settings, state = env
     invoke("init-vault")
-    state["llm"] = FakeLLM(structured_responses=[recorded_extraction()])
+    state["llm"] = FakeLLM(structured_responses=recorded_extractions())
     invoke("ingest", str(DOCS / "alex-rivera.html"))
     vault = Vault(settings.vault)
     invoke("review", input="s\n")

@@ -91,6 +91,27 @@ def save_doc(
     return path, True
 
 
+def save_doc_bytes(
+    vault: Vault,
+    data: bytes,
+    name: str,
+    suffix: str,
+    *,
+    today: date | None = None,
+    commit: bool = True,
+) -> tuple[Path, bool]:
+    """``save_doc`` for content that is not a local file (a fetched web page): saved as
+    ``raw/docs/YYYY-MM-DD-<slug of name><suffix>``; an identical copy is reused."""
+    if existing := find_doc(vault, data):
+        return existing, False
+    today = today or date.today()
+    suffix = suffix.lower() if suffix.startswith(".") else f".{suffix.lower() or 'txt'}"
+    path = _create_exclusive(docs_dir(vault), f"{today.isoformat()}-{slugify(name)}", suffix, data)
+    if commit:
+        gitops.commit_all(vault.root, f"brain: raw doc {rel_path(vault, path)}")
+    return path, True
+
+
 # --- conversations -----------------------------------------------------------------------------
 
 

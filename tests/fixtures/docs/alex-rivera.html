@@ -11,8 +11,17 @@
   <script>
     window.analytics = { track: function () {} };
   </script>
+  <script type="application/ld+json">
+    {"@context": "https://schema.org", "@type": "ProfilePage",
+     "mainEntity": {"@type": "Person", "name": "Alex Rivera", "jobTitle": "Senior Data Engineer",
+       "worksFor": {"@type": "Organization", "name": "Northwind Labs"},
+       "email": "alex@example.com", "sameAs": ["https://example.com/alex"]}}
+  </script>
 </head>
 <body>
+  <div id="cookie-banner" class="cookie-consent">
+    <p>We use cookies to improve your experience. <button>Accept all</button></p>
+  </div>
   <nav>
     <a href="#about">About</a>
     <a href="#experience">Experience</a>
@@ -27,13 +36,23 @@
   </header>
 
   <main>
+    <section id="numbers">
+      <ul>
+        <li><span class="counter" data-target="7">0</span>+ years building data pipelines</li>
+        <li><span class="counter" data-count="2">0</span> university degrees</li>
+      </ul>
+    </section>
+
     <section id="about">
       <h2>About me</h2>
       <p>Hi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since
-        2024, after five years in Lisbon. I grew up in Valencia, so I speak Spanish and English,
-        and I'm slowly learning Portuguese.</p>
+        2024, after five years in Lisbon. Before that I lived in Seville and worked in Madrid.
+        I grew up in Valencia, so I speak Spanish and English, and I'm slowly learning
+        Portuguese.</p>
       <p>I care about boring, reliable pipelines, clear documentation and teams that share
         knowledge. Outside work I go bouldering and bake sourdough bread.</p>
+      <p>Alex has done calisthenics every morning for ten years: it is his longest-running
+        habit. Python sits at the centre of his toolkit.</p>
     </section>
 
     <section id="experience">
@@ -46,6 +65,8 @@
         <li><strong>Data Engineer</strong>, February 2023 – March 2025. Built the ingestion
           framework for the product analytics team.</li>
       </ul>
+      <p>Part of the Data Platform team. Works on pipelines that help analysts trust their
+        numbers. Experiments with streaming ingestion.</p>
 
       <h3>Fabrikam Retail — Lisbon</h3>
       <p><strong>Data Analyst</strong>, September 2019 – January 2023. Owned the weekly sales
@@ -62,7 +83,8 @@
 
       <h3>Tidepool</h3>
       <p>Tidepool is a small open-source library for data quality checks that I started in 2022.
-        I maintain it together with my friend Sam Okafor.</p>
+        I maintain it together with my friend Sam Okafor. Its code lives on CodeHarbor and its
+        test suite runs on the public TripLog dataset (record TL4521).</p>
     </section>
 
     <section id="skills">
@@ -73,6 +95,8 @@
         <li>Airflow and dbt</li>
         <li>Data modelling</li>
       </ul>
+      <p>Tools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and
+        the Lumen notebook app.</p>
     </section>
 
     <section id="education">
@@ -80,6 +104,10 @@
       <p>MSc in Data Science, Westbridge University, 2018–2019.</p>
       <p>BSc in Computer Science, Calder College, 2014–2018.</p>
     </section>
+
+    <form action="/subscribe">
+      <label>Subscribe to my newsletter <input type="email" name="email"></label>
+    </form>
   </main>
 
   <footer id="contact">

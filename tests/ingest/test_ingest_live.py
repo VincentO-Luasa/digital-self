@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import DOCS  # type: ignore[import-not-found]
+from conftest import DOCS, quality_problems  # type: ignore[import-not-found]
 
 from brain.config import load_settings
 from brain.index.db import open_index
@@ -30,25 +30,30 @@ TODAY = date(2026, 10, 25)
 
 
 class OrderedRecorder(Recorder):
-    """Prefix fixture files with the call number so replay keeps chunk order."""
+    """Keep each call's token usage; when recording, save fixtures prefixed with the call
+    number so replay keeps chunk order."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, *, write: bool) -> None:
         super().__init__(directory)
+        self.write = write
         self.n = 0
+        self.usage: list[dict[str, Any]] = []
 
     def save(self, kind: str, request: dict[str, Any], response: dict[str, Any]) -> Path:
         self.n += 1
+        self.usage.append(response.get("usage") or {})
+        if not self.write:
+            return self.directory
         self.prefix = f"alex-rivera-{self.n:02d}-"
         return super().save(kind, request, response)
 
 
 @pytest.fixture
 def llm():
-    recorder = None
-    if os.environ.get("BRAIN_RECORD_FIXTURES"):
+    write = bool(os.environ.get("BRAIN_RECORD_FIXTURES"))
+    if write:
         shutil.rmtree(FIXTURE_DIR, ignore_errors=True)
-        recorder = OrderedRecorder(FIXTURE_DIR)
-    client = LLM(load_settings().llm, recorder=recorder)
+    client = LLM(load_settings().llm, recorder=OrderedRecorder(FIXTURE_DIR, write=write))
     if not client.health():
         client.close()
         pytest.skip("local model server is not running")
@@ -64,8 +69,12 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     result = report.applied
     assert result is not None and report.normalised is not None
     print(f"\n{len(report.chunks)} chunk(s), total {total:.1f}s")
-    for c in report.chunks:
-        print(f"  chunk {c.chunk.index}: {c.seconds:.1f}s, {c.entities} entities, {c.facts} facts")
+    usage = llm.recorder.usage if isinstance(llm.recorder, OrderedRecorder) else []
+    for c, u in zip(report.chunks, usage, strict=False):
+        print(
+            f"  chunk {c.chunk.index}: {c.seconds:.1f}s, {c.entities} entities, {c.facts} facts, "
+            f"{u.get('prompt_tokens')} prompt / {u.get('completion_tokens')} output tokens"
+        )
     print(f"applied {result.facts_added} facts, created {result.created}")
     for op, reason in result.queued:
         print(f"  queued {op.op}: {reason}")
@@ -77,7 +86,10 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     assert ("works_at", "[[orgs/fabrikam-retail]]") in facts
     assert {"Spanish", "English"} <= {o for p, o in facts if p == "speaks"}
     assert {"Python", "SQL"} <= {o for p, o in facts if p == "has_skill"}
+    assert any(p == "responsibility" for p, _ in facts)
     assert fresh_vault.page("projects/atlas-migration") is not None
     sam = fresh_vault.page("people/sam-okafor")
     assert sam is not None and sam.privacy == "private"
     assert any(getattr(op, "p", "") == "friend_of" for op, _ in result.queued)
+    assert not any(getattr(op, "p", "") == "lives_in" for op, _ in result.queued)
+    assert quality_problems(fresh_vault) == []

@@ -42,6 +42,13 @@ def make_llm(settings: Settings) -> Any:
     return LLM(settings.llm)
 
 
+def make_http() -> Any:
+    """HTTP client for ``brain ingest <url>`` (tests swap in an ``httpx.MockTransport``)."""
+    from brain.ingest.readers.web import make_client
+
+    return make_client()
+
+
 # --- helpers -----------------------------------------------------------------------------------
 
 
@@ -204,21 +211,33 @@ def reindex_cmd(
 
 @app.command("ingest")
 def ingest_cmd(
-    path: Annotated[Path, typer.Argument(exists=True, dir_okay=False, readable=True)],
+    source: Annotated[str, typer.Argument(help="A file (html, pdf, md, txt) or an http(s) URL.")],
     observed: Annotated[
         bool,
         typer.Option(
             "--observed", help="Written by someone else: facts are 'observed', not 'stated'."
         ),
     ] = False,
+    follow: Annotated[
+        int,
+        typer.Option("--follow", min=0, help="Also ingest up to N same-origin pages it links to."),
+    ] = 0,
 ) -> None:
-    """Import a document (html, pdf, md, txt) into memory."""
-    from brain.ingest import UnsupportedDocument, ingest
+    """Import a document or a web page into memory."""
+    from brain.ingest import FetchError, UnsupportedDocument, ingest, ingest_url, is_url
     from brain.ingest.pipeline import ChunkReport
 
+    url = is_url(source)
+    if not url:
+        path = Path(source)
+        if not path.is_file():
+            raise _fail(f"{source}: no such file")
+        if follow:
+            raise _fail("--follow needs a URL")
     settings = get_settings()
     vault = _vault(settings)
     llm = _model(settings)
+    kind = "observed" if observed else "stated"
 
     def progress(item: ChunkReport, total: int) -> None:
         console.print(
@@ -226,22 +245,54 @@ def ingest_cmd(
             f"{item.entities} entities, {item.facts} facts ({item.seconds:.1f}s)"
         )
 
+    def page(page_url: str, n: int, total: int) -> None:
+        console.print(f"[bold]page {n}/{total}[/] {escape(page_url)}")
+
     db = _open_db(settings, llm)
     try:
-        report = ingest(
-            path,
-            vault,
-            llm,
-            db=db,
-            kind="observed" if observed else "stated",
-            core_max_tokens=settings.core_max_tokens,
-            on_chunk=progress,
-        )
-    except UnsupportedDocument as err:
+        if url:
+            http = make_http()
+            try:
+                web = ingest_url(
+                    source,
+                    vault,
+                    llm,
+                    follow=follow,
+                    http=http,
+                    db=db,
+                    kind=kind,
+                    core_max_tokens=settings.core_max_tokens,
+                    on_page=page,
+                    on_chunk=progress,
+                )
+            finally:
+                http.close()
+            reports = web.pages
+        else:
+            reports = [
+                ingest(
+                    path,
+                    vault,
+                    llm,
+                    db=db,
+                    kind=kind,
+                    core_max_tokens=settings.core_max_tokens,
+                    on_chunk=progress,
+                )
+            ]
+    except (UnsupportedDocument, FetchError) as err:
         raise _fail(str(err)) from err
     finally:
         db.close()
 
+    for report in reports:
+        _print_ingest(report)
+    if url:
+        for _, reason in web.failed:  # the reason starts with the page's URL
+            console.print(f"[yellow]skipped linked page {escape(reason)}[/]")
+
+
+def _print_ingest(report: Any) -> None:
     raw_note = "" if report.raw_created else " (identical copy already there)"
     console.print(f"raw copy: {report.raw_path}{raw_note}")
     for chunk, reason in report.failed:

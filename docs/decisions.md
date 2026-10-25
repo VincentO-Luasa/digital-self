@@ -128,3 +128,44 @@ lifetime periods and working self, trait summaries stored apart from episodes (P
 Loftus & Kihlstrom), and Dunbar's inner layers (docs/retrieval.md, "L0: schema card").
 Alternatives: an LLM-written profile now (non-deterministic, breaks byte stability; kept for the
 Phase 4 impression paragraph); a fixed per-predicate line cap without sections (still a list).
+
+## 2026-10-25 — Ingest prompt v3: minified JSON, code-rendered text, a "tool" bucket
+The extraction prompt ends with a one-line JSON shape example and asks for minified output;
+`text` may be `""` (code renders it from per-predicate templates); entities lose `summary`; the
+entity type `topic` is replaced by `tool` (tools, apps, products, websites, datasets, record ids),
+which the normaliser keeps as literal values. Why: decode (~42 tok/s) is almost all of ingest time,
+and the model pretty-printed its JSON (an instruction alone did not stop it, even placed last;
+the example did). On the fictional homepage (2 chunks) output went from 4010 to ~2.5k tokens and
+from 104 s to ~63 s, with recall kept (values, team and every duty extracted). Without a bucket
+for tools the model labelled them `project`; with `tool` it files them there and no page is made.
+Alternatives: a custom grammar forbidding whitespace (oMLX supports it, but it is runtime-specific
+and `brain.llm` stays on the OpenAI-compatible API); shorter key names (smaller gain, less
+readable to the model).
+
+## 2026-10-25 — Ingest normalisation guards: repair by type, never guess an end
+`normalise.py` checks every fact against a predicate → subject/object type table and repairs what
+it can (works_at a project → worked_on, a verb-led works_at → responsibility, works_at a team →
+team, uses on the owner → has_skill, an entity where a literal belongs → the literal) and drops the
+rest (relations not from a person to the owner, facts about tools, works_at a place, zero counts).
+Fact text with a pronoun, the owner's name, no object or over 160 chars is replaced by a template.
+A past-tense lives_in/role/team/manager without an end becomes a `note` rather than getting the
+current value's start as its end. Every repair is a `Normalised.notes` line. Why: a ~3B-active
+model slips even with a good prompt (seen on a real homepage); the checks are cheap and keep
+wrong pages and stale "current" facts out of the vault. A guessed end would invent an overlap
+("Seville until 2024" next to "Lisbon 2019–2024"); the prompt asks the model for an end when
+the text gives one. Alternatives: dropping every suspicious fact (loses duties and teams); asking
+the model to self-check (doubles the calls).
+
+## 2026-10-25 — Web pages: fetch to raw, then read like a file
+`brain ingest <url>` fetches with httpx (http/https only, browser User-Agent, 20 s timeout, 5 MB
+cap), saves the bytes as `raw/docs/YYYY-MM-DD-<host-path>.<ext>` and reads that copy with the
+normal readers; the raw-copy commit message records the source URL. `--follow N` ingests the
+first N same-origin links on the page (navigation included: on a personal site it leads to the
+CV and about pages), each as its own raw doc and change set; a linked page that fails is skipped
+and reported. The HTML reader reads animated counters from `data-target`-style attributes,
+drops navigation, footers, forms, dialogs, hidden elements and cookie/consent banners, and puts
+`<meta name="description">` and schema.org `Person` JSON-LD (contact fields left out) in a short
+header. Why: raw/ stays the ground truth for any source, re-ingest stays idempotent (identical
+bytes reuse the copy), and the vault keeps where each page came from without a schema change.
+Alternatives: a frontmatter sidecar for the URL (a new raw format); headless-browser rendering
+(heavy; counters and JSON-LD cover the cases seen so far).

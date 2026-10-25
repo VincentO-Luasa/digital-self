@@ -110,3 +110,124 @@ def test_observed_kind_and_bad_dates(fresh_vault: Vault) -> None:
     assert (lives.valid_from, lives.valid_to) == ("2024", None)
     assert any("unreadable start date 'spring 2020'" in n for n in out.notes)
     assert any("end 2019 before start 2024" in n for n in out.notes)
+
+
+def slipped_extraction() -> dict:
+    """The slips a ~3B-active model made on a real homepage, replayed on the fictional persona."""
+    return {
+        "reasoning": "r",
+        "owner_names": ["Alex Rivera", "Alex"],
+        "entities": [
+            entity("Northwind Labs", "org"),
+            entity("Atlas Migration", "project"),
+            entity("Pebble", "org"),  # an AI assistant typed as an organisation
+            entity("CodeHarbor", "tool"),
+            entity("Data Platform team", "org"),
+            entity("TL4521", "project"),  # a dataset record id
+            entity("Seville", "place"),
+            entity("Porto", "place"),
+            entity("Madrid", "place"),
+        ],
+        "facts": [
+            fact("self", "works_at", "Northwind Labs", "Works at Northwind Labs", "2023-02"),
+            # verb-led duties filed under the employer would merge into it and be lost
+            fact(
+                "self",
+                "works_at",
+                "Northwind Labs",
+                "Works on pipelines that help analysts trust their numbers",
+            ),
+            fact("self", "works_at", "Northwind Labs", "Experiments with streaming ingestion."),
+            fact("self", "works_at", "Data Platform team", "Is part of the Data Platform team"),
+            fact("self", "works_at", "Atlas Migration", "Works on the Atlas Migration", "2026"),
+            fact("self", "works_at", "Madrid", "Worked in Madrid"),
+            fact("self", "worked_on", "Pebble", "Built plugins for Pebble"),
+            fact("Pebble", "mentor_of", "self", "Was supervised by the owner"),
+            fact("CodeHarbor", "uses", "Python", "Hosts code"),
+            fact("self", "uses", "CodeHarbor", "Uses CodeHarbor in their toolkit"),
+            fact("Atlas Migration", "uses", "TL4521", "Uses record TL4521"),
+            # counters read before their script ran
+            fact("self", "has_skill", "0 years of ML", "Has 0 years of ML"),
+            fact("self", "degree", "MSc", "Has 0 master's degrees"),
+            # pronouns and the owner's name in the text
+            fact("self", "habit", "calisthenics", "Has calisthenics as his longest-running habit"),
+            fact("self", "has_skill", "Python", "Uses Python in their toolkit"),
+            fact("self", "role", "Data engineer", "Alex works as a data engineer", "2023-02"),
+            fact("self", "values", "clear documentation", "Cares about clear documentation"),
+            # a past city without dates, next to the current one
+            fact("self", "lives_in", "Porto", "", "2024"),
+            fact("self", "lives_in", "Seville", "Lived in Seville before"),
+            fact("self", "lives_in", "Valencia", "Grew up in Valencia"),
+        ],
+    }
+
+
+def test_guards_repair_or_drop_what_breaks_the_schema(fresh_vault: Vault) -> None:
+    out = build(fresh_vault, slipped_extraction())
+    creates = {op.id for op in out.changeset.ops if isinstance(op, CreateEntity)}
+    # no pages for tools, products, record ids or teams; Madrid and Seville end up unused
+    assert creates == {"orgs/northwind-labs", "projects/atlas-migration", "places/porto"}
+    facts = [(f.subject, f.p, f.o, f.text) for f in facts_of(out.changeset.ops)]
+    by_key = {(s, p, o): t for s, p, o, t in facts}
+
+    assert ("self", "works_at", "[[orgs/northwind-labs]]") in by_key
+    duties = sorted(o for s, p, o, _ in facts if p == "responsibility")
+    assert duties == [
+        "Experiments with streaming ingestion",
+        "Works on pipelines that help analysts trust their numbers",
+    ]
+    assert by_key[("self", "team", "Data Platform team")] == "Is part of the Data Platform team"
+    assert ("self", "worked_on", "[[projects/atlas-migration]]") in by_key
+    assert by_key[("self", "worked_on", "Pebble")] == "Built plugins for Pebble"  # a literal
+    assert by_key[("self", "has_skill", "CodeHarbor")] == "Skilled in CodeHarbor"
+    assert ("projects/atlas-migration", "uses", "TL4521") in by_key
+    assert not [f for f in facts if "0 " in f[2] or "0 " in f[3]]
+    assert by_key[("self", "habit", "calisthenics")] == "Does calisthenics regularly"
+    assert by_key[("self", "has_skill", "Python")] == "Skilled in Python"
+    assert by_key[("self", "role", "Data engineer")] == "Works as Data engineer"
+    assert by_key[("self", "values", "clear documentation")] == "Cares about clear documentation"
+    assert by_key[("self", "lives_in", "[[places/porto]]")] == "Lives in Porto"
+    assert by_key[("self", "note", "Lived in Seville")] == "Lived in Seville"
+    assert by_key[("self", "hometown", "Valencia")] == "Grew up in Valencia"
+    assert [o for s, p, o, _ in facts if p == "lives_in"] == ["[[places/porto]]"]
+    assert not [f for f in facts if f[0] in ("Pebble", "CodeHarbor")]
+
+    notes = "\n".join(out.notes)
+    for expected in (
+        "works_at → responsibility (describes the work): Works on pipelines",
+        "works_at → responsibility (describes the work): Experiments with",
+        "works_at → team ('Data Platform team' is a team)",
+        "works_at → worked_on ('Atlas Migration' is a project)",
+        "dropped works_at fact: 'Madrid' is a place",
+        "worked_on: 'Pebble' is a org, kept as a literal value",
+        "dropped mentor_of fact: its subject 'Pebble' is a org",
+        "dropped uses fact about 'CodeHarbor' (a tool)",
+        "uses → has_skill (the subject is not a project): CodeHarbor",
+        "dropped has_skill fact with a zero count",
+        "dropped degree fact with a zero count",
+        "rewrote habit text (a pronoun)",
+        "rewrote role text (the owner's name)",
+        "past lives_in 'Seville' without an end date: kept as a note",
+        "lives_in → hometown (grew up there): Valencia",
+        "dropped entity places/seville: no fact refers to it",
+    ):
+        assert expected in notes, expected
+
+
+def test_template_text() -> None:
+    from brain.ingest.normalise import template_text, text_problem
+
+    assert template_text("works_at", "Fabrikam Retail", past=True) == "Worked at Fabrikam Retail"
+    assert template_text("team", "Platform", past=False) == "Is on the Platform team"
+    assert template_text("habit", "go bouldering", past=False) == "Has the habit: go bouldering"
+    assert template_text("responsibility", "weekly sales reporting", past=False) == (
+        "Responsible for weekly sales reporting"
+    )
+    assert template_text("responsibility", "runs the on-call rotation", past=False) == (
+        "Runs the on-call rotation"
+    )
+    lint = {"o_name": "Python", "owner_names": ["Alex Rivera", "Alex"], "about_self": True}
+    assert text_problem("Writes Python daily", **lint) == ""
+    assert text_problem("Writes code daily", **lint) == "no object"
+    assert text_problem("Alex writes Python", **lint) == "the owner's name"
+    assert text_problem("Writes Python " + "x" * 200, **lint) == "too long"

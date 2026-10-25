@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from conftest import DOCS  # type: ignore[import-not-found]
+from conftest import DOCS, quality_problems  # type: ignore[import-not-found]
 
 from brain.ingest import ingest
 from brain.ingest.extract import Extraction
@@ -61,5 +61,7 @@ def test_replayed_extraction_lands_in_the_vault(fresh_vault: Vault) -> None:
     sam = fresh_vault.page("people/sam-okafor")
     assert sam is not None and sam.privacy == "private"
     assert any(getattr(op, "p", "") == "friend_of" for op, _ in result.queued)
+    assert any(f.p == "responsibility" for f in self_facts)
+    assert quality_problems(fresh_vault) == []
     core = fresh_vault.core_path.read_text()
     assert "Name: Alex Rivera" in core

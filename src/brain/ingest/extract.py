@@ -23,6 +23,8 @@ T = TypeVar("T", bound=BaseModel)
 
 # Predicates offered for documents: a subset of the vocabulary. Traits, flaws, health and
 # private relationship details are left to conversations, where the owner states them.
+# "tool" (tools, products, datasets, ids) gives the model somewhere to put them other than
+# "project"; the normaliser turns them into literal values, never pages.
 INGEST_PREDICATES = (
     "name",
     "born",
@@ -40,6 +42,7 @@ INGEST_PREDICATES = (
     "degree",
     "certification",
     "has_skill",
+    "habit",
     "values",
     "interest",
     "likes",
@@ -61,7 +64,7 @@ INGEST_PREDICATES = (
 assert set(INGEST_PREDICATES) <= PREDICATES
 
 Predicate = Literal[INGEST_PREDICATES]  # type: ignore[valid-type]
-EntityKind = Literal["person", "org", "project", "place", "topic", "event"]
+EntityKind = Literal["person", "org", "project", "place", "event", "tool"]
 
 MAX_KNOWN = 40
 MAX_TOKENS = 6144
@@ -72,7 +75,6 @@ class ExtractedEntity(BaseModel):
     type: EntityKind
     id: str
     aliases: list[str]
-    summary: str
 
 
 class ExtractedFact(BaseModel):
