@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 500" width="1020" height="500" role="img" aria-labelledby="t d">
+  <title id="t">How the brain is organised</title>
+  <desc id="d">You chat with a local model on your laptop (System 1). It recalls episodes and wiki knowledge, a gate decides whether it knows the answer, gaps about your life are asked to you, and hard questions go to a big model (System 2) after you approve. Sleep consolidates episodes into the wiki. Italic labels name the brain region each part is modelled on.</desc>
+  <style>
+    svg { --text:#1f2328; --muted:#59636e; --box:#f6f8fa; --line:#d1d9e0; --region:#8250df; --s1:#1a7f37; --s2:#bc4c00; --arrow:#59636e; }
+    @media (prefers-color-scheme: dark) {
+      svg { --text:#f0f6fc; --muted:#9198a1; --box:#151b23; --line:#3d444d; --region:#d2a8ff; --s1:#3fb950; --s2:#ffa657; --arrow:#9198a1; }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--text); }
+    .name { font-size: 16px; font-weight: 600; }
+    .desc { font-size: 12.5px; fill: var(--muted); }
+    .region { font-size: 12.5px; font-style: italic; fill: var(--region); }
+    .label { font-size: 12px; fill: var(--muted); }
+    .sys1 { font-size: 13px; font-weight: 600; fill: var(--s1); }
+    .sys2 { font-size: 13px; font-weight: 600; fill: var(--s2); }
+    .box { fill: var(--box); stroke: var(--line); stroke-width: 1.5; }
+    .laptop { fill: none; stroke: var(--s1); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .big { fill: var(--box); stroke: var(--s2); stroke-width: 2; }
+    .you { fill: var(--box); stroke: var(--text); stroke-width: 2; }
+    .arrow { fill: none; stroke: var(--arrow); stroke-width: 1.6; }
+    .dashed { stroke-dasharray: 5 4; }
+    .head { fill: var(--arrow); }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <!-- you -->
+  <circle class="you" cx="70" cy="210" r="40"/>
+  <text class="name" x="70" y="216" text-anchor="middle">you</text>
+
+  <!-- laptop = System 1 -->
+  <rect class="laptop" x="150" y="30" width="600" height="440" rx="18"/>
+  <text class="sys1" x="172" y="60">YOUR LAPTOP · System 1: fast, intuitive, private</text>
+
+  <rect class="box" x="210" y="160" width="200" height="100" rx="10"/>
+  <text class="name" x="310" y="193" text-anchor="middle">Local model</text>
+  <text class="desc" x="310" y="215" text-anchor="middle">+ working memory</text>
+  <text class="region" x="310" y="242" text-anchor="middle">prefrontal cortex</text>
+
+  <rect class="box" x="500" y="160" width="200" height="100" rx="10"/>
+  <text class="name" x="600" y="193" text-anchor="middle">Know-or-escalate gate</text>
+  <text class="desc" x="600" y="215" text-anchor="middle">do I know this? is it hard?</text>
+  <text class="region" x="600" y="242" text-anchor="middle">anterior cingulate</text>
+
+  <rect class="box" x="175" y="330" width="170" height="90" rx="10"/>
+  <text class="name" x="260" y="360" text-anchor="middle">Episodes</text>
+  <text class="desc" x="260" y="382" text-anchor="middle">what we talked about</text>
+  <text class="region" x="260" y="405" text-anchor="middle">hippocampus</text>
+
+  <rect class="box" x="375" y="330" width="150" height="90" rx="10"/>
+  <text class="name" x="450" y="360" text-anchor="middle">Sleep</text>
+  <text class="desc" x="450" y="382" text-anchor="middle">consolidates when idle</text>
+  <text class="region" x="450" y="405" text-anchor="middle">sleep replay</text>
+
+  <rect class="box" x="555" y="330" width="170" height="90" rx="10"/>
+  <text class="name" x="640" y="360" text-anchor="middle">Wiki</text>
+  <text class="desc" x="640" y="382" text-anchor="middle">people, projects, you</text>
+  <text class="region" x="640" y="405" text-anchor="middle">neocortex</text>
+
+  <text class="label" x="450" y="455" text-anchor="middle"><tspan class="region">Italic names</tspan> = the brain region each part is modelled on (an analogy, not a simulation)</text>
+
+  <!-- big model = System 2 -->
+  <rect class="big" x="840" y="150" width="170" height="120" rx="10"/>
+  <text class="name" x="925" y="188" text-anchor="middle">Big model</text>
+  <text class="desc" x="925" y="210" text-anchor="middle">Claude, GPT, Kimi…</text>
+  <text class="sys2" x="925" y="238" text-anchor="middle">System 2</text>
+  <text class="desc" x="925" y="256" text-anchor="middle">slow, deliberate</text>
+
+  <!-- arrows -->
+  <line class="arrow" x1="112" y1="210" x2="207" y2="210" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text class="label" x="180" y="200" text-anchor="middle">chat</text>
+
+  <line class="arrow" x1="412" y1="210" x2="497" y2="210" marker-end="url(#a)"/>
+
+  <line class="arrow" x1="702" y1="210" x2="837" y2="210" marker-end="url(#a)"/>
+  <text class="label" x="795" y="200" text-anchor="middle">too hard</text>
+  <text class="label" x="795" y="228" text-anchor="middle">you approve</text>
+
+  <path class="arrow dashed" d="M600,158 C600,100 110,100 82,168" marker-end="url(#a)"/>
+  <text class="label" x="350" y="104" text-anchor="middle">a gap about your life → it asks you</text>
+
+  <line class="arrow" x1="262" y1="263" x2="262" y2="327" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line class="arrow" x1="380" y1="263" x2="600" y2="327" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text class="label" x="268" y="300">recall</text>
+  <text class="label" x="500" y="285">recall</text>
+
+  <line class="arrow" x1="347" y1="375" x2="372" y2="375" marker-end="url(#a)"/>
+  <line class="arrow" x1="527" y1="375" x2="552" y2="375" marker-end="url(#a)"/>
+</svg>

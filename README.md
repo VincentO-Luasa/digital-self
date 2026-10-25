@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🧠 local_brain
+# 🧠 A Brain of Your Own
 
-### A digital self that lives on your laptop.
+### A digital self that lives on your laptop, built the way a human brain remembers.
 
 You talk to it. It remembers you the way a person would.<br/>
 When a question is beyond it, it says so and asks a bigger brain.
@@ -15,26 +15,9 @@ When a question is beyond it, it says so and asks a bigger brain.
 
 ---
 
-```mermaid
-flowchart LR
-    you(("🙂 you"))
-    subgraph laptop["💻 your laptop: nothing personal leaves without your OK"]
-        pfc["🎯 Prefrontal cortex<br/>small local model + working memory"]
-        acc["⚖️ Anterior cingulate<br/>do I know this? is it hard?"]
-        hip["🌀 Hippocampus<br/>episodes: what we talked about"]
-        ctx["📚 Neocortex<br/>wiki: people, projects, you"]
-        sleep["🌙 Sleep<br/>consolidation when idle"]
-    end
-    big["🧩 System 2<br/>a big model: Claude, GPT, Kimi…"]
-
-    you <-->|"chat · interviews"| pfc
-    pfc <-->|"cues trigger recall"| hip
-    pfc <-->|"cues trigger recall"| ctx
-    pfc --> acc
-    acc -->|"→ ask the big model"| big
-    acc -.->|"I don't know your life here:<br/>asks you"| you
-    hip -->|replay| sleep -->|"facts, impressions"| ctx
-```
+<p align="center">
+  <img src="docs/img/overview.svg" alt="You chat with a local model on your laptop (System 1). It recalls episodes and wiki knowledge; a gate decides whether it knows the answer, asks you about gaps in your life, and sends hard questions to a big model (System 2) once you approve. Sleep consolidates episodes into the wiki." width="100%">
+</p>
 
 ## The idea
 
@@ -46,13 +29,14 @@ A brain you can talk to, one that knows **you**, is a digital self. So it should
 2. **Memory works like a person's.** When you talk with someone you know, you don't search a
    database. You already have an impression of them, a few things that marked you, and the
    conversation itself brings memories back. The brain copies that.
-3. **It knows its limits.** A small local model handles small talk, recall and everyday advice.
-   When it lacks knowledge *of your life*, it asks you. When a problem is hard, it tells you to ask
-   a big model, and you approve exactly what gets shared.
+3. **It knows its limits.** Like Kahneman's two systems: a small local model is the fast, intuitive
+   **System 1** (small talk, recall, everyday advice), a big model is the slow, deliberate
+   **System 2**. When the brain lacks knowledge *of your life*, it asks you. When a problem is hard,
+   it tells you to ask the big model, and you approve exactly what gets shared.
 
 ## How a human remembers → how the brain does it
 
-| a person… | local_brain… |
+| a person… | the brain… |
 |---|---|
 | has an impression of you, always present | keeps a **schema card** (temperament, current situation, marking facts) in every prompt |
 | holds only a few things in mind at once | has a **4-slot working memory** that follows the conversation |
