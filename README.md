@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🧠 A Brain of Your Own
+# 🧠 Digital Self
 
-### A digital self that lives on your laptop, built the way a human brain remembers.
+### A brain of your own: it lives on your laptop and remembers the way a human brain does.
 
 You talk to it. It remembers you the way a person would.<br/>
 When a question is beyond it, it says so and asks a bigger brain.

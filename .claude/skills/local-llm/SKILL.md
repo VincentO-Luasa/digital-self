@@ -18,7 +18,7 @@ Only `brain.llm` talks to the server. Everything else goes through it.
 | embeddings (1024-d, L2-normalised) | `Qwen3-Embedding-0.6B-8bit` |
 | reranker | `Qwen3-Reranker-0.6B-mxfp8` |
 
-Model ids come from config (`~/.config/local-brain/config.toml`). Never hard-code them outside
+Model ids come from config (`~/.config/digital-self/config.toml`). Never hard-code them outside
 `brain.config` defaults.
 
 ## Request rules (all verified 2026-10-25)

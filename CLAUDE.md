@@ -1,4 +1,4 @@
-# local_brain — developer guide
+# Digital Self — developer guide
 
 A local "second brain": a small local LLM (oMLX on an M4 32GB Mac) that chats with its owner,
 remembers conversations like a human (episodes → consolidated knowledge), keeps a markdown

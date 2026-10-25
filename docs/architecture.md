@@ -31,7 +31,7 @@ big-model, flows back into memory.
 
 | package | responsibility |
 |---|---|
-| `config` | settings (vault path, endpoint, model ids, thresholds) from `~/.config/local-brain/config.toml` + env |
+| `config` | settings (vault path, endpoint, model ids, thresholds) from `~/.config/digital-self/config.toml` + env |
 | `llm` | thin OpenAI-compatible client: chat, JSON-schema calls, tool calls, embeddings, rerank. The only module that knows about the runtime. |
 | `vault` | parse/render pages, fact lines, episodes, journal; **the single writer** (all mutations go through operations applied here, then a git commit) |
 | `index` | SQLite: FTS5, sqlite-vec embeddings, `entities`, `facts`, `links`, `access_log`; `reindex` rebuilds from the vault |
@@ -114,7 +114,7 @@ administered by an employer.
 
 The big model is whatever frontier model the owner already uses. The local brain only needs a way
 to hand it a confirmed packet and a way to get the conversation back. That is the escalation
-provider, set in `~/.config/local-brain/config.toml`:
+provider, set in `~/.config/digital-self/config.toml`:
 
 ```toml
 [escalation]

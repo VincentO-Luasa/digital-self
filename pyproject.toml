@@ -1,5 +1,5 @@
 [project]
-name = "local-brain"
+name = "digital-self"
 version = "0.1.0"
 description = "A local AI second brain: markdown knowledge graph, human-like memory, escalation to a big model."
 readme = "README.md"

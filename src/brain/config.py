@@ -1,4 +1,4 @@
-"""Settings, loaded from ~/.config/local-brain/config.toml with environment overrides."""
+"""Settings, loaded from ~/.config/digital-self/config.toml with environment overrides."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-CONFIG_PATH = Path.home() / ".config" / "local-brain" / "config.toml"
+CONFIG_PATH = Path.home() / ".config" / "digital-self" / "config.toml"
 REPO_DIR = Path(__file__).resolve().parents[2]
 
 

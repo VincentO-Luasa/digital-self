@@ -65,6 +65,51 @@ wheels = [
 ]
 
 [[package]]
+name = "digital-self"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "httpx" },
+    { name = "markdownify" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "pydantic" },
+    { name = "pypdf" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "sqlite-vec" },
+    { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "markdownify", specifier = ">=0.13" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "openai", specifier = ">=1.50" },
+    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pypdf", specifier = ">=5.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=13.8" },
+    { name = "sqlite-vec", specifier = ">=0.1.6" },
+    { name = "typer", specifier = ">=0.12" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "ruff", specifier = ">=0.7" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -251,51 +296,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/60/72/394036294ac3226216f73bfa4b14df920eb5baf7fb80fa7e0a0d7ef442a6/jiter-0.18.0-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:44d0d719cd7845e66b01a0cf346ec9882073e710a05e89a5b6d87be47a9dc69c", size = 277797, upload-time = "2026-10-23T13:51:09.324Z" },
     { url = "https://files.pythonhosted.org/packages/ce/80/f0dadedaa9a109f31e8978c7db355593916968d5956f382188a3f8c0888c/jiter-0.18.0-graalpy312-graalpy250_312_native-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4d1d2dc4d930ebc225f488b6b3790acebb2e51b3a165a4a42cc1d05bb927f83e", size = 300192, upload-time = "2026-10-23T13:51:10.551Z" },
     { url = "https://files.pythonhosted.org/packages/93/51/e57dbc6c264ec6557a677189755fe4525d83439237418e3ae59771ac1cde/jiter-0.18.0-graalpy312-graalpy250_312_native-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ebb0c346b6c5d9c033fe9e9b6ed6a1ff6dac0288fe681c3434dde6eb9c264fa1", size = 301141, upload-time = "2026-10-23T13:51:11.882Z" },
-]
-
-[[package]]
-name = "local-brain"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "beautifulsoup4" },
-    { name = "httpx" },
-    { name = "markdownify" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "pydantic" },
-    { name = "pypdf" },
-    { name = "pyyaml" },
-    { name = "rich" },
-    { name = "sqlite-vec" },
-    { name = "typer" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.12" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "markdownify", specifier = ">=0.13" },
-    { name = "numpy", specifier = ">=2.0" },
-    { name = "openai", specifier = ">=1.50" },
-    { name = "pydantic", specifier = ">=2.9" },
-    { name = "pypdf", specifier = ">=5.0" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "rich", specifier = ">=13.8" },
-    { name = "sqlite-vec", specifier = ">=0.1.6" },
-    { name = "typer", specifier = ">=0.12" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.3" },
-    { name = "ruff", specifier = ">=0.7" },
 ]
 
 [[package]]
