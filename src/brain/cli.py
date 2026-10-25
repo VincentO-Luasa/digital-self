@@ -244,6 +244,9 @@ def ingest_cmd(
 
     raw_note = "" if report.raw_created else " (identical copy already there)"
     console.print(f"raw copy: {report.raw_path}{raw_note}")
+    for chunk, reason in report.failed:
+        where = escape(chunk.heading or f"chunk {chunk.index}")
+        console.print(f"[yellow]skipped part of the document ({where}): {escape(reason)}[/]")
     result = report.applied
     assert result is not None and report.normalised is not None
     console.print(

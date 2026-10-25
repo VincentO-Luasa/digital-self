@@ -26,6 +26,10 @@ class StructuredOutputError(ValueError):
         self.raw = raw
 
 
+class OutputTruncated(StructuredOutputError):
+    """The reply hit ``max_tokens`` before the JSON was complete; retrying won't help."""
+
+
 @dataclass(frozen=True)
 class ToolCall:
     id: str

@@ -24,7 +24,7 @@ from brain.llm.recorder import load_exchange
 T = TypeVar("T", bound=BaseModel)
 WORD = re.compile(r"\w+")
 
-Scripted = str | dict[str, Any] | BaseModel
+Scripted = str | dict[str, Any] | BaseModel | Exception  # an Exception is raised
 
 
 def words(text: str) -> list[str]:
@@ -117,6 +117,8 @@ class FakeLLM:
         if not self.structured_queue:
             raise LookupError(f"FakeLLM: no scripted response for {schema.__name__}")
         item = self.structured_queue.popleft()
+        if isinstance(item, Exception):
+            raise item
         try:
             if isinstance(item, BaseModel):
                 return schema.model_validate(item.model_dump())

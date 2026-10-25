@@ -12,7 +12,7 @@ import pytest
 from pydantic import BaseModel
 
 from brain.config import LLMSettings
-from brain.llm import LLM, ChatResult, StructuredOutputError
+from brain.llm import LLM, ChatResult, OutputTruncated, StructuredOutputError
 from brain.llm.base import QUERY_INSTRUCT
 from brain.llm.recorder import Recorder, load_exchange
 
@@ -163,6 +163,16 @@ def test_structured_gives_up_after_retry():
         make_llm(server).structured([{"role": "user", "content": "q"}], Answer)
     assert err.value.raw == "not json"
     assert len(server.requests) == 2
+
+
+def test_structured_truncated_reply_is_not_retried():
+    reply = completion('{"reasoning": "r", "ans')
+    reply["choices"][0]["finish_reason"] = "length"
+    server = Server(reply)
+    with pytest.raises(OutputTruncated) as err:
+        make_llm(server).structured([{"role": "user", "content": "q"}], Answer, max_tokens=8)
+    assert err.value.raw == '{"reasoning": "r", "ans'
+    assert len(server.requests) == 1
 
 
 def embeddings_reply(request: httpx.Request) -> httpx.Response:

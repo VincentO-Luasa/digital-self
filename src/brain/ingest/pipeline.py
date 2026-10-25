@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from brain.index.reindex import ReindexStats, reindex
-from brain.ingest.chunking import CHUNK_TOKENS, Chunk, chunk_markdown
+from brain.ingest.chunking import CHUNK_TOKENS, Chunk, chunk_markdown, halve
 from brain.ingest.extract import (
     Extraction,
     KnownEntity,
@@ -25,7 +25,7 @@ from brain.ingest.extract import (
 )
 from brain.ingest.loaders import Document, load_document
 from brain.ingest.normalise import TYPE_DIRS, Normalised, build_changeset
-from brain.llm.base import RetrievalModel
+from brain.llm.base import OutputTruncated, RetrievalModel, StructuredOutputError
 from brain.vault.generated import refresh_generated
 from brain.vault.models import Kind
 from brain.vault.raw import rel_path, save_doc, slugify
@@ -33,6 +33,8 @@ from brain.vault.store import Vault
 from brain.vault.writer import ApplyResult, apply
 
 log = logging.getLogger(__name__)
+
+MAX_SPLITS = 2  # a truncated chunk is halved at most twice (quarters)
 
 
 class IngestModel(StructuredModel, RetrievalModel, Protocol):
@@ -53,6 +55,7 @@ class IngestReport:
     raw_path: str
     raw_created: bool
     chunks: list[ChunkReport] = field(default_factory=list)
+    failed: list[tuple[Chunk, str]] = field(default_factory=list)  # skipped chunks + reason
     extractions: list[Extraction] = field(default_factory=list)
     normalised: Normalised | None = None
     applied: ApplyResult | None = None
@@ -102,16 +105,31 @@ def ingest(
     known = known_entities(pages)
     owner = owner_names(pages)
     seen: set[str] = set()  # entities named in earlier chunks of this document
-    for chunk in chunks:
+    queue: list[tuple[Chunk, int]] = [(chunk, 0) for chunk in chunks]
+    while queue:
+        chunk, splits = queue.pop(0)
         start = time.perf_counter()
-        extraction = extract_chunk(
-            llm,
-            chunk,
-            doc_title=doc.title,
-            known=relevant_known(known, chunk.text, seen),
-            owner_names=owner,
-            today=today,
-        )
+        try:
+            extraction = extract_chunk(
+                llm,
+                chunk,
+                doc_title=doc.title,
+                known=relevant_known(known, chunk.text, seen),
+                owner_names=owner,
+                today=today,
+            )
+        except OutputTruncated as err:
+            halves = halve(chunk) if splits < MAX_SPLITS else []
+            log.info("ingest chunk %d truncated; split into %d", chunk.index, len(halves))
+            if halves:
+                queue[:0] = [(half, splits + 1) for half in halves]
+            else:
+                report.failed.append((chunk, str(err)))
+            continue
+        except StructuredOutputError as err:
+            log.warning("ingest chunk %d skipped: %s", chunk.index, err)
+            report.failed.append((chunk, str(err)))
+            continue
         seconds = time.perf_counter() - start
         for name in extraction.owner_names:
             if name.strip() and name.strip().casefold() not in map(str.casefold, owner):

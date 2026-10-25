@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from brain.tokens import estimate_tokens
 
-CHUNK_TOKENS = 1200
+CHUNK_TOKENS = 500  # a dense CV excerpt yields ~8x its size in extraction JSON
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 FENCE = re.compile(r"^\s*(```|~~~)")
 
@@ -86,6 +86,14 @@ def _split_large(text: str, max_tokens: int) -> list[str]:
     if current.strip():
         out.append(current)
     return out
+
+
+def halve(chunk: Chunk) -> list[Chunk]:
+    """Split a chunk in two at a paragraph (or line) boundary; [] if it can't be split."""
+    parts = _split_large(chunk.text, max(1, estimate_tokens(chunk.text) // 2 + 1))
+    if len(parts) < 2:
+        return []
+    return [Chunk(chunk.index, chunk.trail, part.strip()) for part in parts if part.strip()]
 
 
 def chunk_markdown(markdown: str, max_tokens: int = CHUNK_TOKENS) -> list[Chunk]:

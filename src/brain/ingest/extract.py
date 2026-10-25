@@ -64,7 +64,7 @@ Predicate = Literal[INGEST_PREDICATES]  # type: ignore[valid-type]
 EntityKind = Literal["person", "org", "project", "place", "topic", "event"]
 
 MAX_KNOWN = 40
-MAX_TOKENS = 4096
+MAX_TOKENS = 6144
 
 
 class ExtractedEntity(BaseModel):

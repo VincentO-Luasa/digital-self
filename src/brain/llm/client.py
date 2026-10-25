@@ -24,6 +24,7 @@ from brain.llm.base import (
     QUERY_INSTRUCT,
     ChatResult,
     Messages,
+    OutputTruncated,
     StructuredOutputError,
     ToolCall,
     l2_normalise,
@@ -254,7 +255,10 @@ class LLM:
         temperature: float | None = None,
         max_tokens: int = 2048,
     ) -> T:
-        """Grammar-enforced JSON parsed into ``schema``; one retry with the validation error."""
+        """Grammar-enforced JSON parsed into ``schema``; one retry with the validation error.
+
+        Raises ``OutputTruncated`` at once when the reply hits ``max_tokens``.
+        """
         temp = self.settings.extract_temperature if temperature is None else temperature
         kwargs = self._chat_kwargs(messages, temp, None, max_tokens)
         kwargs["response_format"] = response_format(schema)
@@ -262,6 +266,10 @@ class LLM:
         for attempt in range(2):
             resp = self._complete("structured", kwargs)
             raw = resp.choices[0].message.content or ""
+            if resp.choices[0].finish_reason == "length":
+                raise OutputTruncated(
+                    f"{schema.__name__}: reply cut off at max_tokens={max_tokens}", raw
+                )
             try:
                 return schema.model_validate_json(raw)
             except ValidationError as err:
