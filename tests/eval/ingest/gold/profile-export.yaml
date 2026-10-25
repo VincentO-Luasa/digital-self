@@ -1,0 +1,103 @@
+# Gold facts for docs/profile-export.txt (fictional persona; format: tests/eval/README.md).
+# A professional-network data export: CSV sections, month dates, a second short stint at one
+# employer (an internship), a licence number, other people's connections.
+doc: profile-export.txt
+kind: stated
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Kestrel Mobility, type: org, aliases: [Kestrel]}
+  - {name: Brightwater Studio, type: org, aliases: [Brightwater]}
+  - {name: Kungsholm Institute of Technology, type: org, aliases: [Kungsholm]}
+  - {name: Hallström School of Design, type: org, aliases: [Hallström]}
+  - {name: Design Bridge, type: org}
+  - {name: Nordic Accessibility Board, type: org}
+  - {name: Contrast Club, type: project}
+  - {name: Waypoint, type: project}
+  - {name: Fjord, type: project}
+  - {name: Copenhagen, type: place}
+  - {name: Priya Natarajan, type: person}
+  - {name: Elena Kovac, type: person}
+  - {name: Jonas Berg, type: person}
+  - {name: Oskar Holm, type: person}
+  - {name: Tomasz Wierzbicki, type: person}
+  - {name: Openfield, type: org}
+  - {name: Gannet Apps, type: org}
+  - {name: Halvard Bank, type: org}
+
+literals:
+  - Design Systems team
+  - Rider Experience team
+  - Figma
+  - Framer
+  - NAPC-22-0417
+  - Hospitals and Health Care
+
+required:
+  - {s: self, p: name, o: Maya Lindqvist}
+  - {s: self, p: lives_in, o: Copenhagen, current: true}
+  - {s: self, p: works_at, o: Fernhill Health, from: 2021-03, current: true}
+  - {s: self, p: role, o: Lead Product Designer, from: 2024-01, current: true}
+  - {s: self, p: role, o: Senior Product Designer, from: 2021-03, to: 2023-12}
+  - {s: self, p: works_at, o: Kestrel Mobility, from: 2017-08, to: 2021-01}
+  - {s: self, p: role, o: Product Designer, from: 2017-08, to: 2021-01}
+  - {s: self, p: works_at, o: Kestrel Mobility, from: 2014-06, to: 2014-08, why: "summer internship, a second stint"}
+  - {s: self, p: works_at, o: Brightwater Studio, from: 2015-09, to: 2017-06}
+  - {s: self, p: role, o: Junior UX Designer, from: 2015-09, to: 2017-06}
+  - {s: self, p: studied_at, o: Kungsholm Institute of Technology, from: 2013, to: 2015}
+  - {s: self, p: degree, o: MSc Human-Computer Interaction}
+  - {s: self, p: studied_at, o: Hallström School of Design, from: 2010, to: 2013}
+  - {s: self, p: degree, o: BA Graphic and Interaction Design}
+  - {s: self, p: speaks, o: Swedish}
+  - {s: self, p: speaks, o: English}
+  - {s: self, p: speaks, o: Dutch}
+  - {s: self, p: speaks, o: Danish}
+
+optional:
+  - {s: self, p: role, o: Design Intern, from: 2014-06, to: 2014-08}
+  - {s: self, p: team, o: Design Systems team, current: true}
+  - {s: self, p: team, o: Rider Experience team}
+  - {s: self, p: certification, o: Nordic Accessibility Practitioner Certificate, from: 2022-04}
+  - {s: self, p: has_skill, o: Interaction Design}
+  - {s: self, p: has_skill, o: Design Systems}
+  - {s: self, p: has_skill, o: User Research}
+  - {s: self, p: has_skill, o: Accessibility}
+  - {s: self, p: has_skill, o: Prototyping}
+  - {s: self, p: has_skill, o: Figma}
+  - {s: self, p: has_skill, o: Framer}
+  - {s: self, p: has_skill, o: Workshop Facilitation}
+  - {s: self, p: has_skill, o: Usability Testing}
+  - {s: self, p: worked_on, o: Contrast Club, from: 2019-11, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - {s: self, p: worked_on, o: Waypoint, from: 2019-03, to: 2020-09, alt: [{s: Waypoint, p: owner, o: self}]}
+  - {s: Fjord, p: owner, o: self, from: 2022, alt: [{s: self, p: worked_on, o: Fjord}]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: Waypoint, p: part_of, o: Kestrel Mobility}
+  - {s: self, p: member_of, o: Design Bridge, from: 2020-02}
+  - s: Contrast Club
+    p: stakeholder
+    o: Priya Natarajan
+    alt: [{s: Priya Natarajan, p: [colleague_of, knows, friend_of], o: self}]
+
+acceptable:
+  - {s: self, p: responsibility, o: [Design Systems team, Fjord design system, accessibility baseline, appointment booking, onboarding flows, prototypes, research, mentoring]}
+  - {s: self, p: [role, responsibility], o: [Mentor]}
+  - {s: self, p: [interest, has_skill], o: [design systems, accessibility, health]}
+  - {s: Elena Kovac, p: [knows, colleague_of], o: self}
+  - {s: Jonas Berg, p: [knows, friend_of], o: self}
+  - {s: Oskar Holm, p: [knows, colleague_of], o: self}
+  - {s: Tomasz Wierzbicki, p: knows, o: self}
+  - {s: Elena Kovac, p: works_at, o: Fernhill Health}
+  - {s: Elena Kovac, p: role, o: Head of Design}
+  - {s: Priya Natarajan, p: works_at, o: Openfield}
+  - {s: Priya Natarajan, p: role, o: Senior Product Designer}
+  - {s: Jonas Berg, p: works_at, o: Gannet Apps}
+  - {s: Jonas Berg, p: role, o: iOS Developer}
+  - {s: Oskar Holm, p: works_at, o: Fernhill Health}
+  - {s: Oskar Holm, p: role, o: Product Designer}
+  - {s: Tomasz Wierzbicki, p: works_at, o: Halvard Bank}
+  - {s: Tomasz Wierzbicki, p: role, o: Principal Designer}
+  - {s: Fernhill Health, p: located_in, o: Copenhagen}
+  - {s: Kestrel Mobility, p: located_in, o: Rotterdam}
+  - {s: Brightwater Studio, p: located_in, o: Stockholm}
+  - {s: Contrast Club, p: uses, o: Figma}

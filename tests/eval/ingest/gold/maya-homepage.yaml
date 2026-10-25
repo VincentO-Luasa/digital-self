@@ -1,0 +1,64 @@
+# Gold facts for docs/maya-homepage.html (fictional persona; format: tests/eval/README.md).
+doc: maya-homepage.html
+kind: stated
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Kestrel Mobility, type: org, aliases: [Kestrel]}
+  - {name: Brightwater Studio, type: org, aliases: [Brightwater]}
+  - {name: Fjord, type: project, aliases: [Fjord design system]}
+  - {name: Waypoint, type: project}
+  - {name: Contrast Club, type: project}
+  - {name: Priya Natarajan, type: person, aliases: [Priya]}
+  - {name: Copenhagen, type: place}
+  - {name: Rotterdam, type: place}
+  - {name: Stockholm, type: place}
+  - {name: Norrvik, type: place}
+  - {name: Interfaces North, type: event}
+
+# names that must stay values, never pages
+literals: [Design Systems team, Wayfinder SDK, Figma, WCAG, Eleventy, Inter]
+
+required:
+  - {s: self, p: name, o: Maya Lindqvist}
+  - {s: self, p: works_at, o: Fernhill Health, current: true}
+  - {s: self, p: role, o: Lead Product Designer, from: 2024-01, current: true}
+  - {s: self, p: lives_in, o: Copenhagen, from: 2021, current: true}
+  - {s: self, p: hometown, o: Norrvik}
+  - {s: self, p: works_at, o: Kestrel Mobility}
+  - {s: self, p: works_at, o: Brightwater Studio}
+  - {s: self, p: speaks, o: Swedish}
+  - {s: self, p: speaks, o: English}
+  - {s: self, p: speaks, o: Dutch}
+
+optional:
+  - {s: self, p: speaks, o: Danish, why: "learning; enough to order coffee"}
+  - {s: self, p: team, o: Design Systems team, current: true}
+  - {s: self, p: role, o: Product Designer, why: "at Kestrel, past"}
+  - {s: self, p: lives_in, o: Rotterdam}
+  - {s: self, p: lives_in, o: Stockholm}
+  - {s: Fjord, p: owner, o: self, from: 2022, alt: [{s: self, p: worked_on, o: Fjord}]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: self, p: worked_on, o: Waypoint, from: 2019, to: 2020, alt: [{s: Waypoint, p: owner, o: self}]}
+  - {s: Waypoint, p: part_of, o: Kestrel Mobility}
+  - {s: Waypoint, p: uses, o: Wayfinder SDK}
+  - {s: self, p: worked_on, o: Contrast Club, from: 2019, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - s: Contrast Club
+    p: stakeholder
+    o: Priya Natarajan
+    alt: [{s: Priya Natarajan, p: [colleague_of, knows, friend_of], o: self}]
+  - {s: self, p: [habit, interest, likes], o: urban sketching}
+  - {s: self, p: [values, interest, has_skill], o: accessibility}
+
+acceptable:
+  - {s: self, p: [values, interest, has_skill], o: [design systems, plain language]}
+  - {s: self, p: has_skill, o: [interaction design, design]}
+  - {s: self, p: responsibility, o: [Design Systems team, Fjord, patient apps]}
+  - {s: self, p: goal, o: [conference talk, Danish, Interfaces North]}
+  - {s: Contrast Club, p: uses, o: Figma}
+  - {s: Fjord, p: status, o: [second major version, version 2]}
+  - {s: Kestrel Mobility, p: located_in, o: Rotterdam}
+  - {s: Brightwater Studio, p: located_in, o: Stockholm}
+  - {s: Norrvik, p: located_in, o: Sweden}
+  - {s: self, p: studied_at, o: Stockholm}

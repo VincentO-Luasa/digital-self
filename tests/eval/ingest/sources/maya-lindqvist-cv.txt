@@ -1,0 +1,51 @@
+# MAYA LINDQVIST
+Lead Product Designer · Copenhagen, Denmark
+hello@maya.example · maya.example · +45 00 00 00 00
+
+# PROFILE
+Product designer with ten years of experience in health and mobility products. I lead design
+systems work, run research with vulnerable users and care about accessibility from the first
+sketch. Comfortable as a hands-on designer and as a lead for a small team.
+
+# EXPERIENCE
+
+## Fernhill Health, Copenhagen
+Lead Product Designer, Jan 2024 – present
+- Lead the Design Systems team (3 designers, 2 engineers) and the Fjord design system.
+- Set the accessibility baseline (WCAG 2.2 AA) for all patient-facing apps.
+- Report to Elena Kovac, Head of Design.
+Senior Product Designer, Mar 2021 – Dec 2023
+- Redesigned the appointment booking flow; drop-off fell from 31% to 12%.
+- Started Fjord in 2022 as a shared component library for six product teams.
+
+## Kestrel Mobility, Rotterdam
+Product Designer, Aug 2017 – Feb 2021
+- Member of the Rider Experience team: onboarding, payments and trip planning.
+- Led design of Waypoint (2019–2020), the multimodal trip planner, built on the Wayfinder SDK.
+- Ran fortnightly usability sessions with riders.
+
+## Brightwater Studio, Stockholm
+Junior UX Designer, Sep 2015 – Jun 2017
+- Wireframes and prototypes for retail and public-sector clients.
+
+# EDUCATION
+MSc Human-Computer Interaction, Kungsholm Institute of Technology, Stockholm, 2013 – 2015
+Thesis: "Calm notifications for shift workers"
+BA Graphic and Interaction Design, Hallström School of Design, Stockholm, 2010 – 2013
+
+# CERTIFICATIONS
+Nordic Accessibility Practitioner Certificate, 2022
+
+# SKILLS
+Interaction design · Prototyping · Design systems · User research · Accessibility (WCAG) ·
+Workshop facilitation · Figma · Framer · HTML and CSS
+
+# LANGUAGES
+Swedish (native) · English (fluent) · Dutch (professional working proficiency) · Danish (B1)
+
+# VOLUNTEERING
+Mentor, Design Bridge mentoring network, 2020 – present
+
+# SIDE PROJECTS
+Contrast Club (2019 – present): open-source Figma plugin that checks colour contrast,
+co-maintained with Priya Natarajan. About 4,000 weekly users.

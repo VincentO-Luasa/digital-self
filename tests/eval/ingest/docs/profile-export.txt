@@ -1,0 +1,63 @@
+Professional network data export
+Member: Maya Lindqvist
+Generated: 2026-09-02 07:14 UTC
+Files in this archive: Profile.csv, Positions.csv, Education.csv, Languages.csv, Skills.csv,
+Certifications.csv, Projects.csv, Volunteering.csv
+
+==> Profile.csv <==
+First Name,Last Name,Maiden Name,Headline,Summary,Industry,Geo Location,Twitter Handles,Websites
+Maya,Lindqvist,,"Lead Product Designer at Fernhill Health | Design systems, accessibility","Product designer working on health products. I lead the Design Systems team at Fernhill Health and maintain Contrast Club, an open-source contrast checker for Figma.",Hospitals and Health Care,"Copenhagen, Capital Region of Denmark, Denmark",,[PORTFOLIO:maya.example]
+
+==> Positions.csv <==
+Company Name,Title,Description,Location,Started On,Finished On
+Fernhill Health,Lead Product Designer,"Lead the Design Systems team and the Fjord design system. Accessibility baseline for all patient apps.","Copenhagen, Denmark",Jan 2024,
+Fernhill Health,Senior Product Designer,"Appointment booking redesign; started the Fjord design system.","Copenhagen, Denmark",Mar 2021,Dec 2023
+Kestrel Mobility,Product Designer,"Rider Experience team. Led design of the Waypoint trip planner.","Rotterdam, Netherlands",Aug 2017,Jan 2021
+Brightwater Studio,Junior UX Designer,"Prototypes and research for agency clients.","Stockholm, Sweden",Sep 2015,Jun 2017
+Kestrel Mobility,Design Intern,"Summer internship, onboarding flows.","Rotterdam, Netherlands",Jun 2014,Aug 2014
+
+==> Education.csv <==
+School Name,Start Date,End Date,Notes,Degree Name,Activities
+Kungsholm Institute of Technology,2013,2015,"Thesis: Calm notifications for shift workers",MSc Human-Computer Interaction,
+Hallström School of Design,2010,2013,,BA Graphic and Interaction Design,"Student union poster committee"
+
+==> Languages.csv <==
+Name,Proficiency
+Swedish,Native or bilingual proficiency
+English,Full professional proficiency
+Dutch,Professional working proficiency
+Danish,Limited working proficiency
+
+==> Skills.csv <==
+Name
+Interaction Design
+Design Systems
+User Research
+Accessibility
+Prototyping
+Figma
+Framer
+Workshop Facilitation
+Usability Testing
+
+==> Certifications.csv <==
+Name,Url,Authority,Started On,Finished On,License Number
+Nordic Accessibility Practitioner Certificate,,Nordic Accessibility Board,Apr 2022,,NAPC-22-0417
+
+==> Projects.csv <==
+Title,Description,Url,Started On,Finished On
+Contrast Club,"Open-source Figma plugin that flags colour-contrast problems while you design. Co-maintained with Priya Natarajan.",,Nov 2019,
+Waypoint,"Multimodal trip planner for Kestrel Mobility riders (scooter + tram + train).",,Mar 2019,Sep 2020
+Fjord,"Fernhill Health's design system: components, tokens and accessibility guidance.",,2022,
+
+==> Volunteering.csv <==
+Company Name,Role,Cause,Started On,Finished On,Description
+Design Bridge,Mentor,Education,Feb 2020,,"Mentoring early-career designers, 2–3 mentees a year."
+
+==> Connections.csv (first 5 of 412) <==
+First Name,Last Name,Company,Position,Connected On
+Priya,Natarajan,Openfield,Senior Product Designer,14 Mar 2018
+Elena,Kovac,Fernhill Health,Head of Design,02 Feb 2021
+Jonas,Berg,Gannet Apps,iOS Developer,30 Sep 2011
+Oskar,Holm,Fernhill Health,Product Designer,11 Aug 2025
+Tomasz,Wierzbicki,Halvard Bank,Principal Designer,13 Nov 2024

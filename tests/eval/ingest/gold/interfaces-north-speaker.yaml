@@ -1,0 +1,67 @@
+# Gold facts for docs/interfaces-north-speaker.html (fictional persona; format: tests/eval/README.md).
+# A conference speaker bio written by someone else, in the third person. The other speakers on
+# the page are not about the owner: facts about them are acceptable, facts tying them to the
+# owner are not.
+doc: interfaces-north-speaker.html
+kind: observed
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Kestrel Mobility, type: org, aliases: [Kestrel]}
+  - {name: Brightwater Studio, type: org, aliases: [Brightwater]}
+  - {name: Kungsholm Institute of Technology, type: org, aliases: [Kungsholm]}
+  - {name: Design Bridge, type: org}
+  - {name: Fjord, type: project}
+  - {name: Waypoint, type: project, aliases: [Waypoint trip planner]}
+  - {name: Contrast Club, type: project}
+  - {name: Copenhagen, type: place}
+  - {name: Interfaces North 2026, type: event, aliases: [Interfaces North]}
+  - {name: Tomasz Wierzbicki, type: person}
+  - {name: Ines Carvalho, type: person}
+  - {name: Halvard Bank, type: org}
+  - {name: Openfield, type: org}
+  - {name: Malmö, type: place}
+  - {name: Rotterdam, type: place}
+  - {name: Stockholm, type: place}
+
+literals: [Design Systems team, Figma]
+
+required:
+  - {s: self, p: name, o: Maya Lindqvist}
+  - {s: self, p: nationality, o: Swedish}
+  - {s: self, p: lives_in, o: Copenhagen, current: true}
+  - {s: self, p: works_at, o: Fernhill Health, from: 2021, current: true}
+  - {s: self, p: role, o: [Design Lead, Lead Product Designer], current: true}
+  - {s: self, p: works_at, o: Kestrel Mobility}
+  - {s: self, p: works_at, o: Brightwater Studio}
+  - {s: self, p: studied_at, o: Kungsholm Institute of Technology}
+  - s: self
+    p: degree
+    o: [master's degree in human-computer interaction, MSc Human-Computer Interaction, human-computer interaction]
+
+optional:
+  - {s: self, p: team, o: Design Systems team, current: true}
+  - {s: self, p: responsibility, o: [accessibility standards]}
+  - {s: Fjord, p: owner, o: self, alt: [{s: self, p: [worked_on, responsibility], o: Fjord}]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: self, p: worked_on, o: Waypoint, alt: [{s: Waypoint, p: owner, o: self}]}
+  - {s: Waypoint, p: part_of, o: Kestrel Mobility}
+  - {s: self, p: worked_on, o: Contrast Club, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - {s: self, p: member_of, o: Design Bridge, alt: [{s: self, p: responsibility, o: [mentors early-career designers, mentoring]}]}
+  - {s: self, p: [habit, interest, likes], o: urban sketching}
+  - {s: Kestrel Mobility, p: located_in, o: Rotterdam}
+  - {s: Interfaces North 2026, p: located_in, o: Malmö}
+
+acceptable:
+  - {s: self, p: [has_skill, interest], o: [design systems, accessibility, product design]}
+  - {s: self, p: [goal, note], o: [first conference talk, Design systems for tired clinicians, Interfaces North]}
+  - {s: Brightwater Studio, p: located_in, o: Stockholm}
+  - {s: Fernhill Health, p: located_in, o: Copenhagen}
+  - {s: Contrast Club, p: uses, o: Figma}
+  - {s: Fjord, p: [part_of, stakeholder], o: [Fernhill Health, Design Systems team]}
+  - {s: Tomasz Wierzbicki, p: works_at, o: Halvard Bank}
+  - {s: Tomasz Wierzbicki, p: role, o: Principal Designer}
+  - {s: Ines Carvalho, p: works_at, o: Openfield}
+  - {s: Ines Carvalho, p: role, o: Researcher}
+  - {s: Interfaces North 2026, p: [deadline, note], o: [2026-11-12, 2026-11-13, 12–13 November 2026]}

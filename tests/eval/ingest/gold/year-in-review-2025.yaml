@@ -1,0 +1,69 @@
+# Gold facts for docs/year-in-review-2025.md (fictional persona; format: tests/eval/README.md).
+# Informal notes: first names only, abbreviations ("DS team"), a holiday that is not a move,
+# a friend's city that is not the owner's.
+doc: year-in-review-2025.md
+kind: stated
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Fjord, type: project, aliases: [Fjord 2.0]}
+  - {name: Contrast Club, type: project}
+  - {name: Design Bridge, type: org}
+  - {name: Gull Street Fiddlers, type: org}
+  - {name: Elena, type: person, aliases: [Elena Kovac]}
+  - {name: Oskar, type: person, aliases: [Oskar Holm]}
+  - {name: Priya, type: person, aliases: [Priya Natarajan]}
+  - {name: Jonas, type: person, aliases: [Jonas Berg]}
+  - {name: Linnea, type: person, aliases: [Linnea Lindqvist]}
+  - {name: Ana, type: person}
+  - {name: Copenhagen, type: place}
+  - {name: Nørrebro, type: place}
+  - {name: Norrvik, type: place}
+  - {name: Gothenburg, type: place}
+  - {name: Berlin, type: place}
+  - {name: Lisbon, type: place}
+  - {name: Interfaces North, type: event}
+
+literals: [DS team, Slack, couch to 5k, nyckelharpa]
+
+required:
+  - {s: self, p: works_at, o: Fernhill Health, current: true}
+  - {s: self, p: role, o: [Lead, Lead Product Designer, Design Lead], current: true}
+  - {s: self, p: lives_in, o: [Copenhagen, Nørrebro], current: true}
+  - {s: self, p: speaks, o: Danish}
+
+optional:
+  - {s: self, p: team, o: [DS team, Design Systems team], current: true}
+  - {s: self, p: manager, o: Elena}
+  - {s: Oskar, p: [colleague_of, knows], o: self}
+  - {s: Fjord, p: owner, o: self, alt: [{s: self, p: [worked_on, responsibility], o: Fjord}]}
+  - {s: self, p: worked_on, o: Contrast Club, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - {s: Priya, p: [colleague_of, knows, friend_of], o: self, alt: [{s: Contrast Club, p: stakeholder, o: Priya}]}
+  - {s: Priya, p: lives_in, o: Berlin}
+  - {s: self, p: member_of, o: Design Bridge, alt: [{s: self, p: responsibility, o: [mentoring, mentees]}]}
+  - {s: self, p: member_of, o: Gull Street Fiddlers}
+  - {s: Jonas, p: friend_of, o: self}
+  - {s: Jonas, p: lives_in, o: Gothenburg}
+  - {s: Linnea, p: [family_of, knows, friend_of], o: self}
+  - {s: self, p: [habit, interest, likes], o: [sketching, urban sketching]}
+  - {s: self, p: [habit, interest, likes], o: pottery}
+  - {s: self, p: [habit, interest, likes], o: running}
+  - {s: self, p: goal, o: first conference talk}
+  - {s: self, p: goal, o: [Danish to B2, B2 Danish]}
+  - {s: self, p: goal, o: [Copenhagen half marathon, half marathon]}
+  - {s: self, p: goal, o: [clinician app onto Fjord, clinician app]}
+  - {s: self, p: goal, o: [read 20 books, 20 books]}
+
+acceptable:
+  - {s: self, p: [habit, interest, likes], o: [nyckelharpa, folk music, reading, drawing, Gull Street Fiddlers]}
+  - {s: self, p: [habit, goal, values], o: [checking Slack in bed, fewer meetings, more drawing, say no]}
+  - {s: self, p: responsibility, o: [Fjord 2.0, hiring, DS team, Contrast Club, booking flow]}
+  - {s: Ana, p: [knows, mentor_of], o: self}
+  - {s: Oskar, p: works_at, o: Fernhill Health}
+  - {s: Oskar, p: [role, team], o: [designer, DS team]}
+  - {s: Elena, p: works_at, o: Fernhill Health}
+  - {s: Fjord, p: status, o: [2.0 shipped, shipped, Fjord 2.0]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: Priya, p: worked_on, o: Contrast Club}
+  - {s: Nørrebro, p: [located_in, part_of], o: Copenhagen}

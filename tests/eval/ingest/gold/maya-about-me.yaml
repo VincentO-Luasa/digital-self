@@ -1,0 +1,92 @@
+# Gold facts for docs/maya-about-me.md (fictional persona; format: tests/eval/README.md).
+# A first-person narrative that never states the owner's name.
+doc: maya-about-me.md
+kind: stated
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Norrvik, type: place}
+  - {name: Stockholm, type: place}
+  - {name: Rotterdam, type: place}
+  - {name: Copenhagen, type: place}
+  - {name: Linnea, type: person, aliases: [Linnea Lindqvist]}
+  - {name: Jonas Berg, type: person, aliases: [Jonas]}
+  - {name: Priya Natarajan, type: person, aliases: [Priya]}
+  - {name: Elena Kovac, type: person, aliases: [Elena]}
+  - {name: Hallström School of Design, type: org, aliases: [Hallström]}
+  - {name: Kungsholm Institute of Technology, type: org, aliases: [Kungsholm]}
+  - {name: Brightwater Studio, type: org, aliases: [Brightwater]}
+  - {name: Kestrel Mobility, type: org, aliases: [Kestrel]}
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Gull Street Fiddlers, type: org}
+  - {name: Design Bridge, type: org, aliases: [Design Bridge mentoring network]}
+  - {name: Waypoint, type: project}
+  - {name: Contrast Club, type: project}
+  - {name: Fjord, type: project}
+
+literals: [Rider Experience team, Design Systems team, Wayfinder SDK, Figma, nyckelharpa]
+
+required:
+  - {s: self, p: born, o: "1991"}
+  - {s: self, p: hometown, o: Norrvik}
+  - {s: self, p: lives_in, o: Stockholm, from: 2010, to: 2017}
+  - {s: self, p: lives_in, o: Rotterdam, from: 2017, to: 2021}
+  - {s: self, p: lives_in, o: Copenhagen, from: 2021, current: true}
+  - {s: self, p: studied_at, o: Hallström School of Design, from: 2010}
+  - {s: self, p: studied_at, o: Kungsholm Institute of Technology, from: 2013, to: 2015}
+  - {s: self, p: works_at, o: Brightwater Studio, from: 2015, to: 2017}
+  - {s: self, p: role, o: Junior UX Designer, from: 2015, to: 2017}
+  - {s: self, p: works_at, o: Kestrel Mobility, from: 2017}
+  - {s: self, p: role, o: Product Designer, from: 2017}
+  - {s: self, p: works_at, o: Fernhill Health, from: 2021, current: true}
+  - {s: self, p: role, o: Lead Product Designer, from: 2024, current: true}
+  - {s: self, p: role, o: Senior Product Designer, from: 2021}
+  - {s: self, p: speaks, o: Dutch}
+
+optional:
+  - {s: self, p: nationality, o: Swedish}
+  - {s: self, p: degree, o: [bachelor's in graphic and interaction design, graphic and interaction design]}
+  - {s: self, p: degree, o: [master's in human-computer interaction, human-computer interaction]}
+  - {s: Linnea, p: family_of, o: self}
+  - {s: Linnea, p: lives_in, o: Norrvik}
+  - {s: Jonas Berg, p: friend_of, o: self, from: 2010}
+  - s: Priya Natarajan
+    p: [colleague_of, knows, friend_of]
+    o: self
+    alt: [{s: Contrast Club, p: stakeholder, o: Priya Natarajan}]
+  - {s: self, p: manager, o: Elena Kovac}
+  - {s: self, p: team, o: Rider Experience team}
+  - {s: self, p: team, o: Design Systems team, current: true}
+  - {s: self, p: worked_on, o: Waypoint, from: 2019, to: 2020, alt: [{s: Waypoint, p: owner, o: self}]}
+  - {s: Waypoint, p: part_of, o: Kestrel Mobility}
+  - {s: Waypoint, p: uses, o: Wayfinder SDK}
+  - {s: self, p: worked_on, o: Contrast Club, from: 2019, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - {s: Fjord, p: owner, o: self, from: 2022, alt: [{s: self, p: worked_on, o: Fjord}]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: self, p: member_of, o: Gull Street Fiddlers, from: 2022}
+  - {s: self, p: member_of, o: Design Bridge, from: 2020}
+  - {s: self, p: [habit, interest, likes], o: urban sketching}
+  - {s: self, p: [habit, interest, likes], o: pottery}
+  - {s: self, p: [habit, interest, likes], o: nyckelharpa}
+  - {s: self, p: values, o: plain language}
+  - {s: self, p: values, o: accessibility}
+
+acceptable:
+  - {s: self, p: values, o: [honest research, design systems]}
+  - {s: self, p: [has_skill, interest], o: [accessibility, design systems, usability, research]}
+  - {s: self, p: responsibility, o: [Design Systems team, Fjord, Contrast Club, wireframes, mentor, mentoring junior designers]}
+  - {s: self, p: [habit, interest], o: [mentoring, drawing, designing for tired people]}
+  - {s: Jonas Berg, p: [role, has_skill], o: [iOS, iOS developer, iOS apps]}
+  - {s: Jonas Berg, p: studied_at, o: Hallström School of Design}
+  - {s: Priya Natarajan, p: works_at, o: Kestrel Mobility}
+  - {s: Priya Natarajan, p: worked_on, o: Contrast Club}
+  - {s: Elena Kovac, p: role, o: [head of design]}
+  - {s: Elena Kovac, p: works_at, o: Fernhill Health}
+  - {s: Contrast Club, p: uses, o: Figma}
+  - {s: Waypoint, p: status, o: [rebuilt]}
+  - {s: Kestrel Mobility, p: located_in, o: Rotterdam}
+  - {s: Brightwater Studio, p: located_in, o: [Stockholm, Södermalm]}
+  - {s: Hallström School of Design, p: located_in, o: Stockholm}
+  - {s: Kungsholm Institute of Technology, p: located_in, o: Stockholm}
+  - {s: Norrvik, p: located_in, o: Sweden}
+  - {s: Linnea, p: [works_at, responsibility, owner], o: [café, cafe by the harbour]}

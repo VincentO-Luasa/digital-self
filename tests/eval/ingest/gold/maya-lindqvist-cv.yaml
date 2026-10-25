@@ -1,0 +1,90 @@
+# Gold facts for docs/maya-lindqvist-cv.pdf (fictional persona; format: tests/eval/README.md).
+# The PDF is generated from sources/maya-lindqvist-cv.txt by make_pdf.py.
+doc: maya-lindqvist-cv.pdf
+kind: stated
+owner: [Maya Lindqvist, Maya]
+
+entities:
+  - {name: Fernhill Health, type: org, aliases: [Fernhill]}
+  - {name: Kestrel Mobility, type: org, aliases: [Kestrel]}
+  - {name: Brightwater Studio, type: org, aliases: [Brightwater]}
+  - {name: Kungsholm Institute of Technology, type: org, aliases: [Kungsholm]}
+  - {name: Hallström School of Design, type: org, aliases: [Hallström]}
+  - {name: Design Bridge, type: org, aliases: [Design Bridge mentoring network]}
+  - {name: Fjord, type: project, aliases: [Fjord design system]}
+  - {name: Waypoint, type: project}
+  - {name: Contrast Club, type: project}
+  - {name: Elena Kovac, type: person}
+  - {name: Priya Natarajan, type: person}
+  - {name: Copenhagen, type: place}
+
+literals:
+  - Design Systems team
+  - Rider Experience team
+  - Wayfinder SDK
+  - Figma
+  - Framer
+  - WCAG
+  - HTML and CSS
+
+required:
+  - {s: self, p: name, o: Maya Lindqvist}
+  - {s: self, p: lives_in, o: Copenhagen, current: true}
+  - {s: self, p: works_at, o: Fernhill Health, from: 2021-03, current: true}
+  - {s: self, p: role, o: Lead Product Designer, from: 2024-01, current: true}
+  - {s: self, p: role, o: Senior Product Designer, from: 2021-03, to: 2023-12}
+  - {s: self, p: works_at, o: Kestrel Mobility, from: 2017-08, to: 2021-02}
+  - {s: self, p: role, o: Product Designer, from: 2017-08, to: 2021-02}
+  - {s: self, p: works_at, o: Brightwater Studio, from: 2015-09, to: 2017-06}
+  - {s: self, p: role, o: Junior UX Designer, from: 2015-09, to: 2017-06}
+  - {s: self, p: studied_at, o: Kungsholm Institute of Technology, from: 2013, to: 2015}
+  - {s: self, p: degree, o: [MSc Human-Computer Interaction, Master of Science in Human-Computer Interaction]}
+  - {s: self, p: studied_at, o: Hallström School of Design, from: 2010, to: 2013}
+  - {s: self, p: degree, o: [BA Graphic and Interaction Design, Bachelor of Arts in Graphic and Interaction Design]}
+  - {s: self, p: speaks, o: Swedish}
+  - {s: self, p: speaks, o: English}
+  - {s: self, p: speaks, o: Dutch}
+  - {s: self, p: speaks, o: Danish}
+
+optional:
+  - {s: self, p: team, o: Design Systems team, current: true}
+  - {s: self, p: team, o: Rider Experience team, to: 2021-02}
+  - {s: self, p: manager, o: Elena Kovac}
+  - {s: self, p: certification, o: Nordic Accessibility Practitioner Certificate, from: 2022}
+  - {s: self, p: has_skill, o: Interaction design}
+  - {s: self, p: has_skill, o: Prototyping}
+  - {s: self, p: has_skill, o: Design systems}
+  - {s: self, p: has_skill, o: User research}
+  - {s: self, p: has_skill, o: [Accessibility, Accessibility (WCAG)]}
+  - {s: self, p: has_skill, o: Workshop facilitation}
+  - {s: self, p: has_skill, o: Figma}
+  - {s: self, p: has_skill, o: Framer}
+  - {s: self, p: has_skill, o: [HTML and CSS, HTML, CSS]}
+  - {s: self, p: member_of, o: Design Bridge, from: 2020}
+  - {s: Fjord, p: owner, o: self, from: 2022, alt: [{s: self, p: worked_on, o: Fjord}]}
+  - {s: Fjord, p: part_of, o: Fernhill Health}
+  - {s: self, p: worked_on, o: Waypoint, from: 2019, to: 2020, alt: [{s: Waypoint, p: owner, o: self}]}
+  - {s: Waypoint, p: part_of, o: Kestrel Mobility}
+  - {s: Waypoint, p: uses, o: Wayfinder SDK}
+  - {s: self, p: worked_on, o: Contrast Club, from: 2019, alt: [{s: Contrast Club, p: owner, o: self}]}
+  - s: Contrast Club
+    p: stakeholder
+    o: Priya Natarajan
+    alt: [{s: Priya Natarajan, p: [colleague_of, knows, friend_of], o: self}]
+  - {s: self, p: responsibility, o: accessibility baseline}
+  - {s: self, p: responsibility, o: [appointment booking flow, booking flow]}
+
+acceptable:
+  - {s: self, p: responsibility, o: [Design Systems team, Fjord, usability sessions, wireframes, prototypes, onboarding, payments, trip planning]}
+  - {s: self, p: [role, responsibility], o: [Mentor, mentoring]}
+  - {s: self, p: has_skill, o: [design, health, mobility, research, accessibility]}
+  - {s: Fernhill Health, p: located_in, o: Copenhagen}
+  - {s: Kestrel Mobility, p: located_in, o: Rotterdam}
+  - {s: Brightwater Studio, p: located_in, o: Stockholm}
+  - {s: Kungsholm Institute of Technology, p: located_in, o: Stockholm}
+  - {s: Hallström School of Design, p: located_in, o: Stockholm}
+  - {s: Elena Kovac, p: role, o: Head of Design}
+  - {s: Elena Kovac, p: works_at, o: Fernhill Health}
+  - {s: Contrast Club, p: uses, o: Figma}
+  - {s: Fjord, p: status, o: [shared component library]}
+  - {s: self, p: worked_on, o: [Design Systems, design systems work]}
