@@ -74,7 +74,7 @@ def test_core_is_byte_stable(tmp_vault: Vault) -> None:
 
 def test_refresh_writes_and_commits_only_on_change(tmp_vault: Vault) -> None:
     changed = refresh_generated(tmp_vault, today=TODAY)
-    assert {p.name for p in changed} == {"core.md", "index.md"}
+    assert {p.name for p in changed} == {"core.md", "index.md", "denylist.txt"}
     head = gitops.head(tmp_vault.root)
     assert refresh_generated(tmp_vault, today=TODAY) == []
     assert gitops.head(tmp_vault.root) == head
@@ -100,3 +100,16 @@ def test_first_sentence() -> None:
     assert first_sentence("e.g. this one") == "e.g. this one"
     long = first_sentence("word " * 100, limit=30)
     assert len(long) <= 30 and long.endswith("…")
+
+
+def test_denylist_lists_private_names_and_keeps_manual_lines(tmp_vault: Vault) -> None:
+    from brain.vault.generated import DENYLIST_MARKER, build_denylist
+
+    manual = "# my terms\nSecret Street\n"
+    text = build_denylist(tmp_vault, manual + "\n" + DENYLIST_MARKER + "\nStale Name\n")
+    head, generated = text.split(DENYLIST_MARKER)
+    assert head.strip() == manual.strip()
+    names = generated.split()
+    assert "Sam" in names and "Stale" not in names  # Sam Okafor's page is private
+    assert "Northwind" not in generated  # normal pages are not listed
+    assert build_denylist(tmp_vault, text) == text  # stable
