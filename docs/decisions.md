@@ -63,3 +63,50 @@ generalised to "the big model".
 Alternatives: Claude-only (simpler, but ties a public project to one vendor); a multi-provider SDK
 or agent framework (conflicts with the explicit-control-flow rule; the OpenAI-compatible API
 already covers most providers).
+
+## 2026-10-25 — Ingest: flat extraction schema, resolution and policy in code
+One structured call per heading-bounded chunk (~1.2k tokens). The model fills a flat schema
+(`reasoning`, `owner_names`, `entities[{name,type,id,aliases,summary}]`,
+`facts[{subject,predicate,object,text,start,end}]`) with names, not ids; the predicate is an enum
+over a document subset of the vocabulary (no traits, flaws, health). Code resolves names to ids
+(known aliases → entities named earlier in the document → new slug ids), normalises dates,
+merges duplicates (union of their periods), turns `(self, owner|relation, X)` around to
+`(X, p, self)`, keeps tools/skills/languages as literals, drops entities no fact uses, derives
+new pages' regions (hence privacy) from the facts that link them, and adds the owner's names as
+aliases of `self/profile`. One `ChangeSet(origin="ingest")` per document; the writer's policy
+decides what is queued. The prompt lists only known entities named in the chunk (cap 40) so it
+scales with the vault. Why: a ~3B-active model is reliable at "list the facts", not at producing
+a discriminated union of operations with ids; everything it returns is a proposal checked in code.
+Alternatives: emitting `Operation` JSON directly (likely more invalid ids and wrong directions;
+the first live runs already showed wrong directions); sending the whole alias index (does not scale).
+
+## 2026-10-25 — Documents the owner wrote yield `stated` facts
+`brain ingest` treats a document as the owner's own (CV, homepage) and records `kind: stated`;
+`--observed` marks documents written by others. Why: a first-person homepage is the owner
+speaking, and `stated` facts with no contradiction auto-apply. The schema's "observed (in a
+document)" now means documents by third parties.
+
+## 2026-10-25 — Phase 1 core.md and index.md are deterministic
+`core.md` (L0 card) is built in code from current self facts valid today plus the entities tied
+to the owner by a current fact, ranked by a salience prior (predicate weight, stated > observed >
+inferred, newest first on ties) and cut at `core_max_tokens`. No timestamps, so the file is
+byte-stable and the chat prefix cache survives until a contributing fact changes. Both files
+are regenerated and committed after ingest and review approvals, and include private pages
+(they are local; the big model's instructions forbid reading them). `build_core(...,
+include_private=False)` exists for the MCP profile tool. Phase 4 consolidation replaces the card
+builder (impression, marking facts, open loops).
+
+## 2026-10-25 — Raw capture: exclusive files, turn-by-turn transcripts
+`raw/docs/YYYY-MM-DD-<slug>.<ext>` and `raw/conversations/YYYY/MM/conv-YYYYMMDD-HHMM.md` are
+created with exclusive opens (a suffix `-2` on collision), never overwritten; re-ingesting an
+identical document reuses its copy. Transcript turns are `## <n> · <role> · <timestamp>` blocks
+appended and fsynced one by one (lines that look like turn headings are escaped), committed at
+the end of the session. Why: raw/ is episodic ground truth; a crash must lose nothing, and
+Phase 2 segmentation needs stable turn numbers for episode `turns: [a, b]`.
+
+## 2026-10-25 — Chat prompt: memory in the latest user message, history trimmed in blocks
+System prompt + core card form the cached prefix. History holds the plain user text (never the
+memory block) and drops the oldest 4 exchanges once it exceeds 8. The per-turn block (today's
+date + search hits packed gist-first under `retrieval.budget_tokens`, skipping facts already in
+the card) is prepended to the latest user message. Token budgets use a chars/3.5 estimate (no
+tokenizer dependency; errs on the safe side).
