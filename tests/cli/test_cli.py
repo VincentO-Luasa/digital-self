@@ -23,13 +23,24 @@ runner = CliRunner()
 
 
 def recorded(**kwargs) -> FakeLLM:
-    """A fake replaying the recorded ingest of the fictional homepage: the split plan, then per
-    part the gate, the extraction and the checks."""
+    """A fake replaying the recorded ingest of the fictional homepage: the split plan, the
+    document brief, then per part the gate, the extraction and the checks."""
     return FakeLLM.from_fixtures(FIXTURE, **kwargs)
 
 
+BRIEF = {
+    "reasoning": "r",
+    "subject": "Alex Rivera",
+    "kind": "homepage",
+    "voice": "first",
+    "periods": [],
+    "homes": [],
+    "names": [],
+}
+
+
 def recorded_parts() -> int:
-    return sum(json.loads(p.read_text())["kind"] == "structured" for p in FIXTURE) - 1
+    return sum(json.loads(p.read_text())["kind"] == "structured" for p in FIXTURE) - 2
 
 
 @pytest.fixture
@@ -129,7 +140,9 @@ def test_ingest_url_and_bad_sources(env, monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(cli, "make_http", lambda: httpx.Client(transport=transport))
     empty = {"reasoning": "r", "owner_names": [], "entities": [], "facts": []}
     state["llm"] = recorded()
-    state["llm"].structured_queue.appendleft(empty)  # the index page: one part, no decisions
+    # the index page: a brief, then one part with no decisions
+    state["llm"].structured_queue.appendleft(empty)
+    state["llm"].structured_queue.appendleft(BRIEF)
     out = invoke("ingest", "https://alex.example/", "--follow", "2").output
     assert "page 1/3 https://alex.example/" in out and "page 2/3 https://alex.example/cv" in out
     assert "raw copy: raw/docs/2026" in out and "alex-example-cv.html" in out
@@ -200,7 +213,7 @@ def test_ingest_prints_skipped_parts(env, tmp_path: Path) -> None:
             for q in questions
         ]
 
-    state["llm"] = FakeLLM(structured_responses=[plan, empty], decider=gate)
+    state["llm"] = FakeLLM(structured_responses=[plan, BRIEF, empty], decider=gate)
     out = " ".join(invoke("ingest", str(doc)).output.split())  # rich wraps long lines
     assert "skipped, nothing about a person (p=0.020" in out
     assert "skipped part with nothing about a person" in out and "gate: skipped" in out

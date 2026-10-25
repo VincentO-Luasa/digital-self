@@ -268,3 +268,54 @@ and drops decorative ordinals by structure (a bare 1–2 digit element before a 
 heading, or first in a short line followed by another element when zero-padded or above a
 heading), not by class names: the fix must hold for any site. Counters and counts in sentences
 ("7+ years", "12 talks") stay.
+
+## 2026-10-25 — A document brief, used by normalisation only
+Parts are extracted one at a time, so no part knows that its project belongs to the job two
+sections up, that "Atlas" and "the Atlas Migration project" are one thing, or that the intro's
+city was left years ago. One structured call (`ingest_brief`, temperature 0) now reads the whole
+document (≤ 6k tokens, else each part's heading and first lines) after the split plan and returns
+a brief: subject, kind, voice, jobs/studies, homes, and ≤ 12 glossary names with type, aliases,
+parent and the subject's role. Code grounds it before use: a date is kept only if a sentence
+names its city / organisation and gives that year, a home only if a sentence names the city with
+a residence word (the model took a job's start for a move, and every employer's city for a home),
+descriptions are not aliases. Normalisation then: merges variant names into one entity (brief
+name or alias, or the name plus lowercase words or a version, same type only); adds `part_of` /
+`located_in` from parents for entities the facts use (never for a side project; unlisted parents
+typed from the child) and turns a stated-backwards one around; adds `member_of` for a "member"
+organisation no fact links (not one of the document's teams); sharpens `knows` (and friend →
+family); ends a past city where the next home starts and adds a home the parts missed (never the
+hometown, never an end on the last home); keeps two stints at one employer apart when the brief
+shows both and the dates leave a gap. Every change is a `brief:` note.
+Measured with `brain eval ingest`, two extraction samples per variant (the eval's run-to-run
+spread is larger than assumed: two baseline samples differ by 5 precision points, and a single
+document's optional recall by 40 points; samples differ by the model's sampling at 0.2):
+
+| variant (sample 1 / sample 2) | required | optional | precision | dates | pages | s/run |
+|---|---|---|---|---|---|---|
+| baseline (HEAD 3f246a3) | 0.959 / 0.945 | 0.640 / 0.649 | 0.775 / 0.724 | 0.889 / 0.871 | 0.782 / 0.795 | 350–460 |
+| brief → normalisation (kept) | 1.000 / 0.986 | 0.784 / 0.793 | 0.812 / 0.755 | 0.897 / 0.881 | 0.872 / 0.885 | ~440 |
+| + brief block in every extraction prompt (timeline, names) | 0.945 / 0.918 | 0.766 / 0.757 | 0.744 / 0.740 | 0.935 / 0.903 | 0.859 / 0.756 | ~720 |
+| + names-only block in extraction | 0.945 / 0.986 | 0.775 / 0.784 | 0.756 / 0.774 | 0.853 / 0.776 | 0.833 / 0.821 | 450–740 |
+| + brief header as checks context | 1.000 / 0.986 | 0.757 / 0.784 | 0.806 / 0.754 | 0.896 / 0.881 | 0.859 / 0.872 | — |
+
+The normalisation-only rows share their extractions with the baseline rows (same cache), so the
+deltas are paired: +4 required, +14 optional, +3 precision, +1 dates, +9 pages on both samples;
+"optional fact not extracted" 28 → 18 and 25 → 13, "entity missing" 17 → 10 and 16 → 9 (project
+`part_of` its employer in every document, `member_of` a network stated as a duty, a past city
+with its end, the internship kept apart from the later job at the same employer, cities as
+pages). Queued +1 to +2 (relations and past homes). In the extraction prompt the brief lost: the
+extractor copied the brief's rounded years over the excerpt's months (dates 0.75 with dated
+periods, so periods are shown undated), restated or lost facts (required −4 to −7 against
+normalisation-only, precision −2 to −6) and wrote longer replies (a notes document truncated
+and was halved into six parts); its prefill is ~200–300 tokens per part (cached after the first
+part). The checks' context changed nothing. So `pipeline.BRIEF_USES = {"normalise"}`; the prompt
+block and the context stay as switches for a stronger model. Cost: 12–17 s per document
+(~1.1–1.6k prompt, ~410–600 output tokens; v2 dropped tools from the glossary and capped it at 12,
+−10% output, same scores), about +25% on an uncached ingest. Known gaps: the brief's types
+are not checked (a band typed "team" gets no `member_of`); a home's residence word is matched per
+sentence, so "lived in Seville and worked in Madrid" keeps Madrid as a home.
+
+## 2026-10-25 — `member_of` is multi-valued (schema v0.2)
+A person belongs to several clubs, networks and groups at once; as a single-valued predicate a
+second membership was treated as a contradiction and dropped or queued. `located_in` and
+`part_of` stay single-valued.

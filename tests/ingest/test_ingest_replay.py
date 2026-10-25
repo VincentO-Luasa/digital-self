@@ -19,6 +19,7 @@ from conftest import (  # type: ignore[import-not-found]
 
 from brain.config import LLMSettings
 from brain.ingest import ingest
+from brain.ingest.brief import Brief
 from brain.ingest.extract import Extraction
 from brain.ingest.planning import SplitPlan
 from brain.llm.client import response_format
@@ -56,9 +57,10 @@ def test_recorded_requests_match_the_pinned_prompt(fresh_vault: Vault) -> None:
         (d["input"], d["questions"]) for d in decided
     ]
     assert decided, "the recording has no gate/check decisions"
-    # a split plan first (the page is over one chunk), then one extraction per part
+    # a split plan first (the page is over one chunk), the brief, then one extraction per part
     assert recorded[0]["response_format"] == response_format(SplitPlan)
-    assert all(r["response_format"] == response_format(Extraction) for r in recorded[1:])
+    assert recorded[1]["response_format"] == response_format(Brief)
+    assert all(r["response_format"] == response_format(Extraction) for r in recorded[2:])
     assert all(
         r["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False for r in recorded
     )
@@ -85,6 +87,11 @@ def test_replayed_extraction_lands_in_the_vault(fresh_vault: Vault) -> None:
     assert any(getattr(op, "p", "") == "friend_of" for op, _ in result.queued)
     assert any(f.p == "responsibility" for f in self_facts)
     assert quality_problems(fresh_vault) == []
+    # the brief places the project in its employer (no part states it)
+    atlas = fresh_vault.page("projects/atlas-migration")
+    assert atlas is not None and any(
+        f.p == "part_of" and f.o == "[[orgs/northwind-labs]]" for f in atlas.facts
+    )
     core = fresh_vault.core_path.read_text()
     assert "Name: Alex Rivera" in core
 

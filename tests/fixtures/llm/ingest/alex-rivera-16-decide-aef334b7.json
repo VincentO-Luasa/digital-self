@@ -2,12 +2,12 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "Career\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\nWork",
+    "input": "### Northwind Labs — Porto\nBuilt the ingestion framework for the product analytics team.",
     "questions": [
       {
         "type": "choice",
         "name": "kind",
-        "instructions": "What kind of thing is \"Fabrikam Retail\" in the text?",
+        "instructions": "What kind of thing is \"ingestion framework\" in the text?",
         "choices": [
           {
             "value": "person"
@@ -53,50 +53,50 @@
       {
         "type": "choice",
         "name": "kind",
-        "choice": "org",
+        "choice": "project",
         "probabilities": [
           {
             "value": "person",
-            "probability": 0.0005
+            "probability": 0.0136
           },
           {
             "value": "org",
-            "probability": 0.9983
+            "probability": 0.0025
           },
           {
             "value": "team",
-            "probability": 0.0002
+            "probability": 0.005
           },
           {
             "value": "project",
-            "probability": 0.0001
+            "probability": 0.5784
           },
           {
             "value": "place",
-            "probability": 0.0006
+            "probability": 0.0009
           },
           {
             "value": "event",
-            "probability": 0.0001
+            "probability": 0.0009
           },
           {
             "value": "tool",
-            "probability": 0.0002
+            "probability": 0.3981
           },
           {
             "value": "topic",
-            "probability": 0.0
+            "probability": 0.0005
           },
           {
             "value": "activity",
-            "probability": 0.0
+            "probability": 0.0001
           }
         ],
-        "confidence": 0.9981
+        "confidence": 0.5257
       }
     ],
     "usage": {
-      "input_tokens": 282,
+      "input_tokens": 151,
       "output_tokens": 0
     }
   }

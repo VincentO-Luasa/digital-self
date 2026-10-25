@@ -9,7 +9,7 @@
       },
       {
         "role": "user",
-        "content": "Today is 2026-10-25.\nDocument: Alex Rivera · notes and projects\nSection: Alex Rivera > Quick guide: partitioning warehouse tables > Partitioning Warehouse Tables; Site Privacy Policy; Contact Information\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera)\n- orgs/data-platform: Data Platform\n- orgs/fabrikam-retail: Fabrikam Retail\n- orgs/northwind-labs: Northwind Labs\n- orgs/porto-library-club: Porto library club\n- orgs/westbridge-university: Westbridge University\n- people/priya-raman: Priya Raman\n- people/sam-okafor: Sam Okafor\n- projects/atlas-migration: Atlas Migration\n- projects/chess: Chess\n- projects/tidepool: Tidepool\n\nEXCERPT:\n<<<\n## Quick guide: partitioning warehouse tables\n\nPartitioning splits a large table into smaller pieces by a key such as the event date.\nQueries that filter on the key read only the matching partitions, which cuts scan time and\ncost. Choose a key with a few hundred to a few thousand distinct values: too many tiny\npartitions slow the query planner down, and too few leave each partition huge.\n\nCluster each partition on the columns you filter by most often, and re-cluster after\nlarge backfills. Avoid partitioning on a column that changes after the row is written,\nbecause an update then moves the row between partitions. Finally, set an expiry on old\npartitions so storage does not grow forever, and document the key in the table's\ndescription so the next engineer understands why it was chosen.\n\nWhen a table is small, under a few gigabytes, partitioning rarely helps: the planner\nreads it quickly anyway, and the extra metadata only adds overhead. Measure the scan size\nof your slowest queries before and after the change, and keep the partitioning only if\nit pays for itself.\n\n## Privacy on this site\n\nThis site stores a small file in your browser to remember whether you prefer the dark\ntheme. Anonymous page counts are collected without any personal data and kept for\nthirteen months. Nothing is sold or shared with third parties. You can clear the stored\npreference at any time in your browser settings; the site works the same without it.\nQuestions about this notice can be sent through the form below.\n\n## Get in touch\n\nThe best way to reach me is by email at alex@example.com. Press and speaking requests are\nwelcome.\n>>>"
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Profile and About Me\n\nKNOWN ENTITIES (id: names):\n- self: the owner (name unknown)\n\nEXCERPT:\n<<<\nPage description: Personal homepage of Alex Rivera, a fictional data engineer.\n\nProfile data from the page:\n- Name: Alex Rivera\n- Job title: Senior Data Engineer\n- Works for: Northwind Labs\n\n# Alex Rivera\n\nSenior data engineer at Northwind Labs · Porto, Portugal\n\n- 7+ years building data pipelines\n- 2 university degrees\n\n## About me\n\nHi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since\n2024, after five years in Lisbon. Before that I lived in Seville and worked in Madrid.\nI grew up in Valencia, so I speak Spanish and English, and I'm slowly learning\nPortuguese.\n\nI care about boring, reliable pipelines, clear documentation and teams that share\nknowledge. Outside work I go bouldering and bake sourdough bread.\n\nAlex has done calisthenics every morning for ten years: it is his longest-running\nhabit. Python sits at the centre of his toolkit.\n>>>"
       }
     ],
     "temperature": 0.2,
@@ -182,38 +182,38 @@
     }
   },
   "response": {
-    "id": "chatcmpl-ac9ea587",
+    "id": "chatcmpl-aa8e15f9",
     "choices": [
       {
         "finish_reason": "stop",
         "index": 0,
         "message": {
-          "content": "{\"reasoning\":\"The excerpt contains a technical guide on partitioning warehouse tables, a site privacy policy, and contact information for Alex Rivera.\",\"owner_names\":[\"Alex Rivera\"],\"entities\":[{\"name\":\"Data Platform\",\"type\":\"org\",\"id\":\"orgs/data-platform\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"name\",\"object\":\"Alex Rivera\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Data Platform\",\"text\":\"Writes technical guides on partitioning warehouse tables.\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Manages site privacy and data collection policies.\",\"text\":\"Stores browser files for theme preference and collects anonymous page counts.\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Handles press and speaking requests.\",\"text\":\"Provides email contact for press and speaking inquiries.\",\"start\":\"\",\"end\":\"\"}]}",
+          "content": "{\n  \"reasoning\": \"The excerpt provides Alex Rivera's personal details, current job, past locations, languages, skills, interests, and habits.\",\n  \"owner_names\": [\n    \"Alex Rivera\",\n    \"Alex\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"Northwind Labs\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Porto\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Lisbon\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Seville\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Madrid\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Valencia\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Spanish\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"English\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Portuguese\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Python\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"name\",\n      \"object\": \"Alex Rivera\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Senior Data Engineer\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Porto\",\n      \"text\": \"Lives in Porto since 2024\",\n      \"start\": \"2024\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Lisbon\",\n      \"text\": \"Lived in Lisbon for five years before 2024\",\n      \"start\": \"2019\",\n      \"end\": \"2024\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Seville\",\n      \"text\": \"Lived in Seville before Madrid\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Madrid\",\n      \"text\": \"Worked in Madrid after Seville and before Porto\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"hometown\",\n      \"object\": \"Valencia\",\n      \"text\": \"Grew up in Valencia\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"speaks\",\n      \"object\": \"Spanish\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"speaks\",\n      \"object\": \"English\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"speaks\",\n      \"object\": \"Portuguese\",\n      \"text\": \"Is slowly learning Portuguese\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"boring, reliable pipelines\",\n      \"text\": \"Cares about boring, reliable pipelines\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"clear documentation\",\n      \"text\": \"Cares about clear documentation\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"teams that share knowledge\",\n      \"text\": \"Cares about teams that share knowledge\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"bouldering\",\n      \"text\": \"Goes bouldering outside work\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"baking sourdough bread\",\n      \"text\": \"Bakes sourdough bread outside work\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"habit\",\n      \"object\": \"calisthenics\",\n      \"text\": \"Does calisthenics every morning for ten years\",\n      \"start\": \"2016\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Python\",\n      \"text\": \"Uses Python at the centre of his toolkit\",\n      \"start\": \"\",\n      \"end\": \"\"\n    }\n  ]\n}",
           "role": "assistant"
         }
       }
     ],
-    "created": 1792955438,
+    "created": 1792962874,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
-      "completion_tokens": 181,
-      "prompt_tokens": 1434,
-      "total_tokens": 1615,
+      "completion_tokens": 1463,
+      "prompt_tokens": 1165,
+      "total_tokens": 2628,
       "completion_tokens_details": {
         "reasoning_tokens": 0
       },
       "prompt_tokens_details": {
         "cached_tokens": 0
       },
-      "input_tokens": 1434,
-      "output_tokens": 181,
-      "time_to_first_token": 3.1,
-      "total_time": 7.3,
-      "prompt_eval_duration": 3.1,
-      "generation_duration": 4.2,
-      "prompt_tokens_per_second": 462.18,
-      "generation_tokens_per_second": 43.08
+      "input_tokens": 1165,
+      "output_tokens": 1463,
+      "time_to_first_token": 2.86,
+      "total_time": 37.3,
+      "prompt_eval_duration": 2.86,
+      "generation_duration": 34.44,
+      "prompt_tokens_per_second": 406.96,
+      "generation_tokens_per_second": 42.49
     }
   }
 }

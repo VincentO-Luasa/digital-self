@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Get in touch\nThe best way to reach me is by email at alex@example.com.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "use",
+        "instructions": "In the text, is \"email\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
+        "choices": [
+          {
+            "value": "skill",
+            "description": "a professional skill or tool the person can use"
+          },
+          {
+            "value": "hobby",
+            "description": "a hobby, sport or leisure activity"
+          },
+          {
+            "value": "interest",
+            "description": "a subject the person reads about, follows or is curious about"
+          },
+          {
+            "value": "other",
+            "description": "none of these: a project, an organisation, a place or something else"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "use",
+        "choice": "skill",
+        "probabilities": [
+          {
+            "value": "skill",
+            "probability": 0.5221
+          },
+          {
+            "value": "hobby",
+            "probability": 0.0139
+          },
+          {
+            "value": "interest",
+            "probability": 0.0033
+          },
+          {
+            "value": "other",
+            "probability": 0.4607
+          }
+        ],
+        "confidence": 0.3628
+      }
+    ],
+    "usage": {
+      "input_tokens": 142,
+      "output_tokens": 0
+    }
+  }
+}

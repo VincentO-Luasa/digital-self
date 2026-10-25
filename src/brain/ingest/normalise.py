@@ -28,6 +28,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
+from brain.ingest.brief import PAGE_TYPES, Brief, BriefName, homes, lookup, name_index
 from brain.ingest.extract import ExtractedFact, Extraction
 from brain.vault.models import RELATIONSHIP_PREDICATES, SELF_ID, Kind, is_multi_valued
 from brain.vault.ops import AddAlias, AddFact, ChangeSet, CreateEntity, Operation
@@ -357,6 +358,8 @@ class _Resolver:
         self.planned: dict[str, _Planned] = {}  # new entity id → create op
         self.literals: dict[str, str] = {}  # folded name → why it is a value, not a page
         self.entity_kinds: dict[str, str] = {}  # folded name → page type from a typed check
+        self.brief_names: dict[str, BriefName] = {}  # folded name / alias → document brief entry
+        self.teams: set[str] = set()  # folded values of the document's team facts
 
     def is_self(self, name: str) -> bool:
         return fold(name) in self.owner or name.strip() in (SELF_ID, SELF_PAGE, f"[[{SELF_ID}]]")
@@ -374,6 +377,9 @@ class _Resolver:
             return known[0]
         if key in self.pages or key in self.planned:
             return key
+        entry = lookup(self.brief_names, name)  # a variant of a name in the document brief
+        if entry and fold(entry.name) != key:
+            return self.lookup(entry.name)
         return None
 
     def kind(self, entity_id: str) -> str:
@@ -426,12 +432,39 @@ def _merge_start(a: str | None, b: str | None) -> str | None:
     return min(d for d in starts if len(d) == best)
 
 
-def _merge(facts: list[_Fact], notes: list[str]) -> list[_Fact]:
+def _month(value: str | None, *, end: bool) -> int | None:
+    """Months since year 0 of a ``YYYY`` / ``YYYY-MM`` date (a year ends in December)."""
+    if not value:
+        return None
+    month = int(value[5:7]) if len(value) >= 7 else (12 if end else 1)
+    return int(value[:4]) * 12 + month - 1
+
+
+def _apart(a: _Fact, b: _Fact) -> bool:
+    """Two dated stints with more than a month between them (an internship, then a job years
+    later at the same employer). Touching or overlapping dates are one stint."""
+
+    def gap(first: _Fact, second: _Fact) -> bool:
+        end, start = _month(first.end, end=True), _month(second.start, end=False)
+        return end is not None and start is not None and start - end > 1
+
+    return gap(a, b) or gap(b, a)
+
+
+def _merge(
+    facts: list[_Fact], notes: list[str], stints: frozenset[str] = frozenset()
+) -> list[_Fact]:
     """One fact per (subject, p, o): the most precise start (see ``_merge_start``), and no end
-    if any of the duplicates is still true."""
-    out: dict[tuple[str, str, str], _Fact] = {}
+    if any of the duplicates is still true. ``stints``: folded objects the document brief shows
+    in separate periods (two stints at one employer); their facts stay separate when their dates
+    leave a gap (``_apart``)."""
+    out: dict[tuple[str, str, str, int], _Fact] = {}
     for fact in facts:
-        key = (fact.subject, fact.p, fold(fact.o))
+        base = (fact.subject, fact.p, fold(fact.o))
+        n = 0
+        while (prev := out.get((*base, n))) and fold(fact.o) in stints and _apart(prev, fact):
+            n += 1
+        key = (*base, n)
         if prev := out.get(key):
             start = _merge_start(prev.start, fact.start)
             if prev.start and fact.start and len(prev.start) != len(fact.start):
@@ -528,6 +561,187 @@ def _regions(facts: Sequence[_Fact], planned: dict[str, _Planned]) -> None:
         if not entity.regions and (default := TYPE_REGIONS.get(entity.op.type)):
             entity.regions.append(default)
         entity.op.regions = entity.regions
+
+
+# --- the document brief -------------------------------------------------------------------------
+
+PLAN_BRIEF_NAMES = True  # plan the brief's names before facts are resolved
+STRUCTURE = {  # (child kind, parent kind) → the structural predicate from the brief's parent
+    ("project", "org"): "part_of",
+    ("project", "project"): "part_of",
+    ("org", "place"): "located_in",
+    ("event", "place"): "located_in",
+    ("place", "place"): "located_in",
+}
+ROLE_RELATION = {"friend": "friend_of", "family": "family_of", "colleague": "colleague_of"}
+
+
+def _brief_entity(res: _Resolver, entry: BriefName) -> str | None:
+    """The id of a brief name: an entity of the document, or a page planned from the brief (kept
+    only if a fact ends up using it). None for values (teams, tools) and the owner."""
+    for name in (entry.name, *entry.aliases):
+        if (found := res.lookup(name)) is not None:
+            return None if found == SELF_ID else found
+    names = (entry.name, *entry.aliases)
+    if entry.type not in PAGE_TYPES or any(res.literal(n) or fold(n) in res.teams for n in names):
+        return None
+    if any(res.is_self(n) for n in (entry.name, *entry.aliases)):
+        return None
+    return res.plan(entry.name, res.entity_kinds.get(fold(entry.name), entry.type), entry.aliases)
+
+
+# What the parent of a brief name is when the brief does not list the parent itself: the
+# organisation a project or team belongs to, the city an organisation, event or district is in.
+PARENT_TYPE = {"project": "org", "team": "org", "org": "place", "event": "place", "place": "place"}
+
+
+def _plan_brief(res: _Resolver, brief: Brief) -> dict[str, str | None]:
+    """Folded brief name (and parent name) → entity id, planning pages for those not in the
+    facts yet (dropped again if no fact uses them)."""
+    ids = {fold(e.name): _brief_entity(res, e) for e in brief.names}
+    for entry in brief.names:
+        parent = entry.parent
+        if not parent or fold(parent) in ids or entry.type not in PARENT_TYPE:
+            continue
+        ptype = PARENT_TYPE[entry.type]
+        guess = BriefName(name=parent, type=ptype, aliases=[], parent="", role="other")
+        ids[fold(parent)] = _brief_entity(res, guess)
+    return ids
+
+
+def _brief_structure(
+    facts: list[_Fact], brief: Brief, res: _Resolver, notes: list[str]
+) -> list[_Fact]:
+    """What the brief knows about how the document's entities relate:
+
+    - a ``located_in``/``part_of`` fact stated the wrong way round (the city in its district)
+      is turned around when the brief gives the opposite parent;
+    - an entity the facts use whose brief parent is an organisation or place gets ``part_of`` /
+      ``located_in`` it (``STRUCTURE``) unless the facts already say what it is part of or in;
+    - an organisation the brief gives the role "member" gets ``member_of`` from the owner when
+      no fact links the owner to it (dated from a fact naming it, if any);
+    - a person's vague ``knows`` takes the relation the brief gives (friend, family, colleague),
+      and ``friend_of`` becomes ``family_of`` when the brief says family (a sister read as a
+      friend in a part that only says "Linnea").
+    """
+    index = name_index(brief)
+    ids = _plan_brief(res, brief)
+
+    def entry_of(entity_id: str) -> BriefName | None:
+        return next((e for e in brief.names if ids.get(fold(e.name)) == entity_id), None)
+
+    def parent_of(entry: BriefName) -> str | None:
+        if not entry.parent:
+            return None
+        parent = index.get(fold(entry.parent))
+        return ids.get(fold(parent.name if parent else entry.parent))
+
+    for f in facts:
+        # the object may have been kept as a value: a city "located in" an organisation
+        target = f.target or res.lookup(f.o) if f.p in ("located_in", "part_of") else None
+        entry = entry_of(target) if target and target != SELF_ID else None
+        if entry and parent_of(entry) == f.subject:
+            notes.append(
+                f"brief: turned {f.p} around: {res.title(target)} is in {res.title(f.subject)}"
+            )
+            f.subject, f.o = target, f"[[{f.subject}]]"
+
+    used = {f.subject for f in facts} | {t for f in facts if (t := f.target)}
+    has = {(f.subject, f.p) for f in facts}
+    out = list(facts)
+    for entry in brief.names:
+        child = ids.get(fold(entry.name))
+        parent = parent_of(entry) if child in used and entry.role != "side project" else None
+        if not child or not parent or parent == child:
+            continue
+        p = STRUCTURE.get((res.kind(child), res.kind(parent)))
+        if p and (child, p) not in has:
+            notes.append(f"brief: {res.title(child)} {p} {res.title(parent)}")
+            out.append(_Fact(child, p, f"[[{parent}]]", "", None, None))
+            has.add((child, p))
+
+    linked = {f.target for f in out if f.subject == SELF_ID and f.target}
+    teams = res.teams | {fold(f.o) for f in out if f.p == "team"}
+    for entry in brief.names:
+        org = ids.get(fold(entry.name))
+        if entry.role != "member" or not org or res.kind(org) != "org" or org in linked:
+            continue
+        names = [entry.name, *entry.aliases]
+        if any(fold(n) in teams for n in names):  # the document's own team, not a club
+            continue
+        starts = sorted(
+            f.start
+            for f in out
+            if f.subject == SELF_ID
+            and f.start
+            and any(
+                re.search(rf"(?<!\w){re.escape(n)}(?!\w)", f"{f.o} {f.text}", re.I) for n in names
+            )
+        )
+        start = starts[0] if starts else None
+        notes.append(f"brief: member_of {res.title(org)} (a group the owner belongs to)")
+        out.append(_Fact(SELF_ID, "member_of", f"[[{org}]]", "", start, None))
+        linked.add(org)
+
+    for f in out:
+        entry = entry_of(f.subject) if f.target == SELF_ID else None
+        relation = ROLE_RELATION.get(entry.role) if entry else None
+        vaguer = ("knows", "friend_of") if relation == "family_of" else ("knows",)
+        if relation and f.p in vaguer and f.p != relation:
+            notes.append(f"brief: {res.title(f.subject)} {f.p} → {relation}")
+            f.p, f.text = relation, ""
+    return out
+
+
+def _brief_stints(brief: Brief, res: _Resolver) -> frozenset[str]:
+    """Folded ``[[org id]]`` (or names) of the employers and schools the brief's periods show
+    more than once: two separate stints at one organisation."""
+    count: dict[str, int] = {}
+    for period in brief.periods:
+        if period.org.strip():
+            target = res.lookup(period.org)
+            key = fold(f"[[{target}]]") if target else fold(period.org)
+            count[key] = count.get(key, 0) + 1
+    return frozenset(k for k, n in count.items() if n > 1)
+
+
+def _brief_homes(facts: list[_Fact], brief: Brief, res: _Resolver, notes: list[str]) -> list[_Fact]:
+    """The brief's homes (cities the owner lived in, in order). A ``lives_in`` fact for a city
+    the owner later left (a later home follows it) gets the end the brief gives when it has none:
+    a past city would otherwise read as current, or be kept as a note. A home the facts miss is
+    added when its period is known (it ended before the next one, or it is the current one); not
+    the hometown (``hometown`` says it), and never with an end on the last home."""
+    out = list(facts)
+    index = name_index(brief)
+    places = homes(brief)
+    hometowns = {f.target for f in facts if f.subject == SELF_ID and f.p == "hometown" and f.target}
+    for n, home in enumerate(places):
+        entry = lookup(index, home.city)
+        if (entry and entry.role == "hometown") or res.lookup(home.city) in hometowns:
+            continue
+        later = n < len(places) - 1  # the owner moved on from this city
+        city = res.lookup(home.city)
+        if city is None and not res.literal(home.city):
+            city = res.plan(home.city, "place", entry.aliases if entry else [])
+        if city is None or city == SELF_ID or res.kind(city) != "place":
+            continue
+        lives = [
+            f
+            for f in out
+            if f.subject == SELF_ID
+            and f.p == "lives_in"
+            and (f.target == city or fold(f.o) == fold(home.city))
+        ]
+        for f in lives:
+            if f.end is None and home.end and later:
+                f.end = home.end
+                notes.append(f"brief: lives_in {home.city}: end {home.end} (moved on)")
+        if lives or not (home.current or (home.end and later)):
+            continue
+        end = None if home.current else home.end
+        notes.append(f"brief: lives_in {home.city} ({home.start or '?'}–{end or 'now'})")
+        out.append(_Fact(SELF_ID, "lives_in", f"[[{city}]]", "", home.start, end))
+    return out
 
 
 def _subject_ok(p: str, kind: str) -> bool:
@@ -640,6 +854,7 @@ def build_changeset(
     rationale: str = "",
     today: date | None = None,
     entity_kinds: Mapping[str, str] | None = None,
+    brief: Brief | None = None,
 ) -> Normalised:
     """``today`` is the ingest date: the model sometimes dates facts to it ("Today is …" is in
     its prompt); a document can't, so such starts are dropped.
@@ -647,7 +862,10 @@ def build_changeset(
     ``entity_kinds``: folded name → entity kind decided by a typed check
     (``brain.ingest.decisions``): a page kind (person, org, project, place, event) replaces the
     extractor's type; any other kind (team, tool, topic, activity) makes the name a literal
-    value. (Not the facts' ``kind``, stated/observed/inferred.)"""
+    value. (Not the facts' ``kind``, stated/observed/inferred.)
+
+    ``brief``: the document brief (``brain.ingest.brief``): its names merge variant names into one
+    entity, its parents and roles add structural facts, its homes date past cities."""
     entity_kinds = entity_kinds or {}
     notes: list[str] = []
     profile = vault.page(SELF_PAGE)
@@ -659,7 +877,11 @@ def build_changeset(
             if (n := clean(name)) and fold(n) not in {fold(x) for x in doc_owner}:
                 doc_owner.append(n)
     owner_all = [*profile_names, *doc_owner]
+    if brief and brief.subject.strip() and fold(brief.subject) not in map(fold, owner_all):
+        owner_all.append(clean(brief.subject))
     res = _Resolver(vault, owner_all)
+    index = res.brief_names = name_index(brief)
+    res.teams = {fold(f.object) for x in extractions for f in x.facts if f.predicate == "team"}
     for name, decided in entity_kinds.items():
         if decided in TYPE_DIRS and decided != "topic":
             res.entity_kinds[name] = decided
@@ -684,7 +906,23 @@ def build_changeset(
                 for alias in (name, *entity.aliases):
                     res.literals.setdefault(fold(alias), why)
                 continue
-            res.plan(name, etype, entity.aliases)
+            aliases = list(entity.aliases)
+            entry = next((e for n in (name, *aliases) if (e := lookup(index, n))), None)
+            variant = entry and entry.type == etype and fold(entry.name) != fold(name)
+            if variant and not res.is_self(entry.name):
+                # a variant of a name in the brief ("Atlas" for "Atlas Migration"): one entity
+                notes.append(f"brief: {name!r} is {entry.name!r}")
+                aliases = [name, *aliases]
+                name = entry.name
+            if entry:
+                aliases += [a for a in entry.aliases if fold(a) not in map(fold, aliases)]
+            res.plan(name, etype, aliases)
+    planned = set(res.planned)
+    if brief is not None and PLAN_BRIEF_NAMES:
+        # the brief's other names, so that facts naming them link to a page (a city given as a
+        # plain value, a person no part declared); kept only if a fact uses them
+        _plan_brief(res, brief)
+    from_brief = set(res.planned) - planned
 
     facts: list[_Fact] = []
     cutoff = (today or date.today()).isoformat()
@@ -706,12 +944,16 @@ def build_changeset(
             return o
         return owner_display if target == SELF_ID else res.title(target)
 
-    facts = _past_without_end(_merge(facts, notes), name_of, notes)
+    if brief is not None:
+        facts = _brief_homes(_brief_structure(facts, brief, res, notes), brief, res, notes)
+    stints = _brief_stints(brief, res) if brief is not None else frozenset()
+    facts = _past_without_end(_merge(facts, notes, stints), name_of, notes)
     facts = _order(_one_current(_team_as_employer(facts, name_of, notes), notes))
 
     used = {f.subject for f in facts} | {t for f in facts if (t := f.target)}
     for entity_id in [i for i in res.planned if i not in used]:
-        notes.append(f"dropped entity {entity_id}: no fact refers to it")
+        if entity_id not in from_brief:
+            notes.append(f"dropped entity {entity_id}: no fact refers to it")
         del res.planned[entity_id]
     _regions(facts, res.planned)
 

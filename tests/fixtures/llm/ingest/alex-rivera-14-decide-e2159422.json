@@ -1,0 +1,70 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Northwind Labs — Porto\nI lead the Atlas Migration and run the platform team's on-call rotation. - **Data Engineer**, February 2023 – March 2025.\nBuilt the ingestion framework for the product analytics team.\n### Fabrikam Retail — Lisbon\nOwned the weekly sales reporting and moved it from spreadsheets to SQL models.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
+        "choices": [
+          {
+            "value": "Atlas Migration"
+          },
+          {
+            "value": "Fabrikam Retail"
+          },
+          {
+            "value": "ingestion framework"
+          },
+          {
+            "value": "weekly sales reporting"
+          },
+          {
+            "value": "none of them",
+            "description": "each is a person, organisation, project, place or event"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "Atlas Migration",
+        "probabilities": [
+          {
+            "value": "Atlas Migration",
+            "probability": 0.544
+          },
+          {
+            "value": "Fabrikam Retail",
+            "probability": 0.0145
+          },
+          {
+            "value": "ingestion framework",
+            "probability": 0.33
+          },
+          {
+            "value": "weekly sales reporting",
+            "probability": 0.1071
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0044
+          }
+        ],
+        "confidence": 0.43
+      }
+    ],
+    "usage": {
+      "input_tokens": 204,
+      "output_tokens": 0
+    }
+  }
+}

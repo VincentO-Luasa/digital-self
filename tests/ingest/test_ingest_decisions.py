@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 
 import httpx
-from conftest import entity, fact  # type: ignore[import-not-found]
+from conftest import brief, entity, fact  # type: ignore[import-not-found]
 
 from brain.ingest import ingest
 from brain.ingest.decisions import (
@@ -231,7 +231,7 @@ def test_ingest_applies_checks_and_records_every_decision(
 ) -> None:
     doc = tmp_path / "profile.md"
     doc.write_text(PROFILE)
-    llm = FakeLLM(structured_responses=[extraction()], decider=decider)
+    llm = FakeLLM(structured_responses=[brief(), extraction()], decider=decider)
     report = ingest(doc, fresh_vault, llm, today=TODAY)
     assert not [c for c in llm.calls if c[1].get("questions") == [GATE]]  # one part: no gate
     pages = {p.id for p in fresh_vault.pages()}
@@ -261,7 +261,7 @@ def test_gate_skips_a_part_with_nothing_about_a_person(fresh_vault: Vault, tmp_p
     doc = tmp_path / "page.md"
     doc.write_text(text)
     seen: list[str] = []
-    llm = FakeLLM(structured_responses=[plan, extraction()], decider=decider)
+    llm = FakeLLM(structured_responses=[plan, brief(), extraction()], decider=decider)
     report = ingest(
         doc,
         fresh_vault,
@@ -273,7 +273,8 @@ def test_gate_skips_a_part_with_nothing_about_a_person(fresh_vault: Vault, tmp_p
     assert [c.chunk.index for c in report.skipped] == [1]
     assert report.skipped[0].p_about == 0.02 < SKIP_BELOW
     assert seen == ["False 0.97", "True 0.02"]
-    assert len([c for c in llm.calls if c[0] == "structured"]) == 2  # the plan + one extraction
+    # the plan, the brief and one extraction
+    assert len([c for c in llm.calls if c[0] == "structured"]) == 3
     assert any(
         n.startswith(
             "gate: skipped Alex Rivera > Quick guide: partitioning > Guide: p(about a person)=0.020 < 0.15"
@@ -291,7 +292,7 @@ def test_failed_or_refused_decisions_never_skip_or_change(
     empty = {"reasoning": "r", "owner_names": [], "entities": [], "facts": []}
     # the gate of part 1 fails, the rest are refusals (FakeLLM's unscripted answer)
     llm = FakeLLM(
-        structured_responses=[plan, extraction(), empty],
+        structured_responses=[plan, brief(), extraction(), empty],
         decisions=[httpx.ConnectError("server gone")],
     )
     report = ingest(doc, fresh_vault, llm, today=TODAY)

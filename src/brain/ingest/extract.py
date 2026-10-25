@@ -170,10 +170,15 @@ def build_messages(
     known: Sequence[KnownEntity],
     owner_names: Sequence[str],
     today: date,
+    brief: str = "",
 ) -> list[dict[str, str]]:
+    """The user message starts with what every part of the document shares (date, title, the
+    document brief) so that the prompt prefix is identical across parts and cached."""
+    shared = f"Today is {today.isoformat()}.\nDocument: {doc_title}\n"
+    if brief.strip():
+        shared += f"\nDOCUMENT BRIEF (the whole document):\n{brief.strip()}\n\n"
     user = (
-        f"Today is {today.isoformat()}.\n"
-        f"Document: {doc_title}\n"
+        f"{shared}"
         f"Section: {chunk.heading or '(start)'}\n\n"
         f"KNOWN ENTITIES (id: names):\n{render_known(known, owner_names)}\n\n"
         f"EXCERPT:\n<<<\n{chunk.text}\n>>>"
@@ -192,8 +197,9 @@ def extract_chunk(
     known: Sequence[KnownEntity],
     owner_names: Sequence[str],
     today: date,
+    brief: str = "",
 ) -> Extraction:
     messages = build_messages(
-        chunk, doc_title=doc_title, known=known, owner_names=owner_names, today=today
+        chunk, doc_title=doc_title, known=known, owner_names=owner_names, today=today, brief=brief
     )
     return llm.structured(messages, Extraction, max_tokens=MAX_TOKENS)

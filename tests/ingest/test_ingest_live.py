@@ -84,7 +84,14 @@ def print_report(report: Any, llm: LLM, total: float) -> None:
         print(
             f"  plan: {u.get('prompt_tokens')} prompt / {u.get('completion_tokens')} output tokens"
         )
-    extraction = structured[plan.calls :]
+    briefed = report.brief is not None
+    if briefed:
+        u = structured[plan.calls] if len(structured) > plan.calls else {}
+        print(
+            f"  brief: {report.brief.seconds:.1f}s, {u.get('prompt_tokens')} prompt / "
+            f"{u.get('completion_tokens')} output tokens"
+        )
+    extraction = structured[plan.calls + briefed :]
     for c, u in zip(report.chunks, extraction, strict=False):
         print(
             f"  chunk {c.chunk.index} [{c.chunk.heading}]: {c.seconds:.1f}s, {c.entities} entities, "
@@ -123,6 +130,11 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     assert any(getattr(op, "p", "") == "friend_of" for op, _ in result.queued)
     assert not any(getattr(op, "p", "") == "lives_in" for op, _ in result.queued)
     assert quality_problems(fresh_vault) == []
+    # the brief: read once, shared by every part, and the project is placed in its employer
+    assert report.brief is not None and report.brief.brief is not None
+    assert "Alex Rivera" in report.brief.brief.subject
+    atlas = fresh_vault.page("projects/atlas-migration")
+    assert any(f.p == "part_of" and "northwind" in f.o for f in atlas.facts)
 
 
 PORTFOLIO_DIR = FIXTURE_DIR / "portfolio"

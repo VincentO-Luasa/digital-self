@@ -9,7 +9,7 @@
       },
       {
         "role": "user",
-        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera > Experience > Career Experience\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera, Alex)\n- orgs/northwind-labs: Northwind Labs\n- places/lisbon: Lisbon\n- places/madrid: Madrid\n- places/porto: Porto\n- places/seville: Seville\n- places/valencia: Valencia\n\nEXCERPT:\n<<<\nCareer\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\nWork\n>>>"
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera · notes and projects\nSection: Alex Rivera > Quick guide: partitioning warehouse tables > Partitioning Warehouse Tables; Site Privacy Policy; Contact Information\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera)\n- orgs/data-platform: Data Platform\n- orgs/fabrikam-retail: Fabrikam Retail\n- orgs/northwind-labs: Northwind Labs\n- orgs/porto-library-club: Porto library club\n- orgs/westbridge-university: Westbridge University\n- people/priya-raman: Priya Raman\n- people/sam-okafor: Sam Okafor\n- projects/atlas-migration: Atlas Migration\n- projects/chess: Chess\n- projects/tidepool: Tidepool\n\nEXCERPT:\n<<<\n## Quick guide: partitioning warehouse tables\n\nPartitioning splits a large table into smaller pieces by a key such as the event date.\nQueries that filter on the key read only the matching partitions, which cuts scan time and\ncost. Choose a key with a few hundred to a few thousand distinct values: too many tiny\npartitions slow the query planner down, and too few leave each partition huge.\n\nCluster each partition on the columns you filter by most often, and re-cluster after\nlarge backfills. Avoid partitioning on a column that changes after the row is written,\nbecause an update then moves the row between partitions. Finally, set an expiry on old\npartitions so storage does not grow forever, and document the key in the table's\ndescription so the next engineer understands why it was chosen.\n\nWhen a table is small, under a few gigabytes, partitioning rarely helps: the planner\nreads it quickly anyway, and the extra metadata only adds overhead. Measure the scan size\nof your slowest queries before and after the change, and keep the partitioning only if\nit pays for itself.\n\n## Privacy on this site\n\nThis site stores a small file in your browser to remember whether you prefer the dark\ntheme. Anonymous page counts are collected without any personal data and kept for\nthirteen months. Nothing is sold or shared with third parties. You can clear the stored\npreference at any time in your browser settings; the site works the same without it.\nQuestions about this notice can be sent through the form below.\n\n## Get in touch\n\nThe best way to reach me is by email at alex@example.com. Press and speaking requests are\nwelcome.\n>>>"
       }
     ],
     "temperature": 0.2,
@@ -182,38 +182,38 @@
     }
   },
   "response": {
-    "id": "chatcmpl-26742987",
+    "id": "chatcmpl-0b4f6419",
     "choices": [
       {
         "finish_reason": "stop",
         "index": 0,
         "message": {
-          "content": "{\"reasoning\":\"The excerpt details Alex Rivera's work experience at Northwind Labs and Fabrikam Retail, including roles, responsibilities, projects, and dates.\",\"owner_names\":[\"Alex Rivera\",\"Alex\"],\"entities\":[{\"name\":\"Northwind Labs\",\"type\":\"org\",\"id\":\"orgs/northwind-labs\",\"aliases\":[]},{\"name\":\"Porto\",\"type\":\"place\",\"id\":\"places/porto\",\"aliases\":[]},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"id\":\"\",\"aliases\":[]},{\"name\":\"platform team\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"product analytics team\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Lisbon\",\"type\":\"place\",\"id\":\"places/lisbon\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Northwind Labs\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Senior Data Engineer\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"leads the Atlas Migration\",\"text\":\"Leads the Atlas Migration\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"runs the platform team's on-call rotation\",\"text\":\"Runs the platform team's on-call rotation\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"team\",\"object\":\"platform team\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Northwind Labs\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Data Engineer\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"worked_on\",\"object\":\"Atlas Migration\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"worked_on\",\"object\":\"ingestion framework\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Built the ingestion framework for the product analytics team\",\"text\":\"Built the ingestion framework for the product analytics team\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"team\",\"object\":\"product analytics team\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Fabrikam Retail\",\"text\":\"\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Data Analyst\",\"text\":\"\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Owned the weekly sales reporting\",\"text\":\"Owned the weekly sales reporting\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"moved weekly sales reporting from spreadsheets to SQL models\",\"text\":\"Moved weekly sales reporting from spreadsheets to SQL models\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"SQL\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"interest\",\"object\":\"streaming ingestion\",\"text\":\"Experiments with streaming ingestion\",\"start\":\"\",\"end\":\"\"}]}",
+          "content": "{\n  \"reasoning\": \"The excerpt provides a technical guide on partitioning warehouse tables, a privacy policy for the site, and contact information for the owner.\",\n  \"owner_names\": [\n    \"Alex Rivera\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"alex@example.com\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"name\",\n      \"object\": \"Alex Rivera\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"partitioning warehouse tables\",\n      \"text\": \"Writes a quick guide on partitioning warehouse tables.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"site privacy policy\",\n      \"text\": \"Maintains a privacy policy for the site.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"email\",\n      \"text\": \"Provides alex@example.com as the best way to reach me.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"press and speaking requests\",\n      \"text\": \"Welcomes press and speaking requests.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    }\n  ]\n}",
           "role": "assistant"
         }
       }
     ],
-    "created": 1792955326,
+    "created": 1792963078,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
-      "completion_tokens": 787,
-      "prompt_tokens": 1157,
-      "total_tokens": 1944,
+      "completion_tokens": 396,
+      "prompt_tokens": 1434,
+      "total_tokens": 1830,
       "completion_tokens_details": {
         "reasoning_tokens": 0
       },
       "prompt_tokens_details": {
         "cached_tokens": 0
       },
-      "input_tokens": 1157,
-      "output_tokens": 787,
-      "time_to_first_token": 2.66,
-      "total_time": 20.99,
-      "prompt_eval_duration": 2.66,
-      "generation_duration": 18.33,
-      "prompt_tokens_per_second": 434.99,
-      "generation_tokens_per_second": 42.93
+      "input_tokens": 1434,
+      "output_tokens": 396,
+      "time_to_first_token": 3.4,
+      "total_time": 13.08,
+      "prompt_eval_duration": 3.4,
+      "generation_duration": 9.68,
+      "prompt_tokens_per_second": 422.38,
+      "generation_tokens_per_second": 40.89
     }
   }
 }

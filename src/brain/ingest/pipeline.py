@@ -1,6 +1,7 @@
 """``brain ingest``: load → raw copy → plan the split (``planning``, if over one chunk) →
-per chunk: gate (skip a part with nothing about a person), extract, typed checks
-(``decisions``) → one change set → apply → regenerate index.md / core.md → reindex.
+document brief (``brief``) → per chunk: gate (skip a part with nothing about a person),
+extract, typed checks (``decisions``) → one change set → apply → regenerate index.md /
+core.md → reindex.
 
 A URL is fetched first; the fetched bytes become the raw copy and are read from there, so a web
 page goes through exactly the same path as a file. ``follow`` ingests same-origin linked pages,
@@ -20,6 +21,7 @@ from typing import Protocol
 import httpx
 
 from brain.index.reindex import ReindexStats, reindex
+from brain.ingest.brief import BriefReport, header, make_brief, render
 from brain.ingest.chunking import CHUNK_TOKENS, Chunk, halve
 from brain.ingest.decisions import (
     PAGE_KINDS,
@@ -53,6 +55,11 @@ from brain.vault.writer import ApplyResult, apply
 log = logging.getLogger(__name__)
 
 MAX_SPLITS = 2  # a truncated chunk is halved at most twice (quarters)
+# Where the document brief is used: "normalise" (one entity per name, structural facts, homes,
+# stints). Measured on the eval set and left out: "extract" (the rendered brief as the first
+# block of every part's prompt: fewer required facts, lower precision, slower) and "checks" (its
+# header line as context of the typed checks: no change). See docs/decisions.md.
+BRIEF_USES = frozenset({"normalise"})
 
 
 class IngestModel(StructuredModel, DecisionModel, RetrievalModel, Protocol):
@@ -84,6 +91,7 @@ class IngestReport:
     raw_created: bool
     source: str = ""  # the file name or URL the document came from
     plan: PlanReport | None = None  # how the document was split into chunks
+    brief: BriefReport | None = None  # the document brief (``brief`` is None if it failed)
     chunks: list[ChunkReport] = field(default_factory=list)
     failed: list[tuple[Chunk, str]] = field(default_factory=list)  # skipped chunks + reason
     skipped: list[ChunkReport] = field(default_factory=list)  # parts the gate skipped
@@ -251,6 +259,12 @@ def _ingest_document(
     if on_plan:
         on_plan(report.plan)
     chunks = report.plan.chunks
+    report.brief = make_brief(llm, doc.text, chunks, doc_title=doc.title) if BRIEF_USES else None
+    brief = report.brief.brief if report.brief else None
+    if report.brief:
+        report.decision_notes += report.brief.notes
+    shared = render(brief) if brief and "extract" in BRIEF_USES else ""
+    context = header(brief) if brief and "checks" in BRIEF_USES else ""
     pages = vault.pages()
     known = known_entities(pages)
     owner = owner_names(pages)
@@ -278,6 +292,7 @@ def _ingest_document(
                 known=relevant_known(known, chunk.text, seen),
                 owner_names=owner,
                 today=today,
+                brief=shared,
             )
         except OutputTruncated as err:
             halves = halve(chunk) if splits < MAX_SPLITS else []
@@ -298,7 +313,7 @@ def _ingest_document(
         item = ChunkReport(chunk, seconds, len(extraction.entities), len(extraction.facts))
         if verdict:
             item.p_about, item.gate_seconds = verdict.p_yes, verdict.seconds
-        _check(llm, chunk, extraction, item, report, known, owner, entity_kinds, values)
+        _check(llm, chunk, extraction, item, report, known, owner, entity_kinds, values, context)
         seen.update(remember_entities(known, extraction, entity_kinds))
         log.info("ingest %s chunk %d: %.1fs", doc.path.name, chunk.index, seconds)
         report.chunks.append(item)
@@ -315,6 +330,7 @@ def _ingest_document(
         rationale=f"Imported from {source} ({len(chunks)} {noun}).",
         today=today,
         entity_kinds=entity_kinds,
+        brief=brief if "normalise" in BRIEF_USES else None,
     )
     report.normalised.notes[:0] = report.decision_notes
     report.applied = apply(report.normalised.changeset, vault)
@@ -356,6 +372,7 @@ def _check(
     owner: list[str],
     entity_kinds: dict[str, str],
     values: dict[str, str],
+    context: str = "",
 ) -> None:
     """Typed checks of one part's extraction; updates ``entity_kinds`` and ``values`` (the names of
     values in this document, never asked about again)."""
@@ -365,7 +382,15 @@ def _check(
     names = [n for e in known.values() for n in e.names]
     try:
         literal = {**values, **entity_kinds}
-        checks = check_part(llm, chunk.text, extraction, known=names, owner=owner, literal=literal)
+        checks = check_part(
+            llm,
+            chunk.text,
+            extraction,
+            known=names,
+            owner=owner,
+            literal=literal,
+            context=context,
+        )
     except DECIDE_ERRORS as err:
         log.warning("ingest checks failed for chunk %d: %s", chunk.index, err)
         report.decision_notes.append(f"check: part {chunk.index + 1}: no decision ({err})")

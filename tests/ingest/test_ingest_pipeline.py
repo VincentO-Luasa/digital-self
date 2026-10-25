@@ -10,6 +10,7 @@ import httpx
 import pytest
 from conftest import (  # type: ignore[import-not-found]
     DOCS,
+    brief,
     homepage_extractions,
     homepage_plan,
 )
@@ -44,8 +45,9 @@ def empty_extraction() -> dict:
 
 
 def homepage_responses() -> list:
-    """The scripted split plan, then the extraction of each of the two parts."""
-    return [homepage_plan(), *homepage_extractions()]
+    """The scripted split plan, an empty document brief, then the extraction of each of the
+    two parts."""
+    return [homepage_plan(), brief(), *homepage_extractions()]
 
 
 def run(vault: Vault, llm: FakeLLM):
@@ -72,7 +74,9 @@ def test_ingest_homepage(fresh_vault: Vault) -> None:
     structured = [c[1] for c in llm.calls if c[0] == "structured"]
     plan_user = structured[0]["messages"][1]["content"]
     assert "] ## Experience" in plan_user and "moved it from spreadsheets" not in plan_user
-    first, second = (structured[i]["messages"][1]["content"] for i in (1, 2))
+    assert structured[1]["schema"].__name__ == "Brief"  # the brief reads the whole text
+    assert "moved it from spreadsheets" in structured[1]["messages"][1]["content"]
+    first, second = (structured[i]["messages"][1]["content"] for i in (2, 3))
     assert "Section: Profile and about me" in first and "I grew up in Valencia" in first
     # labelled by its first heading and the title (never an earlier section's trail)
     assert "Section: Alex Rivera > Experience > Career, projects and education" in second
@@ -125,6 +129,7 @@ def test_truncated_chunk_is_split_and_retried(fresh_vault: Vault) -> None:
     llm = FakeLLM(
         structured_responses=[
             homepage_plan(),
+            brief(),
             profile,
             OutputTruncated("cut off", '{"reasoning"'),
             *[career for _ in halves],  # each half keeps the facts its own text names
@@ -140,6 +145,7 @@ def test_failed_chunk_is_skipped_not_fatal(fresh_vault: Vault) -> None:
     llm = FakeLLM(
         structured_responses=[
             homepage_plan(),
+            brief(),
             StructuredOutputError("bad json", "{"),
             *[empty_extraction() for _ in range(N_CHUNKS - 1)],
         ]
@@ -174,7 +180,7 @@ def site(requests: list[httpx.Request]) -> httpx.Client:
 
 def test_ingest_url_follows_same_origin_links(fresh_vault: Vault) -> None:
     requests: list[httpx.Request] = []
-    llm = FakeLLM(structured_responses=[empty_extraction(), *homepage_responses()])
+    llm = FakeLLM(structured_responses=[brief(), empty_extraction(), *homepage_responses()])
     pages: list[str] = []
     with site(requests) as http:
         report = ingest_url(

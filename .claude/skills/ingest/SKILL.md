@@ -40,17 +40,36 @@ description: How `brain ingest` turns a file or web page into vault facts — re
      section; one that starts with real text of an earlier section keeps the shared trail only. `IngestReport.plan` (`PlanReport`) keeps
      the parts, notes, calls and seconds; the CLI prints it before extraction (`on_plan`).
    A chunk whose reply is truncated is still halved (twice at most).
-3. **Gate** (`decisions.gate`, only when there are 2+ parts; a document's only part is never
+3. **Brief** (`brief.make_brief`, one structured call per document, after the plan): prompt
+   `prompts/ingest_brief.md`, schema `Brief` (`reasoning`, subject, kind, voice, `periods` =
+   jobs/studies, `homes` = cities lived in, `names` = ≤ 12 glossary entries with type, aliases,
+   parent and the subject's role), temperature 0. It reads the whole text up to
+   `FULL_TEXT_TOKENS` (6k), else each part's heading and first ~150 tokens. Code then cleans it
+   (`clean_brief`: descriptions are not aliases, the subject is not a name) and **grounds** it
+   (`ground`): a date is kept only if a sentence names its city / organisation / title and gives
+   that year; a home needs a sentence naming the city with a residence word (lives, moved,
+   based…), else it is dropped (the model takes an employer's city, or a job's start, for a
+   move). Every drop is a `brief:` note. A failed call → `brief=None`, ingest goes on.
+   Where it is used is `pipeline.BRIEF_USES` (default `{"normalise"}`). Measured (two extraction
+   samples each; docs/decisions.md): in **normalisation** +4 required, +14 optional, +3
+   precision, +9 pages; as a block in every **extraction** prompt it lost against that (required
+   −4 to −7, precision −2 to −6, ~+60% time: longer replies, one part truncated and halved; with
+   dated periods the extractor copied the brief's rounded years over the excerpt's months, so
+   `render` shows periods undated); the brief's header as **checks** context changed nothing.
+   `render(brief)` + `extract.build_messages(brief=…)` (first in the user message: a cached
+   prefix across parts) and `header` stay as switches. Cost 12–17 s per document (~1.1–1.6k
+   prompt, ~410–600 output tokens), ~+25% on an uncached ingest.
+4. **Gate** (`decisions.gate`, only when there are 2+ parts; a document's only part is never
    skipped): one yes/no decision on a compact view of the part (headings + first 24 words of each
    block): "does it say anything about its author or the person it describes?". Under
    `SKIP_BELOW` (0.15) the part is skipped (`IngestReport.skipped`, CLI line, a note with p).
    Measured: CV/hobbies/opinion ≥ 0.99, contact block ~0.6, cookie notice / tutorial / footer
    0.03–0.12; ~0.6–0.9 s per part against ~40 s of extraction.
-4. **Extract**: `extract.extract_chunk`, one structured call per chunk. System prompt
+5. **Extract**: `extract.extract_chunk`, one structured call per chunk. System prompt
    `prompts/ingest_extract.md` (byte-stable, cached), then the user message with the date,
    document title, section, known entities named in the chunk (cap 40) and the excerpt. Flat
    schema `Extraction`: names, not ids; predicates are an enum (`INGEST_PREDICATES`).
-5. **Check** (`decisions.check_part`, after each part's extraction):
+6. **Check** (`decisions.check_part`, after each part's extraction):
    - **Grounding** (code): a fact whose subject (unless the owner) or page-type object
      (`OBJECT_TYPES` predicates) the part never names (name, alias or a capitalised 4+ letter
      word of it, line breaks ignored) is dropped. A weak part (tutorial + contact block) once
@@ -75,11 +94,12 @@ description: How `brain ingest` turns a file or web page into vault facts — re
    Why screens: the runtime answers questions one at a time and re-reads the input for each
    (~0.35 s + ~1.6 ms/token; a shared input is not reused on this hybrid model), so a question
    per item cost 8–14 s per CV part; screens bring it to ~2–6 s.
-   `context=` on `gate`/`check_part` prepends shared context (for a future document brief).
-6. **Normalise**: `normalise.build_changeset` resolves names to ids, normalises dates, merges
+   `context=` on `gate`/`check_part` prepends shared context (the brief's `header`, when
+   `checks` is in `BRIEF_USES`; measured no gain, off by default).
+7. **Normalise**: `normalise.build_changeset` resolves names to ids, normalises dates, merges
    duplicates, applies the guards below, renders fact text and builds one
    `ChangeSet(origin="ingest")`. Everything it changed or dropped goes to `Normalised.notes`.
-7. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
+8. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
    `refresh_generated` (index.md, core.md) and `reindex`.
 
 ## Adding a reader
@@ -110,8 +130,11 @@ description: How `brain ingest` turns a file or web page into vault facts — re
   example last. Its fixture is `tests/fixtures/llm/ingest/split/` (the long fictional page
   `tests/fixtures/docs/alex-rivera-long.md`), recorded by `tests/ingest/test_ingest_split_live.py`.
   The homepage (654 tokens) is over one chunk, so its fixtures start with a plan call too.
+- The brief prompt (`ingest_brief vN`) follows the same rules. Its unit tests script a `Brief`
+  (`conftest.brief`, `homepage_brief`); a scripted ingest needs one right after the plan (or
+  first, for a one-part document).
 - Recorded fixtures (`tests/fixtures/llm/ingest/`): the homepage as numbered exchanges in call
-  order (the plan, then per part the gate, the extraction and the check decisions);
+  order (the plan, the brief, then per part the gate, the extraction and the check decisions);
   `portfolio/` the same for `alex-rivera-portfolio.html`; `gate/` the gate on the fictional
   parts in `conftest.GATE_PARTS`; `split/` the long page's plan. `FakeLLM.from_fixtures`
   replays structured and decide exchanges in order; the replay tests compare the requests.
@@ -134,6 +157,25 @@ The model is ~3B active and will slip; code repairs or drops, and notes every re
 - Zero counters ("Has 0 years of …") are dropped.
 - Past tense without an end on lives_in/role/team/manager becomes a `note` (no guessed end).
 - Text: a pronoun, the owner's name (self facts), no object, or over 160 chars → template.
+- From the brief (`build_changeset(brief=…)`, every change a `brief:` note):
+  - names: an extracted entity named like a brief name or alias, or a brief name followed by
+    lowercase words or a version ("Atlas Migration project", "Atlas 2.0"; `brief.lookup`), and of
+    the same type, becomes that entity: one page across parts. The brief's page-type names (and
+    the parents it gives) are planned before facts are resolved, so a city given as a value
+    links to its page; unused ones are dropped silently.
+  - structure (`_brief_structure`): an entity a fact uses gets `part_of` / `located_in` its
+    brief parent (`STRUCTURE`: project → org/project, org/event/place → place; never a side
+    project) unless a fact already says; a parent the brief does not list is typed from the
+    child (`PARENT_TYPE`); a located_in/part_of stated the wrong way round is turned; an org with
+    role "member" gets `member_of` (dated from a fact naming it) when no fact links the owner to
+    it (not one of the document's team values); a person's `knows` takes the brief's friend /
+    family / colleague, and `friend_of` becomes `family_of` when the brief says family.
+  - homes (`_brief_homes`): a lives_in for a city the owner later left gets the brief's end; a
+    missing home is added when its period is known; never the hometown, never an end on the
+    last home.
+  - stints: `_merge` keeps two dated facts with the same object apart when there is more than a
+    month between them and the brief shows two periods at that organisation (an internship
+    years before the job); without the brief they merge as before.
 
 ## Quality checklist (after any change)
 
@@ -147,6 +189,8 @@ The model is ~3B active and will slip; code repairs or drops, and notes every re
       `BRAIN_VAULT=<tmp> uv run brain init-vault && uv run brain ingest tests/fixtures/docs/alex-rivera.html && uv run brain review --list`
       and the same with `alex-rivera-portfolio.html` (gate skips the tutorial; checks turn the
       team and topic into values; `portfolio_problems` in tests/ingest/conftest.py).
+- [ ] Brief: read every `brief:` note (dropped dates and homes, merged names, added structure);
+      the facts it adds name only entities the parts use, memberships and homes it states.
 - [ ] Gate and checks: read every `gate:`/`check:` note; decision seconds per part (CLI chunk
       line) stay a small share of the extraction time.
 - [ ] No pages for tools, products, ids or teams; works_at points at orgs only.

@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## About me\nBefore that I lived in Seville and worked in Madrid.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "instructions": "In the text, what is the person's relation to \"Madrid\"?",
+        "choices": [
+          {
+            "value": "employer",
+            "description": "the person works or worked there"
+          },
+          {
+            "value": "school",
+            "description": "the person studied there"
+          },
+          {
+            "value": "member",
+            "description": "the person joined it as a member or volunteer"
+          },
+          {
+            "value": "other",
+            "description": "it is only mentioned, or the text does not mention it"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "choice": "employer",
+        "probabilities": [
+          {
+            "value": "employer",
+            "probability": 0.9994
+          },
+          {
+            "value": "school",
+            "probability": 0.0004
+          },
+          {
+            "value": "member",
+            "probability": 0.0001
+          },
+          {
+            "value": "other",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.9992
+      }
+    ],
+    "usage": {
+      "input_tokens": 112,
+      "output_tokens": 0
+    }
+  }
+}

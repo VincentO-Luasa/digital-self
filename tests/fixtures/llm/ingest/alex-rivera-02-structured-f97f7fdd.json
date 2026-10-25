@@ -1,0 +1,253 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You read a whole document once and write a short brief of it. Later steps read the document one part at a time; the brief tells them who it is about, what each name refers to and how the parts relate.\n\nFields, in this order:\n- reasoning: one short sentence on what the document is.\n- subject: the full name of the person the document is about; \"\" if it never says.\n- kind: homepage, cv, bio, notes, export, article or other.\n- voice: first (the subject writes \"I\"), third (someone writes about the subject) or mixed.\n- periods: the subject's jobs and studies, oldest first. Each has kind (job or study), title (the job title, or the degree or subject studied), org (the organisation or school), start and end.\n- homes: every city the document says the subject lives or lived in (moved to, based in, lived in), oldest first: city, start and end. Not a city only visited, where someone else lives, or where an employer or school is.\n- names: up to 12 named things the subject is connected to, each once: people, organisations, projects, places, events and teams (not tools, languages or skills). Each has name (its fullest form), type (person, org, project, place, event or team), aliases (other names the document uses for the same thing, e.g. \"Atlas\" or \"Atlas Migration project\" for \"Atlas Migration\"; not descriptions; [] if none), parent (the name of what it belongs to or is in: the organisation a project or team belongs to, the city an organisation, event or district is in; \"\" if none or not said) and role:\n  - employer: an organisation the subject works or worked for. school: one the subject studied at. member: a club, band, network or group the subject belongs to, volunteers or mentors with.\n  - project: work the subject does or did for an employer. side project: the subject's own project, outside any employer.\n  - colleague, friend, family: a person and how the subject knows them.\n  - home: a city the subject lives or lived in. hometown: where the subject grew up.\n  - other: anything else (someone else's employer, a place visited).\n\nDates: YYYY or YYYY-MM, only as the document states them (a move to a new city in 2019 ends the previous home in 2019); end \"now\" if still true; \"\" if the document does not say. Two separate stints at one organisation are two periods.\n\nOnly what the document says: no outside knowledge.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"subject\":\"…\",\"kind\":\"cv\",\"voice\":\"first\",\"periods\":[{\"kind\":\"job\",\"title\":\"…\",\"org\":\"…\",\"start\":\"2021\",\"end\":\"now\"}],\"homes\":[{\"city\":\"…\",\"start\":\"2019\",\"end\":\"2021\"}],\"names\":[{\"name\":\"…\",\"type\":\"project\",\"aliases\":[],\"parent\":\"…\",\"role\":\"project\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Document: Alex Rivera — Data Engineer\n\nDOCUMENT:\n<<<\nPage description: Personal homepage of Alex Rivera, a fictional data engineer.\n\nProfile data from the page:\n- Name: Alex Rivera\n- Job title: Senior Data Engineer\n- Works for: Northwind Labs\n\n# Alex Rivera\n\nSenior data engineer at Northwind Labs · Porto, Portugal\n\n- 7+ years building data pipelines\n- 2 university degrees\n\n## About me\n\nHi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since\n2024, after five years in Lisbon. Before that I lived in Seville and worked in Madrid.\nI grew up in Valencia, so I speak Spanish and English, and I'm slowly learning\nPortuguese.\n\nI care about boring, reliable pipelines, clear documentation and teams that share\nknowledge. Outside work I go bouldering and bake sourdough bread.\n\nAlex has done calisthenics every morning for ten years: it is his longest-running\nhabit. Python sits at the centre of his toolkit.\n\nCareer\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\nWork\n\n## Projects\n\n### Atlas Migration\n\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all\nnightly batch pipelines from a legacy Hadoop cluster to a managed cloud warehouse. It\nuses Airflow for orchestration and dbt for transformations.\n\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor. Its code lives on CodeHarbor and its\ntest suite runs on the public TripLog dataset (record TL4521).\n\n## Skills\n\n- Python and SQL\n- Apache Spark\n- Airflow and dbt\n- Data modelling\n\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and\nthe Lumen notebook app.\n\n## Education\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\nBSc in Computer Science, Calder College, 2014–2018.\n>>>"
+      }
+    ],
+    "temperature": 0.0,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Brief",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "BriefName": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "team",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "parent": {
+                  "title": "Parent",
+                  "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "employer",
+                    "school",
+                    "member",
+                    "project",
+                    "side project",
+                    "colleague",
+                    "friend",
+                    "family",
+                    "home",
+                    "hometown",
+                    "other"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "aliases",
+                "parent",
+                "role"
+              ],
+              "title": "BriefName",
+              "type": "object"
+            },
+            "HomePeriod": {
+              "properties": {
+                "city": {
+                  "title": "City",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "city",
+                "start",
+                "end"
+              ],
+              "title": "HomePeriod",
+              "type": "object"
+            },
+            "Period": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "job",
+                    "study"
+                  ],
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "org": {
+                  "title": "Org",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "org",
+                "start",
+                "end"
+              ],
+              "title": "Period",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "subject": {
+              "title": "Subject",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "homepage",
+                "cv",
+                "bio",
+                "notes",
+                "export",
+                "article",
+                "other"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "voice": {
+              "enum": [
+                "first",
+                "third",
+                "mixed"
+              ],
+              "title": "Voice",
+              "type": "string"
+            },
+            "periods": {
+              "items": {
+                "$ref": "#/$defs/Period"
+              },
+              "title": "Periods",
+              "type": "array"
+            },
+            "homes": {
+              "items": {
+                "$ref": "#/$defs/HomePeriod"
+              },
+              "title": "Homes",
+              "type": "array"
+            },
+            "names": {
+              "items": {
+                "$ref": "#/$defs/BriefName"
+              },
+              "title": "Names",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "subject",
+            "kind",
+            "voice",
+            "periods",
+            "homes",
+            "names"
+          ],
+          "title": "Brief",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-b8213784",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The document is a personal homepage for Alex Rivera detailing his career, projects, and background.\",\"subject\":\"Alex Rivera\",\"kind\":\"homepage\",\"voice\":\"mixed\",\"periods\":[{\"kind\":\"study\",\"title\":\"BSc in Computer Science\",\"org\":\"Calder College\",\"start\":\"2014\",\"end\":\"2018\"},{\"kind\":\"study\",\"title\":\"MSc in Data Science\",\"org\":\"Westbridge University\",\"start\":\"2018\",\"end\":\"2019\"},{\"kind\":\"job\",\"title\":\"Data Analyst\",\"org\":\"Fabrikam Retail\",\"start\":\"2019\",\"end\":\"2023\"},{\"kind\":\"job\",\"title\":\"Data Engineer\",\"org\":\"Northwind Labs\",\"start\":\"2023\",\"end\":\"2025\"},{\"kind\":\"job\",\"title\":\"Senior Data Engineer\",\"org\":\"Northwind Labs\",\"start\":\"2025\",\"end\":\"now\"}],\"homes\":[{\"city\":\"Valencia\",\"start\":\"\",\"end\":\"\"},{\"city\":\"Seville\",\"start\":\"\",\"end\":\"\"},{\"city\":\"Madrid\",\"start\":\"\",\"end\":\"\"},{\"city\":\"Lisbon\",\"start\":\"2019\",\"end\":\"2024\"},{\"city\":\"Porto\",\"start\":\"2024\",\"end\":\"now\"}],\"names\":[{\"name\":\"Northwind Labs\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"employer\"},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"employer\"},{\"name\":\"Westbridge University\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"school\"},{\"name\":\"Calder College\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"school\"},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"project\"},{\"name\":\"Tidepool\",\"type\":\"project\",\"aliases\":[],\"parent\":\"\",\"role\":\"side project\"},{\"name\":\"Sam Okafor\",\"type\":\"person\",\"aliases\":[],\"parent\":\"\",\"role\":\"friend\"},{\"name\":\"CodeHarbor\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"other\"},{\"name\":\"TripLog\",\"type\":\"project\",\"aliases\":[],\"parent\":\"\",\"role\":\"other\"},{\"name\":\"Porto\",\"type\":\"place\",\"aliases\":[],\"parent\":\"\",\"role\":\"home\"},{\"name\":\"Lisbon\",\"type\":\"place\",\"aliases\":[],\"parent\":\"\",\"role\":\"home\"},{\"name\":\"Seville\",\"type\":\"place\",\"aliases\":[],\"parent\":\"\",\"role\":\"home\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792962836,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 492,
+      "prompt_tokens": 1297,
+      "total_tokens": 1789,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1297,
+      "output_tokens": 492,
+      "time_to_first_token": 2.61,
+      "total_time": 13.97,
+      "prompt_eval_duration": 2.61,
+      "generation_duration": 11.36,
+      "prompt_tokens_per_second": 496.13,
+      "generation_tokens_per_second": 43.32
+    }
+  }
+}

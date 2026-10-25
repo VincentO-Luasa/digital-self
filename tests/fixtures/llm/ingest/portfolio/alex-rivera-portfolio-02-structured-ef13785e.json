@@ -1,0 +1,253 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You read a whole document once and write a short brief of it. Later steps read the document one part at a time; the brief tells them who it is about, what each name refers to and how the parts relate.\n\nFields, in this order:\n- reasoning: one short sentence on what the document is.\n- subject: the full name of the person the document is about; \"\" if it never says.\n- kind: homepage, cv, bio, notes, export, article or other.\n- voice: first (the subject writes \"I\"), third (someone writes about the subject) or mixed.\n- periods: the subject's jobs and studies, oldest first. Each has kind (job or study), title (the job title, or the degree or subject studied), org (the organisation or school), start and end.\n- homes: every city the document says the subject lives or lived in (moved to, based in, lived in), oldest first: city, start and end. Not a city only visited, where someone else lives, or where an employer or school is.\n- names: up to 12 named things the subject is connected to, each once: people, organisations, projects, places, events and teams (not tools, languages or skills). Each has name (its fullest form), type (person, org, project, place, event or team), aliases (other names the document uses for the same thing, e.g. \"Atlas\" or \"Atlas Migration project\" for \"Atlas Migration\"; not descriptions; [] if none), parent (the name of what it belongs to or is in: the organisation a project or team belongs to, the city an organisation, event or district is in; \"\" if none or not said) and role:\n  - employer: an organisation the subject works or worked for. school: one the subject studied at. member: a club, band, network or group the subject belongs to, volunteers or mentors with.\n  - project: work the subject does or did for an employer. side project: the subject's own project, outside any employer.\n  - colleague, friend, family: a person and how the subject knows them.\n  - home: a city the subject lives or lived in. hometown: where the subject grew up.\n  - other: anything else (someone else's employer, a place visited).\n\nDates: YYYY or YYYY-MM, only as the document states them (a move to a new city in 2019 ends the previous home in 2019); end \"now\" if still true; \"\" if the document does not say. Two separate stints at one organisation are two periods.\n\nOnly what the document says: no outside knowledge.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"subject\":\"…\",\"kind\":\"cv\",\"voice\":\"first\",\"periods\":[{\"kind\":\"job\",\"title\":\"…\",\"org\":\"…\",\"start\":\"2021\",\"end\":\"now\"}],\"homes\":[{\"city\":\"…\",\"start\":\"2019\",\"end\":\"2021\"}],\"names\":[{\"name\":\"…\",\"type\":\"project\",\"aliases\":[],\"parent\":\"…\",\"role\":\"project\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Document: Alex Rivera · notes and projects\n\nDOCUMENT:\n<<<\nPage description: Fictional portfolio of Alex Rivera, a data engineer in Porto.\n\n# Alex Rivera\n\nData engineer Porto\n\nResearch\n\n## What I am reading about\n\nLately I have been reading a lot about Causal Inference, mostly to understand why our\ndashboards disagree with each other. I keep a reading group with two colleagues every\nother Thursday.\n\nSide projects\n\n## Side projects\n\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor. It now has a few hundred users, mostly\nanalytics teams that run nightly checks on their warehouse tables.\n\n### A reading-list bot for the Porto library club\n\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club\nI joined that year. It reads the club's past votes and proposes three titles each month.\nI wrote it in Python over a few weekends and handed it over to the club in 2026.\n\nCareer\n\n## Career path\n\n### Senior Data Engineer at Northwind Labs\n\nSince March 2025 I have been a senior data engineer at Northwind Labs in Porto. I am part\nof Data Platform, the group that owns the company warehouse, and I lead the Atlas\nMigration, which moves our nightly batch jobs to Lakehouse Cloud. My manager is Priya\nRaman.\n\n### Data Analyst at Fabrikam Retail\n\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon,\nwhere I owned the weekly sales reporting.\n\nEducation\n\n## Education & toolkit\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\n- Python, SQL and Apache Spark\n- Data modelling and public speaking\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online\n\nNotes\n\n## Quick guide: partitioning warehouse tables\n\nPartitioning splits a large table into smaller pieces by a key such as the event date.\nQueries that filter on the key read only the matching partitions, which cuts scan time and\ncost. Choose a key with a few hundred to a few thousand distinct values: too many tiny\npartitions slow the query planner down, and too few leave each partition huge.\n\nCluster each partition on the columns you filter by most often, and re-cluster after\nlarge backfills. Avoid partitioning on a column that changes after the row is written,\nbecause an update then moves the row between partitions. Finally, set an expiry on old\npartitions so storage does not grow forever, and document the key in the table's\ndescription so the next engineer understands why it was chosen.\n\nWhen a table is small, under a few gigabytes, partitioning rarely helps: the planner\nreads it quickly anyway, and the extra metadata only adds overhead. Measure the scan size\nof your slowest queries before and after the change, and keep the partitioning only if\nit pays for itself.\n\n## Privacy on this site\n\nThis site stores a small file in your browser to remember whether you prefer the dark\ntheme. Anonymous page counts are collected without any personal data and kept for\nthirteen months. Nothing is sold or shared with third parties. You can clear the stored\npreference at any time in your browser settings; the site works the same without it.\nQuestions about this notice can be sent through the form below.\n\n## Get in touch\n\nThe best way to reach me is by email at alex@example.com. Press and speaking requests are\nwelcome.\n>>>"
+      }
+    ],
+    "temperature": 0.0,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Brief",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "BriefName": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "team",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "parent": {
+                  "title": "Parent",
+                  "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "employer",
+                    "school",
+                    "member",
+                    "project",
+                    "side project",
+                    "colleague",
+                    "friend",
+                    "family",
+                    "home",
+                    "hometown",
+                    "other"
+                  ],
+                  "title": "Role",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "aliases",
+                "parent",
+                "role"
+              ],
+              "title": "BriefName",
+              "type": "object"
+            },
+            "HomePeriod": {
+              "properties": {
+                "city": {
+                  "title": "City",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "city",
+                "start",
+                "end"
+              ],
+              "title": "HomePeriod",
+              "type": "object"
+            },
+            "Period": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "job",
+                    "study"
+                  ],
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "org": {
+                  "title": "Org",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "title",
+                "org",
+                "start",
+                "end"
+              ],
+              "title": "Period",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "subject": {
+              "title": "Subject",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "homepage",
+                "cv",
+                "bio",
+                "notes",
+                "export",
+                "article",
+                "other"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "voice": {
+              "enum": [
+                "first",
+                "third",
+                "mixed"
+              ],
+              "title": "Voice",
+              "type": "string"
+            },
+            "periods": {
+              "items": {
+                "$ref": "#/$defs/Period"
+              },
+              "title": "Periods",
+              "type": "array"
+            },
+            "homes": {
+              "items": {
+                "$ref": "#/$defs/HomePeriod"
+              },
+              "title": "Homes",
+              "type": "array"
+            },
+            "names": {
+              "items": {
+                "$ref": "#/$defs/BriefName"
+              },
+              "title": "Names",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "subject",
+            "kind",
+            "voice",
+            "periods",
+            "homes",
+            "names"
+          ],
+          "title": "Brief",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-fd4bd8f5",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The document is a fictional portfolio and notes page for data engineer Alex Rivera detailing his career, education, side projects, and technical notes.\",\"subject\":\"Alex Rivera\",\"kind\":\"notes\",\"voice\":\"first\",\"periods\":[{\"kind\":\"study\",\"title\":\"MSc in Data Science\",\"org\":\"Westbridge University\",\"start\":\"2018\",\"end\":\"2019\"},{\"kind\":\"job\",\"title\":\"Data Analyst\",\"org\":\"Fabrikam Retail\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"kind\":\"job\",\"title\":\"Senior Data Engineer\",\"org\":\"Northwind Labs\",\"start\":\"2025-03\",\"end\":\"now\"}],\"homes\":[{\"city\":\"Lisbon\",\"start\":\"2019\",\"end\":\"2025\"},{\"city\":\"Porto\",\"start\":\"2025\",\"end\":\"now\"}],\"names\":[{\"name\":\"Sam Okafor\",\"type\":\"person\",\"aliases\":[],\"parent\":\"\",\"role\":\"friend\"},{\"name\":\"Tidepool\",\"type\":\"project\",\"aliases\":[],\"parent\":\"\",\"role\":\"side project\"},{\"name\":\"Porto library club\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"member\"},{\"name\":\"Northwind Labs\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"employer\"},{\"name\":\"Data Platform\",\"type\":\"team\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"member\"},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"project\"},{\"name\":\"Lakehouse Cloud\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"other\"},{\"name\":\"Priya Raman\",\"type\":\"person\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"colleague\"},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Lisbon\",\"role\":\"employer\"},{\"name\":\"Westbridge University\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"school\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792962999,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 404,
+      "prompt_tokens": 1472,
+      "total_tokens": 1876,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1472,
+      "output_tokens": 404,
+      "time_to_first_token": 3.46,
+      "total_time": 13.23,
+      "prompt_eval_duration": 3.46,
+      "generation_duration": 9.77,
+      "prompt_tokens_per_second": 425.07,
+      "generation_tokens_per_second": 41.36
+    }
+  }
+}

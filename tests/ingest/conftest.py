@@ -44,6 +44,88 @@ def homepage_plan() -> dict[str, Any]:
     }
 
 
+def brief(**fields: Any) -> dict[str, Any]:
+    """A document brief (``brain.ingest.brief.Brief``): empty unless fields are given."""
+    return {
+        "reasoning": "A personal page.",
+        "subject": "",
+        "kind": "homepage",
+        "voice": "first",
+        "periods": [],
+        "homes": [],
+        "names": [],
+        **fields,
+    }
+
+
+def name(
+    name_: str, type_: str, role: str = "other", parent: str = "", aliases: list[str] | None = None
+) -> dict[str, Any]:
+    return {
+        "name": name_,
+        "type": type_,
+        "aliases": aliases or [],
+        "parent": parent,
+        "role": role,
+    }
+
+
+def homepage_brief() -> dict[str, Any]:
+    """What a good brief of tests/fixtures/docs/alex-rivera.html looks like, with the slips the
+    model makes: a start it worked out from a job (Lisbon 2019), a description as an alias."""
+    return brief(
+        reasoning="Alex Rivera's homepage: about, career, projects, skills and education.",
+        subject="Alex Rivera",
+        voice="mixed",
+        periods=[
+            {
+                "kind": "job",
+                "title": "Data Analyst",
+                "org": "Fabrikam Retail",
+                "start": "2019-09",
+                "end": "2023-01",
+            },
+            {
+                "kind": "job",
+                "title": "Data Engineer",
+                "org": "Northwind Labs",
+                "start": "2023-02",
+                "end": "2025-03",
+            },
+            {
+                "kind": "job",
+                "title": "Senior Data Engineer",
+                "org": "Northwind Labs",
+                "start": "2025-03",
+                "end": "now",
+            },
+        ],
+        homes=[
+            {"city": "Valencia", "start": "", "end": ""},
+            {"city": "Seville", "start": "", "end": ""},
+            {"city": "Lisbon", "start": "2019", "end": "2024"},
+            {"city": "Porto", "start": "2024", "end": "now"},
+        ],
+        names=[
+            name("Northwind Labs", "org", "employer", "Porto", ["Northwind"]),
+            name("Fabrikam Retail", "org", "employer", "Lisbon"),
+            name(
+                "Atlas Migration",
+                "project",
+                "project",
+                "Northwind Labs",
+                ["Atlas", "the migration"],
+            ),
+            name("Tidepool", "project", "side project"),
+            name("Sam Okafor", "person", "friend", aliases=["Sam"]),
+            name("Data Platform team", "team", parent="Northwind Labs"),
+            name("Airflow", "tool"),
+            name("Valencia", "place", "hometown"),
+            name("Porto", "place", "home"),
+        ],
+    )
+
+
 def homepage_extraction() -> dict[str, Any]:
     """What a good extraction of tests/fixtures/docs/alex-rivera.html looks like."""
     return {
