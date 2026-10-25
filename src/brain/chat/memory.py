@@ -7,6 +7,7 @@ episodes or summaries (docs/retrieval.md, "Packing").
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -17,6 +18,31 @@ from brain.vault.generated import first_sentence
 EXPAND_TOP = 2
 HEADER = "Memory notes for this message (most relevant first):"
 EMPTY = "Memory notes for this message: nothing relevant found."
+WORD = re.compile(r"[\w'-]+")
+STOP = frozenset(
+    [
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "by",
+        "for",
+        "from",
+        "in",
+        "is",
+        "of",
+        "on",
+        "since",
+        "the",
+        "to",
+        "with",
+    ]
+)
+
+
+def content_words(text: str) -> set[str]:
+    return {w for w in (m.casefold() for m in WORD.findall(text)) if w not in STOP}
 
 
 @dataclass
@@ -44,9 +70,17 @@ def _line(hit: Hit, text: str) -> str:
     return f"- [{hit.id}]{when} {text}"
 
 
+def in_card(hit: Hit, card_words: set[str]) -> bool:
+    """A fact the core card already says: all its content words appear in the card. The card
+    groups and rewords facts ("speaks English, Spanish"), so exact text matching misses them."""
+    words = content_words(hit.text)
+    return hit.kind == "fact" and bool(words) and words <= card_words
+
+
 def pack(hits: Sequence[Hit], budget_tokens: int, *, skip_text: str = "") -> MemoryBlock:
-    """``skip_text`` (the core card) drops hits whose text it already contains."""
-    candidates = [h for h in hits if not (h.kind == "fact" and h.text in skip_text)]
+    """``skip_text`` (the core card) drops facts the card already states."""
+    card_words = content_words(skip_text)
+    candidates = [h for h in hits if not in_card(h, card_words)]
     lines: dict[str, str] = {}
     budget = budget_tokens - estimate_tokens(HEADER)
     for hit in candidates:

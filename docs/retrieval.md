@@ -23,7 +23,7 @@ Sources are at the end.
 
 | human mechanism | in the brain |
 |---|---|
-| Person schema / impression formation (Hastie & Park; Klein, Loftus & Kihlstrom) | **L0 schema card**: impression + current situation + marking facts, always in the prompt |
+| Person schema / impression formation (McAdams; Conway; Park; Klein, Loftus & Kihlstrom) | **L0 schema card**: identity, traits and values, current chapter, life periods, people, open loops; always in the prompt |
 | Flashbulb / emotional salience | importance score sets a **floor under decay**; top items become "marking facts" |
 | Working memory ~4 chunks (Cowan) | **L1 buffer**: 1 topic + 3 entity/episode slots + 1 conversation-state line |
 | Cue-dependent retrieval, encoding specificity (Tulving) | cues = entities, topic, time, wording of the current turn; episodes are indexed by the same cues |
@@ -43,7 +43,7 @@ Sources are at the end.
 ## Prompt layout (~1.8–2k tokens, ordered for prefix caching)
 
 ```
-[system ~150]  [L0 schema card ~300, byte-stable until a contributing fact changes]  ← cached prefix
+[system ~250]  [L0 schema card ~300–600, byte-stable until a contributing fact changes]  ← cached prefix
 [conversation history, trimmed to recent turns]
 [L1 working memory ~150]  [L3 retrieved memories ≤1,000]  [L4 surfaced memory ≤80]
 [user turn]
@@ -56,18 +56,71 @@ while you read. On submit it only appends a ≤200-token "late" block of items t
 missed. History is trimmed 4 turns at a time so the cached prefix survives. The model only ever reasons over gists and fact lines.
 Detail costs an explicit `[recall:<id>]` round-trip.
 
-### L0: schema card (≤300 tokens, updated slowly by consolidation, local model)
-- **Impression (~80 tokens):** temperament, communication style, values, how they react to stress
-  and praise. Built from the observation journal and `self` pages.
-  **Changes slowly**: a line changes only with ≥3 supporting episodes over ≥2 weeks, and the diff
-  is shown to the owner (a self-schema should not swing with one bad day).
-- **Current situation (~80 tokens):** only facts valid *today* (role, city, key people, active projects).
-- **Marking facts (5–8, ~100 tokens):** highest importance × salience × stability, still valid,
-  referenced in at least 3 episodes.
-- **Open loops (2–3):** current concerns, pending decisions, upcoming events.
+### L0: schema card (`core.md`, ~300–600 tokens, deterministic, no LLM call)
 
-It is rebuilt only when something it depends on changes, so the cache stays warm. Each version is
-kept, and the diff is appended to the journal. This is the human-readable `core.md` from the vault schema.
+The card is what a friend has "at hand" before you say a word. It is built in code from the vault
+(`brain.vault.generated.build_core`), contains no timestamps, and stays byte-stable until a fact
+it shows changes, so the cached prefix survives. Layout, in this order:
+
+```
+Name: Alex Rivera · Senior data engineer at Northwind Labs (Data platform team) · lives in Porto · speaks English, Spanish
+
+## Who they are            values, strengths, flaws, habits, fears, health; or "Not known yet: …"
+## Now                     active projects (≤3, with goal/status), responsibilities, goals,
+                           "On their mind" (recent important journal lines), "New lately" (<90 days)
+## Life story              one line per lifetime period, newest first:
+                           "2019–2023 · Analytics engineer, Fabrikam Analytics (Lisbon)"; undated last
+## People who matter       ≤6, inner circle first: partner, family, close friends, manager, colleagues
+## Interests and skills    comma lists: "Skills: Python (expert), Airflow, SQL (+16 more)"
+## Open loops              deadlines in the next 30 days, undone intentions, top questions.md items
+```
+
+Rules:
+- **Group, don't list.** Multi-valued predicates become one comma line per kind, capped, with
+  "(+n more)" so the model knows to look further. A job, its roles (each role goes to the job it
+  overlaps most) and the city at the time become one period line (Conway's lifetime periods).
+- **Salience** inside a list: predicate weight, then stated > observed > inferred, skill level,
+  a bonus per extra independent source, newest first on ties.
+- **Dedupe:** items whose normalised tokens overlap ≥75% (Jaccard; case, punctuation, plural,
+  stop words ignored) are one item and pool their sources; repeated `works_at` spans of the same
+  org merge. The threshold is conservative ("Spark" and "Apache Spark" stay two): aliases on
+  topic pages are the place to merge names.
+- **Shared budget:** each section gets a share of `min(core_max_tokens, 600)`; what a section
+  leaves unused goes to the others (Now, Who, People, Open loops, Life story, Interests). List
+  rows shrink before they are dropped, and empty sections are left out. `core_max_tokens` is a
+  hard cap; the identity line always survives.
+- **Gaps are shown:** when values, strengths, flaws or habits are missing, "Not known yet" names
+  them, so the local model can ask and interview mode can fill them.
+- **Privacy:** `include_private=False` (the variant for the big model) drops private pages, facts
+  in private life-map regions (traits, health, family, friends) and journal lines.
+
+Phase 4 consolidation adds an **impression** paragraph (~80 tokens: temperament, communication
+style, how they react to stress and praise) written from the observation journal. It **changes
+slowly**: a line changes only with ≥3 supporting episodes over ≥2 weeks, and the diff is shown to
+the owner (a self-schema should not swing with one bad day). Each version is kept and the diff is
+appended to the journal.
+
+#### How people keep a profile of a friend
+
+- **Three levels of knowing a person** (McAdams 1995): dispositional traits; characteristic
+  adaptations (goals, values, concerns, current projects); and the life story. → "Who they are",
+  "Now" and "Life story".
+- **Self-memory system** (Conway & Pleydell-Pearce 2000): autobiographical knowledge is organised
+  as lifetime periods ("when I worked at Y, lived in X") → general events → specific episodes,
+  and a "working self" holds current goals that steer recall. → periods in the card, episodes in
+  retrieval, "Now" as the working self.
+- **Trait summaries are stored apart from episodes** (Park 1986; Klein, Loftus, Trafton &
+  Fuhrman 1992; Klein, Loftus & Kihlstrom 1996): as we get to know someone, impressions move from
+  concrete behaviours to abstract trait summaries that are retrieved without recalling episodes.
+  → the card carries the summary; episodes stay in L3.
+- **Central traits dominate impressions** (Asch 1946), and **warmth and competence** are the two
+  main dimensions of social judgement (Fiske, Cuddy & Glick 2007). → values, strengths and flaws
+  come first, before skills.
+- **A handful of intimates** (Dunbar's ~5 / ~15 layers; Zhou, Sornette, Hill & Dunbar 2005):
+  people track a support clique closely. → ≤6 people, inner circle first.
+- **What a friend has at hand:** name and what they do, where they live, who matters to them,
+  what they're going through (current chapter, open loops: "how did the go-live go?"), what they
+  like, and what to avoid. → identity line, Now, People, Interests, Open loops.
 
 ### L1: working memory (updated every turn, no LLM call)
 - 4 slots: {topic} + up to 3 {entity | episode}, each with a gist and an activation `a`.
@@ -175,3 +228,7 @@ Cognitive science: Collins & Loftus 1975; Anderson & Schooler 1991; Tulving & Th
 Howard & Kahana 2002; Cowan 2001; Zacks et al. 2007; Reyna & Brainerd (fuzzy-trace theory);
 Nader et al. 2000; Anderson, Bjork & Bjork 1994; McClelland, McNaughton & O'Reilly 1995;
 Einstein & McDaniel 2005; Schank 1982.
+Person knowledge (L0): McAdams 1995 (J. Personality 63:365–396); Conway & Pleydell-Pearce 2000
+(Psych. Review 107:261–288); Asch 1946; Park 1986 (JPSP 51:907); Klein, Loftus, Trafton & Fuhrman
+1992 (JPSP 63:739–753); Klein, Loftus & Kihlstrom 1996; Fiske, Cuddy & Glick 2007 (TiCS 11:77–83);
+Zhou, Sornette, Hill & Dunbar 2005 (Proc. R. Soc. B 272:439–444).

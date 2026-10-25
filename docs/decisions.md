@@ -110,3 +110,21 @@ memory block) and drops the oldest 4 exchanges once it exceeds 8. The per-turn b
 date + search hits packed gist-first under `retrieval.budget_tokens`, skipping facts already in
 the card) is prepended to the latest user message. Token budgets use a chars/3.5 estimate (no
 tokenizer dependency; errs on the safe side).
+
+## 2026-10-25 — core.md is a friend's profile card, not a ranked fact dump
+The L0 card is now laid out the way people hold a close friend in mind: an identity line, then
+Who they are (values, strengths, flaws, habits; "Not known yet: …" for missing aspects), Now
+(active projects, responsibilities, goals, recent important journal lines, facts new in the last
+90 days), Life story (one line per lifetime period: job + roles + city, studies + degree), People
+who matter (≤6, inner circle first), Interests and skills (comma lists with "+n more") and Open
+loops (deadlines within 30 days, undone intentions, top `questions.md` items). Still deterministic
+and byte-stable; near-duplicates (token Jaccard ≥ 0.75) merge and pool their sources; each
+section has a share of a ~600-token target and spare budget flows to the others; `core_max_tokens`
+stays the hard cap. Why: the flat builder gave one line per skill, tool and side project (~60
+lines on a real homepage; 64 lines / ~600 tokens on a 68-fact synthetic vault, ~1k tokens at 128
+facts), which costs prefill and dilutes a small model's attention; the new card is 20 lines /
+~440 tokens on both. Grounded in McAdams (1995) three levels, Conway & Pleydell-Pearce (2000)
+lifetime periods and working self, trait summaries stored apart from episodes (Park 1986; Klein,
+Loftus & Kihlstrom), and Dunbar's inner layers (docs/retrieval.md, "L0: schema card").
+Alternatives: an LLM-written profile now (non-deterministic, breaks byte stability; kept for the
+Phase 4 impression paragraph); a fixed per-predicate line cap without sections (still a list).

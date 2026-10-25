@@ -150,3 +150,13 @@ def test_pack_is_gist_first_and_budgeted() -> None:
     small = pack(hits, 40)
     assert small.used and "Detail." not in small.text and small.tokens <= 40
     assert pack([], 1000).text == EMPTY
+
+
+def test_pack_skips_facts_the_card_rewords() -> None:
+    card = "Name: Alex Rivera · lives in Porto · speaks English, Spanish"
+    hits = [
+        hit("f-1", "fact", "Speaks Spanish"),
+        hit("f-2", "fact", "Lived in Lisbon"),  # past city: not in the card
+        hit("ep-1", "episode", "Speaks Spanish with Sam on Thursdays"),  # episodes are kept
+    ]
+    assert pack(hits, 1000, skip_text=card).used == ["f-2", "ep-1"]

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 from brain.tokens import estimate_tokens
 from brain.vault import ChangeSet, apply, gitops
 from brain.vault.generated import (
@@ -17,15 +19,161 @@ from brain.vault.ops import AddFact
 from brain.vault.store import Vault
 
 TODAY = date(2026, 10, 25)
+SECTIONS = [
+    "Who they are",
+    "Now",
+    "Life story",
+    "People who matter",
+    "Interests and skills",
+    "Open loops",
+]
+EP = "(src:: [[ep-20261025-1412-career]])"
+OTHER_SRC = "(src:: [[ep-20261026-0915-atlas]])"
+
+
+# --- helpers -----------------------------------------------------------------------------------
+
+
+def headings(core: str) -> list[str]:
+    return [line[3:] for line in core.splitlines() if line.startswith("## ")]
+
+
+def section(core: str, heading: str) -> list[str]:
+    body = core.split(f"\n## {heading}\n\n", 1)[1]
+    return body.split("\n\n", 1)[0].splitlines()
+
+
+def identity(core: str) -> str:
+    return next(line for line in core.splitlines() if line.startswith("Name: "))
+
+
+def fact(
+    text: str,
+    p: str,
+    o: str,
+    *fields: str,
+    n: int,
+    rec: str = "2026-10-25",
+    src: str = EP,
+    kind: str = "stated",
+) -> str:
+    """A fact line (``fields`` such as ``from:: 2019``) with a deterministic valid block id."""
+    b32 = "abcdefghijklmnopqrstuvwxyz234567"
+    block = "".join(b32[(n >> (5 * i)) % 32] for i in range(6))
+    extra = "".join(f" ({f})" for f in fields)
+    return f"- {text} (p:: {p}) (o:: {o}){extra} (rec:: {rec}) {src} (kind:: {kind}) ^f-{block}"
+
+
+def write_page(
+    vault: Vault,
+    page_id: str,
+    title: str,
+    facts: list[str],
+    *,
+    type_: str = "self",
+    regions: tuple[str, ...] = (),
+    privacy: str = "normal",
+    history: tuple[str, ...] = (),
+) -> None:
+    subject = "self" if type_ == "self" else page_id
+    past = "\n## History\n\n" + "\n".join(history) + "\n" if history else ""
+    path = vault.page_path(page_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"---\nid: {page_id}\ntype: {type_}\nsubject: {subject}\naliases: []\n"
+        f"regions: [{', '.join(regions)}]\nprivacy: {privacy}\ncreated: 2026-10-20\n"
+        f"updated: 2026-10-25\n---\n# {title}\n\n## Facts\n\n" + "\n".join(facts) + "\n" + past,
+        encoding="utf-8",
+    )
+
+
+@pytest.fixture
+def rich_vault(tmp_vault: Vault) -> Vault:
+    """The fixture vault plus traits, values, interests, a partner, a manager and questions."""
+    write_page(
+        tmp_vault,
+        "self/traits",
+        "Traits",
+        [
+            fact("Explains things clearly", "has_strength", "Explaining things clearly", n=1),
+            fact("Overcommits to side projects", "has_flaw", "Overcommits", n=2),
+            fact("Gets impatient in meetings", "has_flaw", "Impatient", n=3, kind="inferred"),
+        ],
+        regions=("self.traits",),
+        privacy="private",
+    )
+    write_page(
+        tmp_vault,
+        "self/values",
+        "Values and goals",
+        [
+            fact("Values honesty", "values", "Honesty", n=4),
+            fact("Values craft", "values", "Craft", n=5),
+            fact("Values time outdoors", "values", "Time outdoors", n=6),
+            fact(
+                "Wants to run a half marathon", "goal", "Run a half marathon", "from:: 2026-09", n=7
+            ),
+        ],
+        regions=("self.values_goals",),
+    )
+    write_page(
+        tmp_vault,
+        "self/interests",
+        "Interests",
+        [
+            fact("Goes bouldering", "interest", "Bouldering", n=8),
+            fact("Climbs at the bouldering gym", "interest", "bouldering", n=9, rec="2026-10-20"),
+            fact("Enjoys archery", "likes", "Archery", n=10),
+            fact("Likes data modelling", "likes", "Data-modelling", n=11),
+            fact("Enjoys data modelling", "likes", "data modelling", n=12, src=OTHER_SRC),
+            fact("Dislikes small talk", "dislikes", "Small talk", n=13),
+        ],
+        regions=("self.interests",),
+    )
+    write_page(
+        tmp_vault,
+        "people/jordan-blake",
+        "Jordan Blake",
+        [fact("Partner of Alex", "partner_of", "[[self]]", "from:: 2021", n=14)],
+        type_="person",
+        regions=("relationships.family",),
+        privacy="private",
+    )
+    write_page(
+        tmp_vault,
+        "people/morgan-lee",
+        "Morgan Lee",
+        [fact("Works with Alex on Atlas", "colleague_of", "[[self]]", n=15)],
+        type_="person",
+        regions=("relationships.work",),
+    )
+    profile = tmp_vault.page_path("self/profile")
+    text = profile.read_text(encoding="utf-8")
+    manager = fact("Reports to Morgan Lee", "manager", "[[people/morgan-lee]]", n=16)
+    text = text.replace("\n\n## History", f"\n{manager}\n\n## History", 1)
+    profile.write_text(text, encoding="utf-8")
+    tmp_vault.questions_path.write_text(
+        "# Questions\n\n"
+        "- [ ] Where did Alex grow up? (region:: identity) (priority:: high) ^q-a2b3c4\n"
+        "- [x] Which languages does Alex speak? (region:: identity) ^q-d5e6f7\n"
+        "- [ ] What does a normal weekday look like? (region:: self.routine) ^q-g2h3i4\n"
+        "- [ ] How does Alex unwind after a hard week? ^q-j5k6l7\n"
+        "- [ ] When is Jordan's birthday? ^q-m2n3o4\n",
+        encoding="utf-8",
+    )
+    return Vault(tmp_vault.root)
+
+
+# --- index.md ----------------------------------------------------------------------------------
 
 
 def test_index_groups_pages_by_region(tmp_vault: Vault) -> None:
     text = build_index(tmp_vault)
     assert text.startswith("# Index\n\n" + GENERATED_NOTE)
     sections = text.split("\n## ")[1:]
-    headings = [s.split("\n", 1)[0] for s in sections]
+    found = [s.split("\n", 1)[0] for s in sections]
     # life-map order: identity, career.current_job, ..., projects, relationships.friends
-    assert headings == ["Identity & basics", "Current job", "Projects", "Friends"]
+    assert found == ["Identity & basics", "Current job", "Projects", "Friends"]
     assert (
         "- [[projects/atlas-migration]] — Atlas Migration moves Northwind Labs' nightly batch "
         "pipelines from a legacy cluster to a managed warehouse." in text
@@ -38,38 +186,188 @@ def test_index_can_leave_out_private_pages(tmp_vault: Vault) -> None:
     assert "people/sam-okafor" not in build_index(tmp_vault, include_private=False)
 
 
-def test_core_card_contents(tmp_vault: Vault) -> None:
+# --- core.md -----------------------------------------------------------------------------------
+
+
+def test_core_card_layout(tmp_vault: Vault) -> None:
     core = build_core(tmp_vault, today=TODAY)
-    assert "Name: Alex Rivera" in core
-    assert "Alex is a senior data engineer at Northwind Labs" in core
-    situation = core.split("## Current situation\n\n")[1].split("\n\n")[0].splitlines()
-    # salience: role and employer before residence, languages and skills
-    assert situation[0] == "- Is a senior data engineer (since 2025-03)"
-    assert situation[1] == "- Works at Northwind Labs as data engineer (since 2023-02)"
-    assert situation.index("- Lives in Porto (since 2024)") < situation.index(
-        "- Is an expert in Python"
+    assert core.startswith("# Core\n\n" + GENERATED_NOTE + "\n\nName: Alex Rivera · ")
+    assert headings(core) == SECTIONS
+    assert identity(core) == (
+        "Name: Alex Rivera · Senior data engineer at Northwind Labs (Data platform team)"
+        " · lives in Porto · speaks English, Spanish"
     )
-    assert "Was a data engineer" not in core  # history is not current
-    assert "Is called Alex Rivera" not in core  # the name is the header
-    entities = core.split("## People and projects\n\n")[1]
-    assert "Atlas Migration (project)" in entities  # owned by the owner
-    assert "Sam Okafor (person)" in entities  # friend of the owner
-    assert "Northwind Labs (org)" in entities  # employer
+    assert section(core, "Now") == [
+        "- Leads Atlas Migration (goal: move nightly batch pipelines to a managed warehouse;"
+        " status: testing)",
+        "- Responsibilities: Nightly batch pipelines",
+        "- On their mind: Alex is anxious about the Atlas go-live deadline (2026-10-25)",
+    ]
+    assert section(core, "People who matter") == ["- Sam Okafor (close friend)"]
+    # open loops: the upcoming deadline (so the project line leaves it out) and the intention
+    assert section(core, "Open loops") == [
+        "- Atlas Migration due 2026-11-15",
+        "- Ask how the Atlas go-live went (after 2026-11-15)",
+    ]
+    assert "Is called Alex Rivera" not in core and "Lives in Porto" not in core
 
 
-def test_core_respects_privacy_validity_and_cap(tmp_vault: Vault) -> None:
-    assert "Sam Okafor" not in build_core(tmp_vault, today=TODAY, include_private=False)
+def test_core_groups_multi_valued_facts_into_lists(tmp_vault: Vault) -> None:
+    core = build_core(tmp_vault, today=TODAY)
+    # one line, salience order: the expert level first, then alphabetical on ties
+    assert section(core, "Interests and skills") == [
+        "- Skills: Python (expert), Airflow, Spark, SQL"
+    ]
+    assert "speaks English, Spanish" in identity(core)
+
+
+def test_core_life_story_periods(tmp_vault: Vault) -> None:
+    core = build_core(tmp_vault, today=TODAY)
+    assert section(core, "Life story") == [
+        "- 2023–now · Data engineer → Senior data engineer, Northwind Labs (Lisbon → Porto)",
+        "- 2019–2023 · Analytics engineer, Fabrikam Analytics (Lisbon)",
+        "- 2014–2018 · BSc Computer Science, University of Bristol",
+    ]
+
+
+def test_core_life_story_merges_duplicates_and_groups_undated(tmp_vault: Vault) -> None:
+    write_page(
+        tmp_vault,
+        "self/career",
+        "Career",
+        [
+            fact(
+                "Worked at Fabrikam",
+                "works_at",
+                "Fabrikam Analytics",
+                "from:: 2019",
+                "to:: 2022",
+                n=1,
+            ),
+            fact("Volunteers at a code club", "member_of", "Code club", n=3),
+            fact("Built a budgeting app", "worked_on", "Budgeting app", n=4),
+        ],
+        history=(fact("Worked at a startup", "works_at", "Contoso Startup", n=2),),
+        regions=("career.history",),
+    )
+    story = section(build_core(Vault(tmp_vault.root), today=TODAY), "Life story")
+    assert sum("Fabrikam Analytics" in line for line in story) == 1  # duplicate span merged
+    assert "- 2019–2023 · Analytics engineer, Fabrikam Analytics (Lisbon)" in story
+    assert story[-2:] == ["- Undated: Contoso Startup", "- Other projects: Budgeting app"]
+
+
+def test_core_who_they_are_dedupe_and_people(rich_vault: Vault) -> None:
+    core = build_core(rich_vault, today=TODAY)
+    assert headings(core) == SECTIONS
+    assert section(core, "Who they are") == [
+        "- Values: Craft, Honesty, Time outdoors",
+        "- Strengths: Explaining things clearly",
+        "- Flaws: Overcommits, Impatient",  # stated before inferred
+        "- Not known yet: habits",
+    ]
+    interests = section(core, "Interests and skills")
+    # near-identical items collapse into one; the merged one has two sources, so it ranks above
+    # "Archery" although both are likes and A sorts first
+    assert interests[0] == "- Interests and likes: Bouldering, data modelling, Archery"
+    assert "- Dislikes: Small talk" in interests
+    assert section(core, "People who matter") == [
+        "- Jordan Blake (partner)",
+        "- Sam Okafor (close friend)",
+        "- Morgan Lee (manager)",
+    ]
+    now = section(core, "Now")
+    assert "- Goals: Run a half marathon" in now
+    assert "- New lately: Wants to run a half marathon (since 2026-09)" in now
+    loops = section(core, "Open loops")
+    assert loops[-2:] == [
+        "- To ask: Where did Alex grow up?",
+        "- To ask: What does a normal weekday look like?",
+    ]
+
+
+def test_core_gaps_line_lists_missing_aspects(tmp_vault: Vault) -> None:
+    core = build_core(tmp_vault, today=TODAY)
+    assert section(core, "Who they are") == ["- Not known yet: values, strengths, flaws, habits"]
+    # the big-model variant does not hint at private aspects
+    public = build_core(tmp_vault, today=TODAY, include_private=False)
+    assert section(public, "Who they are") == ["- Not known yet: values, habits"]
+
+
+def test_core_private_filtering(rich_vault: Vault) -> None:
+    core = build_core(rich_vault, today=TODAY, include_private=False)
+    for secret in ("Sam Okafor", "Jordan Blake", "Overcommits", "Explaining", "anxious"):
+        assert secret not in core
+    assert section(core, "People who matter") == ["- Morgan Lee (manager)"]
+    assert "- Values: Craft, Honesty, Time outdoors" in core
+    # a question naming a private person in plain text is left out too
+    (rich_vault.root / "questions.md").write_text(
+        "# Questions\n\n- [ ] When is Jordan's birthday?\n"
+    )
+    assert "Open loops" in core and "birthday" not in build_core(
+        rich_vault, today=TODAY, include_private=False
+    )
+    assert "birthday" in build_core(rich_vault, today=TODAY)
+
+
+def test_core_validity(tmp_vault: Vault) -> None:
     # before Alex moved to Porto and before the senior role
     early = build_core(tmp_vault, today=date(2023, 6, 1))
-    assert "- Lives in Porto" not in early and "- Is a senior data engineer" not in early
-    assert "- Works at Northwind Labs as data engineer (since 2023-02)" in early
-    small = build_core(tmp_vault, today=TODAY, max_tokens=120)
+    assert "lives in Porto" not in identity(early)
+    assert "Senior data engineer" not in identity(early)
+    assert "Northwind Labs" in identity(early)
+    assert "On their mind" not in early  # the journal line is in the future
+
+
+def test_core_hard_cap_keeps_identity(rich_vault: Vault) -> None:
+    small = build_core(rich_vault, today=TODAY, max_tokens=120)
     assert estimate_tokens(small) <= 120
-    assert "Is a senior data engineer" in small  # highest salience survives the cap
+    assert "Senior data engineer at Northwind Labs" in small
+    mid = build_core(rich_vault, today=TODAY, max_tokens=300)
+    assert estimate_tokens(mid) <= 300
+    assert "## Now" in mid  # the current chapter gets spare budget first
 
 
-def test_core_is_byte_stable(tmp_vault: Vault) -> None:
-    assert build_core(tmp_vault, today=TODAY) == build_core(Vault(tmp_vault.root), today=TODAY)
+def test_core_section_budgets_are_shared(tmp_vault: Vault) -> None:
+    """A huge skill list shrinks to fit its share; the other sections keep their lines."""
+    skills = [fact(f"Knows tool {i}", "has_skill", f"Tool{i:03d}", n=100 + i) for i in range(200)]
+    write_page(tmp_vault, "self/skills", "Skills", skills, regions=("skills",))
+    core = build_core(Vault(tmp_vault.root), today=TODAY)
+    skills_line = section(core, "Interests and skills")[0]
+    assert skills_line.startswith("- Skills: Python (expert), ") and "more)" in skills_line
+    assert headings(core) == SECTIONS
+    assert len(section(core, "Open loops")) == 2 and len(section(core, "Life story")) == 3
+
+
+def test_core_stays_small_on_a_large_vault(tmp_vault: Vault) -> None:
+    """~60 self facts (a CV-sized profile) still give a card under ~600 tokens."""
+    facts, n = [], 200
+    for i in range(20):
+        facts.append(fact(f"Is skilled in tool {i}", "has_skill", f"Tool number {i}", n=n + i))
+    for i in range(10):
+        facts.append(fact(f"Is into hobby {i}", "interest", f"Hobby number {i}", n=n + 20 + i))
+    for i, p in enumerate(["values"] * 5 + ["has_strength"] * 4 + ["has_flaw"] * 3):
+        facts.append(fact(f"Trait {i}", p, f"Trait number {i}", n=n + 40 + i))
+    for i in range(6):
+        start, end = 2000 + 3 * i, 2002 + 3 * i
+        span = (f"from:: {start}", f"to:: {end}")
+        facts.append(fact(f"Worked at Org {i}", "works_at", f"Org {i}", *span, n=n + 60 + i))
+        facts.append(fact(f"Was role {i}", "role", f"Role {i}", *span, n=n + 70 + i))
+    for i in range(6):
+        facts.append(fact(f"Side project {i}", "worked_on", f"Side project {i}", n=n + 80 + i))
+    write_page(tmp_vault, "self/everything", "Everything", facts, regions=("skills",))
+    vault = Vault(tmp_vault.root)
+    self_facts = sum(len(p.facts) for p in vault.pages() if p.subject == "self")
+    assert self_facts >= 60
+    core = build_core(vault, today=TODAY)
+    assert estimate_tokens(core) <= 600
+    assert headings(core) == SECTIONS
+    assert core.count("\n- ") <= 30  # grouped, not one line per fact
+
+
+def test_core_is_byte_stable(rich_vault: Vault) -> None:
+    first = build_core(rich_vault, today=TODAY)
+    assert first == build_core(Vault(rich_vault.root), today=TODAY)
+    assert "20:" not in first and "T1" not in first  # no timestamps
 
 
 def test_refresh_writes_and_commits_only_on_change(tmp_vault: Vault) -> None:
@@ -91,7 +389,7 @@ def test_refresh_writes_and_commits_only_on_change(tmp_vault: Vault) -> None:
     apply(cs, tmp_vault, review=False)
     changed = refresh_generated(tmp_vault, today=TODAY)
     assert {p.name for p in changed} == {"core.md", "index.md"}  # new page self/interests
-    assert "- Goes bouldering" in tmp_vault.core_path.read_text()
+    assert "- Interests and likes: bouldering" in tmp_vault.core_path.read_text()
     assert gitops.head(tmp_vault.root) != head
 
 

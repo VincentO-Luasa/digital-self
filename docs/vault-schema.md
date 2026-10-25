@@ -22,7 +22,7 @@ brain-vault/
   .claude/             # Claude Code only: skills + settings (SessionEnd hook, permissions)
   .mcp.json            # brain MCP server, privacy-filtered, for any MCP-capable client
   SCHEMA.md            # copy of this spec's version tag + vault-local conventions
-  core.md              # ≤1.5k-token profile, always in the local model's context (generated)
+  core.md              # ~300–600-token profile card, always in the local model's context (generated)
   index.md             # catalog: one line per wiki page, grouped by region (generated)
   log.md               # append-only timeline of every operation (generated)
   questions.md         # open knowledge gaps the brain wants to ask about (generated + manual)
@@ -186,8 +186,12 @@ are never silently dropped.
 
 ## Generated files
 
-- `core.md` — rewritten at consolidation from the highest-salience current facts: identity, current
-  role and projects, key people, current goals and worries. Hard cap 1.5k tokens.
+- `core.md` — the profile card, rebuilt deterministically from current facts (no LLM, no
+  timestamps): an identity line (`Name: … · role at employer (team) · lives in … · speaks …`),
+  then `## Who they are`, `## Now`, `## Life story`, `## People who matter`,
+  `## Interests and skills`, `## Open loops`. Multi-valued facts are grouped into comma lists,
+  jobs/studies/cities into lifetime periods; empty sections are left out. Aims at ~600 tokens,
+  hard cap `core_max_tokens`. Layout and rules: `docs/retrieval.md` ("L0: schema card").
 - `index.md` — `- [[id]] — one-line summary`, grouped by region. Read first by any agent.
 - `log.md` — `## [2026-10-25 14:30] extract | ep-20261025-1412-career | +3 facts, 1 superseded`.
 - `questions.md` — knowledge gaps with region, reason and priority; interviews draw from it.
