@@ -1,0 +1,223 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You read one excerpt of a document and extract facts for the owner's personal knowledge base. The document was written by the owner or is about the owner. Reply with JSON only.\n\nJSON fields, in this order:\n- reasoning: one or two sentences: what the excerpt is about and which kinds of facts it states.\n- owner_names: the names the excerpt uses for the owner (full name, short name). [] if none.\n- entities: the people, organisations, projects, places and events that facts below point to or are about. Not the owner. Tools, technologies, programming languages, skills and teams are never entities: write them as literal values. Each entity has:\n  - name: its name as written in the excerpt.\n  - type: one of person, org (company, university, school, club), project, place, topic, event.\n  - id: its id from KNOWN ENTITIES if it is the same thing, otherwise \"\".\n  - aliases: other names the excerpt uses for it; [] if none.\n  - summary: one short sentence saying what it is, using only the excerpt.\n- facts: one item per fact. Each fact has:\n  - subject: \"self\" for the owner; otherwise the name of an entity from your entities list.\n  - predicate: one of the predicates below.\n  - object: the value. Use an entity's name when the value is a person, organisation, project or place in your entities list; \"self\" when the value is the owner; otherwise a short literal such as \"Python\", \"Spanish\" or \"Senior data engineer\".\n  - text: a short sentence that starts with a verb and never names or refers to the subject (no name, no he, she, they, it or I), e.g. \"Works at Northwind Labs as a data engineer\", \"Speaks Spanish\", \"Uses Airflow for orchestration\".\n  - start: when it became true, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given); \"\" if the excerpt does not say.\n  - end: when it stopped being true, same format; \"\" if it is still true (\"present\", \"now\", \"currently\") or not said.\n\nPredicates:\n- name: the owner's full name.\n- born: birth date or year. hometown: where they grew up. lives_in: city they live in. nationality: a nationality. speaks: one language.\n- works_at: an employer (organisation). role: job title. team: team name. manager: who they report to. responsibility: an ongoing duty. worked_on: a project they worked on.\n- studied_at: a school or university. degree: a degree, e.g. \"MSc in Data Science\". certification: a certificate.\n- has_skill: one skill, tool or technique.\n- values: something they care about in life or work. interest: a hobby or interest. likes: something they enjoy.\n- goal: an aim (for a project: what it is trying to achieve).\n- owner: who owns or leads a project (subject: the project; object: the person, or \"self\"). status: a project's state. deadline: a project's due date. stakeholder: someone involved in a project. uses: a tool a project uses.\n- friend_of, family_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person; object: \"self\").\n- member_of: a group or club. located_in: where an organisation or place is. part_of: a larger whole.\n\nRules:\n- Extract only what the excerpt states. Do not guess, infer or add outside knowledge.\n- Subject and object are never the same.\n- One value per fact: three skills give three has_skill facts, two languages two speaks facts.\n- For each job give works_at (object: the organisation) and role (object: the title), both with the same start and end.\n- Use the dates the excerpt gives. Months are written YYYY-MM (March 2025 → 2025-03).\n- Reuse KNOWN ENTITIES: put their id in the entity's id field and keep the same name.\n- Skip contact details (emails, phone numbers, addresses), copyright lines and navigation text.\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera\n\nKNOWN ENTITIES (id: names):\n- self: the owner (name unknown)\n\nEXCERPT:\n<<<\n# Alex Rivera\n\nSenior data engineer at Northwind Labs · Porto, Portugal\n\n## About me\n\nHi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since\n2024, after five years in Lisbon. I grew up in Valencia, so I speak Spanish and English,\nand I'm slowly learning Portuguese.\n\nI care about boring, reliable pipelines, clear documentation and teams that share\nknowledge. Outside work I go bouldering and bake sourdough bread.\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\n## Projects\n\n### Atlas Migration\n\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all\nnightly batch pipelines from a legacy Hadoop cluster to a managed cloud warehouse. It\nuses Airflow for orchestration and dbt for transformations.\n\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor.\n\n## Skills\n\n- Python and SQL\n- Apache Spark\n- Airflow and dbt\n- Data modelling\n\n## Education\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\nBSc in Computer Science, Calder College, 2014–2018.\n\nWrite to me at alex@example.com. © 2026 Alex Rivera.\n>>>"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 4096,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Extraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "topic",
+                    "event"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                },
+                "summary": {
+                  "title": "Summary",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases",
+                "summary"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "ExtractedFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end"
+              ],
+              "title": "ExtractedFact",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "owner_names": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Owner Names",
+              "type": "array"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ExtractedFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "owner_names",
+            "entities",
+            "facts"
+          ],
+          "title": "Extraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-83455280",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\n  \"reasoning\": \"The excerpt is a professional profile for Alex Rivera, detailing his career history, education, skills, and personal interests. It provides specific facts about his roles, employers, projects, and location history.\",\n  \"owner_names\": [\n    \"Alex Rivera\",\n    \"Alex\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"Northwind Labs\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"An organization where Alex Rivera works as a Senior Data Engineer and previously as a Data Engineer.\"\n    },\n    {\n      \"name\": \"Porto\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A city in Portugal where Alex Rivera has lived since 2024.\"\n    },\n    {\n      \"name\": \"Lisbon\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A city in Portugal where Alex Rivera lived for five years before 2024.\"\n    },\n    {\n      \"name\": \"Valencia\",\n      \"type\": \"place\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"The city where Alex Rivera grew up.\"\n    },\n    {\n      \"name\": \"Fabrikam Retail\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"An organization where Alex Rivera worked as a Data Analyst.\"\n    },\n    {\n      \"name\": \"Atlas Migration\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A project at Northwind Labs involving moving batch pipelines to a cloud warehouse, led by Alex since 2026.\"\n    },\n    {\n      \"name\": \"Tidepool\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"An open-source library for data quality checks started by Alex in 2022.\"\n    },\n    {\n      \"name\": \"Sam Okafor\",\n      \"type\": \"person\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"Alex's friend who maintains the Tidepool library with him.\"\n    },\n    {\n      \"name\": \"Westbridge University\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"The university where Alex obtained an MSc in Data Science.\"\n    },\n    {\n      \"name\": \"Calder College\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"The college where Alex obtained a BSc in Computer Science.\"\n    },\n    {\n      \"name\": \"Hadoop\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A legacy technology from which pipelines are being moved.\"\n    },\n    {\n      \"name\": \"Airflow\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A tool used for orchestration in the Atlas Migration project.\"\n    },\n    {\n      \"name\": \"dbt\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A tool used for transformations in the Atlas Migration project.\"\n    },\n    {\n      \"name\": \"Python\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A skill possessed by Alex.\"\n    },\n    {\n      \"name\": \"SQL\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A skill possessed by Alex.\"\n    },\n    {\n      \"name\": \"Apache Spark\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A skill possessed by Alex.\"\n    },\n    {\n      \"name\": \"Data modelling\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A skill possessed by Alex.\"\n    },\n    {\n      \"name\": \"Spanish\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A language spoken by Alex.\"\n    },\n    {\n      \"name\": \"English\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A language spoken by Alex.\"\n    },\n    {\n      \"name\": \"Portuguese\",\n      \"type\": \"topic\",\n      \"id\": \"\",\n      \"aliases\": [],\n      \"summary\": \"A language Alex is learning.\"\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"name\",\n      \"object\": \"Alex Rivera\",\n      \"text\": \"Is named Alex Rivera.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Porto\",\n      \"text\": \"Has lived in Porto since 2024.\",\n      \"start\": \"2024\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Lisbon\",\n      \"text\": \"Lived in Lisbon for five years before moving to Porto.\",\n      \"start\": \"2019\",\n      \"end\": \"2024\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"hometown\",\n      \"object\": \"Valencia\",\n      \"text\": \"Grew up in Valencia.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"speaks\",\n      \"object\": \"Spanish\",\n      \"text\": \"Speaks Spanish.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"speaks\",\n      \"object\": \"English\",\n      \"text\": \"Speaks English.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Portuguese\",\n      \"text\": \"Is slowly learning Portuguese.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"boring, reliable pipelines\",\n      \"text\": \"Cares about boring, reliable pipelines.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"clear documentation\",\n      \"text\": \"Cares about clear documentation.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"values\",\n      \"object\": \"teams that share knowledge\",\n      \"text\": \"Cares about teams that share knowledge.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"bouldering\",\n      \"text\": \"Goes bouldering outside work.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"baking sourdough bread\",\n      \"text\": \"Bakes sourdough bread outside work.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"Works at Northwind Labs.\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Senior Data Engineer\",\n      \"text\": \"Holds the role of Senior Data Engineer.\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"Atlas Migration\",\n      \"text\": \"Leads the Atlas Migration.\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"platform team's on-call rotation\",\n      \"text\": \"Runs the platform team's on-call rotation.\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"Atlas Migration\",\n      \"text\": \"Worked on the Atlas Migration project.\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"Worked at Northwind Labs.\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Engineer\",\n      \"text\": \"Held the role of Data Engineer.\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"product analytics team\",\n      \"text\": \"Built the ingestion framework for the product analytics team.\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Fabrikam Retail\",\n      \"text\": \"Worked at Fabrikam Retail.\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Analyst\",\n      \"text\": \"Held the role of Data Analyst.\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"weekly sales reporting\",\n      \"text\": \"Owned the weekly sales reporting.\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Python\",\n      \"text\": \"Has skill in Python.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"SQL\",\n      \"text\": \"Has skill in SQL.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Apache Spark\",\n      \"text\": \"Has skill in Apache Spark.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Airflow\",\n      \"text\": \"Has skill in Airflow.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"dbt\",\n      \"text\": \"Has skill in dbt.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Data modelling\",\n      \"text\": \"Has skill in Data modelling.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"studied_at\",\n      \"object\": \"Westbridge University\",\n      \"text\": \"Studied at Westbridge University.\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"degree\",\n      \"object\": \"MSc in Data Science\",\n      \"text\": \"Obtained an MSc in Data Science.\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"studied_at\",\n      \"object\": \"Calder College\",\n      \"text\": \"Studied at Calder College.\",\n      \"start\": \"2014\",\n      \"end\": \"2018\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"degree\",\n      \"object\": \"BSc in Computer Science\",\n      \"text\": \"Obtained a BSc in Computer Science.\",\n      \"start\": \"2014\",\n      \"end\": \"2018\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"owner\",\n      \"object\": \"self\",\n      \"text\": \"Is led by Alex since 2026.\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"uses\",\n      \"object\": \"Airflow\",\n      \"text\": \"Uses Airflow for orchestration.\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"uses\",\n      \"object\": \"dbt\",\n      \"text\": \"Uses dbt for transformations.\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"owner\",\n      \"object\": \"self\",\n      \"text\": \"Is a small open-source library for data quality checks started by Alex.\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Sam Okafor\",\n      \"predicate\": \"friend_of\",\n      \"object\": \"self\",\n      \"text\": \"Is Alex's friend.\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Sam Okafor\",\n      \"predicate\": \"colleague_of\",\n      \"object\": \"self\",\n      \"text\": \"Maintains the Tidepool library together with Alex.\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    }\n  ]\n}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792936964,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 3614,
+      "prompt_tokens": 1411,
+      "total_tokens": 5025,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1404
+      },
+      "input_tokens": 1411,
+      "output_tokens": 3614,
+      "time_to_first_token": 0.16,
+      "total_time": 86.51,
+      "prompt_eval_duration": 0.16,
+      "generation_duration": 86.36,
+      "prompt_tokens_per_second": 43.84,
+      "generation_tokens_per_second": 41.85
+    }
+  }
+}
