@@ -107,7 +107,10 @@ def test_fact_line_tolerates_unknown_fields_and_order() -> None:
         ("- Likes tea (p:: likes) (o:: tea (rec:: 2026-10-25) ^f-abcdef", "unterminated"),
         ("- (p:: likes) (o:: tea) (rec:: 2026) (src:: [[e]]) (kind:: stated) ^f-abcdef", "text"),
         ("- Tea (p:: likes) (o:: tea) (rec:: x) (src:: [[e]]) (kind:: stated) ^f-abcdef", "rec"),
-        ("- Tea (p:: likes) (o:: tea) (rec:: 2026-10-25) (src:: [[e]]) (kind:: maybe) ^f-a", "kind"),
+        (
+            "- Tea (p:: likes) (o:: tea) (rec:: 2026-10-25) (src:: [[e]]) (kind:: maybe) ^f-a",
+            "kind",
+        ),
         ("- Tea (p:: likes) junk (o:: tea) (rec:: 2026-10-25) (src:: [[e]]) ^f-a", "between"),
     ],
 )

@@ -68,7 +68,8 @@ Body sections, in order:
 2. **Summary** — free prose written by the LLM at consolidation time. Never the only place a fact
    lives.
 3. `## Facts` — current facts, one per line, machine-parseable (below). Written by code only.
-4. `## History` — superseded facts, same format, with `to::` and `by::` set.
+4. `## History` — superseded facts, same format, with `to::` set (and `by::` when a newer fact
+   replaced them).
 5. `## Notes` — optional free-form human notes; the pipeline reads them as a source but never
    rewrites them.
 
@@ -88,12 +89,19 @@ Body sections, in order:
 | `src::` | yes | provenance: episode, raw doc, or review id. **No source, no fact.** |
 | `kind::` | yes | `stated` (you said it), `observed` (in a document), `inferred` (the brain concluded it) |
 | `evidence::` | inferred only | list of sources supporting an inference (no fake confidence numbers) |
-| `by::` | history only | block id of the superseding fact |
+| `by::` | history only | block id of the superseding fact; absent when a fact simply ended |
 | `^f-xxxxxx` | yes | block id: `f-` + 6 lowercase base32 chars; Obsidian can link to it |
 
 Rules:
 - **Supersede, never delete.** A contradicted fact moves to `## History` with `to::` (end of
   validity) and `by::`. Queries default to current facts; history answers "when / used to".
+  When an approved `add_fact` contradicts a current fact, the old one is retired this way:
+  `to::` is the new fact's `from::` if that is later, otherwise today.
+- **Restating is not contradicting.** A new fact with the same subject, `p` and `o` as a current
+  fact is a duplicate (skipped) when its dates are missing, equal or less precise. Different dates
+  (e.g. a new `to::`) make it a contradiction, which goes to review.
+- **Back-to-back is not overlap.** A fact ending in `2025-03` and one starting in `2025-03` hand over;
+  they don't clash.
 - **Contradiction checks are scoped** to the same `subject` + `p` (+ `o` for multi-valued
   predicates). Unscoped invalidation is a known failure mode (Graphiti #1728).
 - **Inferred facts** (traits, patterns, flaws) always go through the review queue.
@@ -189,9 +197,11 @@ are never silently dropped.
 Every change the pipeline is not allowed to auto-apply becomes a review file: a JSON block of
 operations (`create_entity`, `add_fact`, `supersede_fact`, `merge_entities`, `update_summary`,
 `add_alias`, `add_intention`). The canonical JSON shape of each operation is the Pydantic model in
-`brain.vault.ops` (Phase 1); `vault_template/AGENTS.md` mirrors it. plus a human-readable diff. Auto-applied: plain stated/observed facts with no
-contradiction. Queued: inferred facts, relationship changes, supersessions, merges, anything on a
-`private` page created by the big model.
+`brain.vault.ops`; `vault_template/AGENTS.md` mirrors it. Each review also carries a
+human-readable diff. Auto-applied: plain stated/observed facts with no contradiction. Queued:
+inferred facts, relationship changes, contradictions, supersessions, merges, and any change from
+the big model that touches a `private` page (as subject, as the object of a fact, or through a
+region the life map marks private).
 
 ## Privacy
 

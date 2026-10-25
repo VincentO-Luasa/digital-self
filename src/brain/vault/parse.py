@@ -285,8 +285,9 @@ def _add_fact_line(line: str, section: str, lineno: int, out: _Body, warn: _Warn
         return
     if not FACT_ID.match(fact.id):
         warn(lineno, f"non-canonical fact id ^{fact.id}")
-    if section == "history" and not (fact.valid_to and fact.by):
-        warn(lineno, f"history fact ^{fact.id} lacks to:: or by::")
+    if section == "history" and not fact.valid_to:
+        # by:: is set when a newer fact replaced this one; a fact that just ended has none
+        warn(lineno, f"history fact ^{fact.id} lacks to::")
     (out.facts if section == "facts" else out.history).append(fact)
 
 

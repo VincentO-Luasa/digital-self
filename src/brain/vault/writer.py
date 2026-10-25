@@ -3,12 +3,13 @@ append to log.md and commit the vault (one commit per change set)."""
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from pydantic import TypeAdapter
@@ -60,6 +61,8 @@ from brain.vault.store import SELF_PAGE, Vault
 
 TYPE_DIRS = {t: d for d, t in DIR_TYPES.items()}
 ENTITY_ID = re.compile(r"^[a-z]+/[a-z0-9][a-z0-9._-]*$")
+SECTION_HEADING = re.compile(r"^##\s+\S")  # as parse._parse_page_body sees it
+REVIEW_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 SELF_REGION_PAGES = {"self.values_goals": "self/goals"}  # other self.* regions → self/<name>
 _OPS = TypeAdapter(list[Operation])
 
@@ -204,8 +207,37 @@ def _hi(d: str | None) -> str:
     return (d + "~") if d else "9999~"  # "~" sorts after digits and "-": "2024~" > "2024-12-31"
 
 
+def _ends_by(end: str | None, start: str | None) -> bool:
+    """True if validity ending at ``end`` is over by ``start``. Equal dates are a handover
+    (supersession writes the old ``to::`` as the new ``from::``), not an overlap."""
+    return bool(end and start) and (end == start or _hi(end) < _lo(start))
+
+
 def _overlaps(a: Fact | FactSpec, b: Fact | FactSpec) -> bool:
-    return _lo(a.valid_from) <= _hi(b.valid_to) and _lo(b.valid_from) <= _hi(a.valid_to)
+    return not _ends_by(a.valid_to, b.valid_from) and not _ends_by(b.valid_to, a.valid_from)
+
+
+def _date_problem(*dates: str | None) -> str | None:
+    """Partial dates must be real calendar dates (the models only check the shape)."""
+    for d in dates:
+        if not d:
+            continue
+        parts = [int(x) for x in d.split("-")]
+        try:
+            date(parts[0], parts[1] if len(parts) > 1 else 1, parts[2] if len(parts) > 2 else 1)
+        except ValueError:
+            return f"{d} is not a valid date"
+    return None
+
+
+def _order_problem(valid_from: str | None, valid_to: str | None) -> str | None:
+    if valid_from and valid_to and _hi(valid_to) < _lo(valid_from):
+        return f"valid time ends before it starts ({valid_from} → {valid_to})"
+    return None
+
+
+def _window_problem(valid_from: str | None, valid_to: str | None) -> str | None:
+    return _date_problem(valid_from, valid_to) or _order_problem(valid_from, valid_to)
 
 
 def _subject(op: AddFact) -> str:
@@ -213,22 +245,42 @@ def _subject(op: AddFact) -> str:
     return SELF_ID if subject == SELF_PAGE else subject
 
 
+def _adds_nothing(new: str | None, old: str | None) -> bool:
+    """A bound says nothing new if it is unknown, equal, or a coarser form of the old one."""
+    return new is None or (old is not None and old.startswith(new))
+
+
 def _duplicate(state: _State, subject: str, spec: FactSpec) -> Fact | None:
+    """A current fact with the same p and o that already says everything ``spec`` says."""
     for f in state.facts_about(subject):
-        same_time = (f.valid_from, f.valid_to) == (spec.valid_from, spec.valid_to)
-        if f.p == spec.p and _norm(f.o) == _norm(spec.o) and same_time:
+        if f.p != spec.p or _norm(f.o) != _norm(spec.o):
+            continue
+        if _adds_nothing(spec.valid_from, f.valid_from) and _adds_nothing(
+            spec.valid_to, f.valid_to
+        ):
             return f
     return None
 
 
-def _conflict(state: _State, subject: str, spec: FactSpec) -> Fact | None:
-    """Scoped contradiction check: same subject + p (+ o for multi-valued predicates)."""
+def _conflicts(state: _State, subject: str, spec: FactSpec) -> list[Fact]:
+    """Scoped contradiction check: same subject + p (+ o for multi-valued predicates), with
+    overlapping valid time. Run after ``_duplicate``: a same-o hit here carries new dates."""
     multi = is_multi_valued(spec.p, subject)
-    for f in state.facts_about(subject):
-        if f.p != spec.p or (multi and _norm(f.o) != _norm(spec.o)):
-            continue
-        if _overlaps(f, spec):
-            return f
+    return [
+        f
+        for f in state.facts_about(subject)
+        if f.p == spec.p and (not multi or _norm(f.o) == _norm(spec.o)) and _overlaps(f, spec)
+    ]
+
+
+def _conflict(state: _State, subject: str, spec: FactSpec) -> Fact | None:
+    return next(iter(_conflicts(state, subject, spec)), None)
+
+
+def _heading_problem(summary: str) -> str | None:
+    """A ``## `` line in a summary would open another section on the next parse."""
+    if any(SECTION_HEADING.match(line) for line in summary.splitlines()):
+        return "a summary may not contain ## section headings"
     return None
 
 
@@ -249,13 +301,16 @@ def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | 
                 return f"bad entity id {op.id!r}"
             if op.id.split("/", 1)[0] != TYPE_DIRS[op.type]:
                 return f"{op.type} pages live under {TYPE_DIRS[op.type]}/"
-            if op.id in state.pages:
+            if op.id in state.pages or op.id in state.queued_entities:
                 return f"{op.id} already exists"
+            return _heading_problem(op.summary)
         case AddFact():
             if not src:
                 return "no source, no fact"
             if op.p not in PREDICATES:
                 return f"unknown predicate {op.p!r}"
+            if problem := _window_problem(op.valid_from, op.valid_to):
+                return problem
             if _subject(op) != SELF_ID and (need := _require_page(state, op.subject)):
                 return need
             if dup := _duplicate(state, _subject(op), op):
@@ -266,10 +321,14 @@ def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | 
                 return f"unknown fact ^{op.fact_id}"
             if found[2]:
                 return f"^{op.fact_id} is already superseded"
+            if problem := _date_problem(op.to) or _order_problem(found[1].valid_from, op.to):
+                return problem
             if op.new and op.new.p not in PREDICATES:
                 return f"unknown predicate {op.new.p!r}"
             if op.new and not src:
                 return "no source, no fact"
+            if op.new and (problem := _window_problem(op.new.valid_from, op.new.valid_to)):
+                return problem
         case MergeEntities():
             if _entity(op.keep) == _entity(op.merge):
                 return "cannot merge an entity into itself"
@@ -279,8 +338,10 @@ def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | 
                 if _entity(entity) == SELF_ID or entity.startswith("self/"):
                     return "self pages cannot be merged"
         case UpdateSummary():
-            return _require_page(state, op.id)
+            return _require_page(state, op.id) or _heading_problem(op.summary)
         case AddAlias():
+            if not _clean(op.alias):
+                return "empty alias"
             if need := _require_page(state, op.id):
                 return need
             page = state.page(op.id)
@@ -362,7 +423,7 @@ def _build_fact(state: _State, spec: FactSpec, src: list[str]) -> Fact:
         rec=state.today,
         src=list(src),
         kind=spec.kind,
-        evidence=[_clean(e) for e in spec.evidence],
+        evidence=[_clean(e).replace('"', "'") for e in spec.evidence],  # as render_links does
         extra={_clean(k): _clean(v) for k, v in spec.extra.items()},
     )
     try:
@@ -374,7 +435,7 @@ def _build_fact(state: _State, spec: FactSpec, src: list[str]) -> Fact:
     return fact
 
 
-def _ensure_fact_page(state: _State, op: AddFact) -> Page:
+def _ensure_fact_page(state: _State, op: AddFact, result: ApplyResult) -> Page:
     page_id, region = _fact_page_id(state, op)
     if page := state.pages.get(page_id):
         return page
@@ -392,6 +453,8 @@ def _ensure_fact_page(state: _State, op: AddFact) -> Page:
         updated=state.today,
     )
     state.pages[page_id] = page
+    state.deleted.discard(page_id)
+    result.created.append(page_id)
     return page
 
 
@@ -413,13 +476,36 @@ def _apply_create(op: CreateEntity, state: _State, result: ApplyResult) -> None:
         summary=op.summary.strip(),
     )
     state.pages[op.id] = page
+    state.deleted.discard(op.id)  # re-created after a merge earlier in the change set
     state.touch(page)
     result.created.append(op.id)
 
 
+def _start_after(old: Fact, start: str | None) -> str | None:
+    """The replacement's ``from::`` as the old fact's end, if it starts after the old one."""
+    return start if start and not _ends_by(start, old.valid_from) else None
+
+
+def _retire(
+    state: _State, page: Page, old: Fact, end: str | None, by: str | None, result: ApplyResult
+) -> None:
+    """Supersede, never delete: move ``old`` to History with ``to::`` (and ``by::``).
+    Without an end date it ended when the brain recorded the change."""
+    end = end or old.valid_to or state.today.isoformat()
+    page.facts.remove(old)
+    page.history.append(old.model_copy(update={"valid_to": end, "by": by}))
+    state.touch(page)
+    result.superseded += 1
+
+
 def _apply_add_fact(op: AddFact, state: _State, src: list[str], result: ApplyResult) -> None:
     fact = _build_fact(state, op, src)
-    page = _ensure_fact_page(state, op)
+    clashes = _conflicts(state, _subject(op), op)
+    page = _ensure_fact_page(state, op, result)
+    for old in clashes:  # only when applied despite the policy (review=False / approve)
+        found = state.find_fact(old.id)
+        assert found
+        _retire(state, found[0], old, _start_after(old, op.valid_from), fact.id, result)
     page.facts.append(fact)
     state.touch(page)
     result.facts_added += 1
@@ -431,18 +517,12 @@ def _apply_supersede(op: SupersedeFact, state: _State, src: list[str], result: A
     assert found
     page, old, _ = found
     new = _build_fact(state, op.new, src) if op.new else None
-    end = op.to or old.valid_to or (op.new.valid_from if op.new else None)
-    moved = old.model_copy(
-        update={"valid_to": end or state.today.isoformat(), "by": new.id if new else None}
-    )
-    page.facts.remove(old)
-    page.history.append(moved)
+    end = op.to or old.valid_to or (_start_after(old, op.new.valid_from) if op.new else None)
+    _retire(state, page, old, end, new.id if new else None, result)
     if new:
         page.facts.append(new)
         result.facts_added += 1
         result.new_ids.append(new.id)
-    state.touch(page)
-    result.superseded += 1
 
 
 def _link_pattern(old: str) -> re.Pattern[str]:
@@ -686,8 +766,10 @@ def _done_path(vault: Vault, review_id: str, now: datetime) -> Path:
 
 
 def _pending_path(vault: Vault, review_id: str) -> Path:
+    if not REVIEW_ID.match(review_id):  # never let an id walk out of reviews/pending/
+        raise ReviewNotFound(review_id)
     path = vault.reviews_pending_dir / f"{review_id}.md"
-    if not path.exists():
+    if not path.is_file():
         raise ReviewNotFound(review_id)
     return path
 
@@ -750,19 +832,66 @@ def _collect_files(state: _State) -> dict[Path, str | None]:
     return files
 
 
-def _write_files(files: dict[Path, str | None]) -> None:
-    for path, text in files.items():
-        if text is None:
+def _tmp(path: Path) -> Path:
+    return path.with_name(f".{path.name}.tmp")
+
+
+def _mkdirs(path: Path, made: list[Path]) -> None:
+    missing = [d for d in (path, *path.parents) if not d.exists()]
+    for d in reversed(missing):
+        d.mkdir()
+        made.append(d)
+
+
+def _write_files(files: dict[Path, str | None]) -> dict[Path, bytes | None]:
+    """Write every file or none: stage temp files, then swap them in. On failure the touched
+    files are restored and the error re-raised. Returns the previous contents for rollback."""
+    backup = {path: path.read_bytes() if path.is_file() else None for path in files}
+    made: list[Path] = []
+    try:
+        for path, text in files.items():
+            if text is not None:
+                _mkdirs(path.parent, made)
+                _tmp(path).write_text(text, encoding="utf-8")
+        for path, text in files.items():
+            if text is None:
+                path.unlink(missing_ok=True)
+            else:
+                os.replace(_tmp(path), path)
+    except BaseException:
+        _restore(backup, made)
+        raise
+    return backup
+
+
+def _restore(backup: dict[Path, bytes | None], made: list[Path] | None = None) -> None:
+    for path, data in backup.items():
+        _tmp(path).unlink(missing_ok=True)
+        if data is None:
             path.unlink(missing_ok=True)
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f".{path.name}.tmp")
-        tmp.write_text(text, encoding="utf-8")
-        os.replace(tmp, path)
+        elif not path.is_file() or path.read_bytes() != data:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+    for d in reversed(made or []):
+        with contextlib.suppress(OSError):  # not empty: something else lives there now
+            d.rmdir()
 
 
 def _commit(vault: Vault, message: str) -> str | None:
     return gitops.commit_all(vault.root, message)
+
+
+def _write_and_commit(vault: Vault, files: dict[Path, str | None], message: str) -> str | None:
+    """Write ``files`` and commit them as one change; on any failure leave the vault as it was."""
+    backup = _write_files(files)
+    try:
+        return _commit(vault, message)
+    except BaseException:
+        _restore(backup)
+        if gitops.is_repo(vault.root):  # unstage what commit_all may have added
+            paths = [str(p.relative_to(vault.root)) for p in backup]
+            gitops._git(vault.root, "reset", "-q", "--", *paths, check=False)
+        raise
 
 
 # --- public API --------------------------------------------------------------------------------
@@ -807,12 +936,13 @@ def _run(
         path = vault.reviews_pending_dir / f"{result.review_id}.md"
         files[path] = _render_review(result.review_id, cs, result.queued, state)
     files.update(extra_files or {})
-    if cs.ops:
-        _append_log(vault, files, _log_entry(cs, result, now))
-    _write_files(files)
+    if not files:  # nothing applied or queued: no log entry, no commit
+        return result
+    _append_log(vault, files, _log_entry(cs, result, now))
+    result.commit = _write_and_commit(
+        vault, files, f"brain: {cs.origin} {', '.join(cs.src) or '-'}"
+    )
     result.changed = sorted(files)
-    if files:
-        result.commit = _commit(vault, f"brain: {cs.origin} {', '.join(cs.src) or '-'}")
     return result
 
 
@@ -845,10 +975,10 @@ def reject(review_id: str, reason: str, vault: Vault, *, now: datetime | None = 
     """Move a pending review to ``reviews/done/YYYY/MM/`` as rejected; return its new path."""
     now = now or datetime.now()
     path = _pending_path(vault, review_id)
+    load_review(path)  # refuse to move anything that is not a review
     done = _done_path(vault, review_id, now)
     files: dict[Path, str | None] = {path: None, done: _resolved(path, "rejected", now, reason)}
-    entry = f"## [{now:%Y-%m-%d %H:%M}] user | {review_id} | rejected: {reason}"
+    entry = f"## [{now:%Y-%m-%d %H:%M}] user | {review_id} | rejected: {_clean(reason)}"
     _append_log(vault, files, [entry])
-    _write_files(files)
-    _commit(vault, f"brain: reject {review_id}")
+    _write_and_commit(vault, files, f"brain: reject {review_id}")
     return done
