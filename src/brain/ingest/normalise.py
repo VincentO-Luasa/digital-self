@@ -88,6 +88,49 @@ PAST = re.compile(
 EMPLOYMENT_START = {"is", "was", "has", "had", "joined", "employed", "currently", "now", "holds"}
 WORK_VERBS = {"work", "works", "worked", "working"}
 PAST_SINGLE = ("lives_in", "role", "team", "manager")  # a stale value would contradict today's
+LANGUAGES = frozenset(
+    [
+        "arabic",
+        "bengali",
+        "catalan",
+        "chinese",
+        "mandarin",
+        "cantonese",
+        "czech",
+        "danish",
+        "dutch",
+        "english",
+        "finnish",
+        "french",
+        "german",
+        "greek",
+        "hebrew",
+        "hindi",
+        "hungarian",
+        "indonesian",
+        "italian",
+        "japanese",
+        "korean",
+        "norwegian",
+        "persian",
+        "polish",
+        "portuguese",
+        "romanian",
+        "russian",
+        "spanish",
+        "swahili",
+        "swedish",
+        "thai",
+        "turkish",
+        "ukrainian",
+        "urdu",
+        "vietnamese",
+        "basque",
+        "galician",
+        "welsh",
+        "irish",
+    ]
+)
 # (present, past) templates for fact text; {o} is the object's name.
 TEMPLATES: dict[str, tuple[str, str]] = {
     "name": ("Is called {o}", "Was called {o}"),
@@ -372,21 +415,65 @@ class _Resolver:
         return entity_id
 
 
+def _merge_start(a: str | None, b: str | None) -> str | None:
+    """The most precise start wins ("2024-04" over a vague "2022" from a summary line); among
+    equally precise ones the earliest (two stints at one employer span both)."""
+    starts = [d for d in (a, b) if d]
+    if not starts:
+        return None
+    best = max(len(d) for d in starts)
+    return min(d for d in starts if len(d) == best)
+
+
 def _merge(facts: list[_Fact], notes: list[str]) -> list[_Fact]:
-    """One fact per (subject, p, o), spanning the union of the duplicates' periods: the
-    earliest start, and no end if any of them is still true."""
+    """One fact per (subject, p, o): the most precise start (see ``_merge_start``), and no end
+    if any of the duplicates is still true."""
     out: dict[tuple[str, str, str], _Fact] = {}
     for fact in facts:
         key = (fact.subject, fact.p, fold(fact.o))
         if prev := out.get(key):
-            starts = [d for d in (prev.start, fact.start) if d]
-            prev.start = min(starts) if starts else None
+            start = _merge_start(prev.start, fact.start)
+            if prev.start and fact.start and len(prev.start) != len(fact.start):
+                vague = fact.start if start == prev.start else prev.start
+                notes.append(f"{fact.p} {fact.o}: kept start {start} over the vaguer {vague}")
+            prev.start = start
             prev.end = None if None in (prev.end, fact.end) else max(prev.end or "", fact.end or "")
             prev.text = prev.text or fact.text
             notes.append(f"merged duplicate {fact.p} fact: {fact.text or fact.o}")
         else:
             out[key] = fact
     return list(out.values())
+
+
+def _one_current(facts: list[_Fact], notes: list[str]) -> list[_Fact]:
+    """Single-valued predicates: an undated value next to a dated current one from the same
+    document is a vaguer mention of the same state ("Researcher" beside "Research Engineer since
+    2024-04", "France" beside "Paris since 2024-04"), not a contradiction for review."""
+    dated = {
+        (f.subject, f.p)
+        for f in facts
+        if not is_multi_valued(f.p, f.subject) and f.start and f.end is None
+    }
+    out = []
+    for f in facts:
+        undated = f.start is None and f.end is None
+        if undated and not is_multi_valued(f.p, f.subject) and (f.subject, f.p) in dated:
+            notes.append(f"dropped undated {f.p} {f.o!r}: the document gives a dated current one")
+            continue
+        out.append(f)
+    return out
+
+
+def _team_as_employer(facts: list[_Fact], name_of: Callable[[str], str], notes: list[str]):
+    """``works_at`` naming one of the document's teams ("BioAI" beside team BioAI)."""
+    teams = {fold(f.o) for f in facts if f.p == "team"}
+    out = []
+    for f in facts:
+        if f.p == "works_at" and fold(name_of(f.o)) in teams:
+            notes.append(f"dropped works_at {name_of(f.o)!r}: it is a team, not an employer")
+            continue
+        out.append(f)
+    return out
 
 
 def _order(facts: list[_Fact]) -> list[_Fact]:
@@ -472,6 +559,9 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
     if ZERO_COUNT.search(value) or ZERO_COUNT.search(text):
         notes.append(f"dropped {p} fact with a zero count (an unread page counter?): {about}")
         return None
+    if p == "has_skill" and fold(value) in LANGUAGES:
+        p = "speaks"
+        notes.append(f"has_skill → speaks ({value} is a language)")
     if p == "uses" and res.kind(subject) in ("self", "person"):
         p = "has_skill"
         notes.append(f"uses → has_skill (the subject is not a project): {value}")
@@ -519,7 +609,7 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
         if p == "works_at" and okind == "project":
             notes.append(f"works_at → worked_on ({name!r} is a project): {about}")
             p = "worked_on"
-        elif p in RELATIONSHIP_PREDICATES or p in ("works_at", "owner", "manager"):
+        elif p in RELATIONSHIP_PREDICATES or p in ("works_at", "studied_at", "owner", "manager"):
             notes.append(f"dropped {p} fact: {name!r} is a {okind}: {about}")
             return None
         else:
@@ -591,7 +681,8 @@ def build_changeset(
             return o
         return owner_display if target == SELF_ID else res.title(target)
 
-    facts = _order(_past_without_end(_merge(facts, notes), name_of, notes))
+    facts = _past_without_end(_merge(facts, notes), name_of, notes)
+    facts = _order(_one_current(_team_as_employer(facts, name_of, notes), notes))
 
     used = {f.subject for f in facts} | {t for f in facts if (t := f.target)}
     for entity_id in [i for i in res.planned if i not in used]:

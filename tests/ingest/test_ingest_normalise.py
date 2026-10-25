@@ -231,3 +231,43 @@ def test_template_text() -> None:
     assert text_problem("Writes code daily", **lint) == "no object"
     assert text_problem("Alex writes Python", **lint) == "the owner's name"
     assert text_problem("Writes Python " + "x" * 200, **lint) == "too long"
+
+
+def test_vague_duplicates_and_mentions_dont_become_contradictions(fresh_vault: Vault) -> None:
+    """Slips seen on a real homepage: a summary line with a vague year beside the career
+    section's exact date, the team named as an employer, a country beside the city, a city as
+    a school, and languages listed as skills."""
+    extraction = {
+        "reasoning": "Header summary and career section.",
+        "owner_names": ["Alex Rivera"],
+        "entities": [
+            entity("Northwind Labs", "org"),
+            entity("Data Platform", "org"),
+            entity("Porto", "place"),
+            entity("Portugal", "place"),
+            entity("Lisbon", "place"),
+        ],
+        "facts": [
+            fact("self", "works_at", "Northwind Labs", "", "2022"),
+            fact("self", "works_at", "Northwind Labs", "", "2024-04"),
+            fact("self", "role", "Data engineer", "", "2024-04"),
+            fact("self", "role", "Engineer", ""),
+            fact("self", "team", "Data Platform", ""),
+            fact("self", "works_at", "Data Platform", ""),
+            fact("self", "lives_in", "Porto", "", "2024-04"),
+            fact("self", "lives_in", "Portugal", ""),
+            fact("self", "studied_at", "Lisbon", ""),
+            fact("self", "has_skill", "Spanish", ""),
+            fact("self", "has_skill", "Python", ""),
+        ],
+    }
+    out = build(fresh_vault, extraction)
+    facts = {(f.p, f.o): f for f in facts_of(out.changeset.ops)}
+    assert facts[("works_at", "[[orgs/northwind-labs]]")].valid_from == "2024-04"
+    assert ("role", "Engineer") not in facts
+    assert ("works_at", "[[orgs/data-platform]]") not in facts
+    assert not any(p == "lives_in" and "portugal" in o for p, o in facts)
+    assert not any(p == "studied_at" for p, _ in facts)
+    assert ("speaks", "Spanish") in facts and ("has_skill", "Python") in facts
+    creates = {op.id for op in out.changeset.ops if isinstance(op, CreateEntity)}
+    assert "orgs/data-platform" not in creates and "places/porto" in creates
