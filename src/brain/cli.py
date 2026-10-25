@@ -222,6 +222,10 @@ def ingest_cmd(
         int,
         typer.Option("--follow", min=0, help="Also ingest up to N same-origin pages it links to."),
     ] = 0,
+    no_cache: Annotated[
+        bool,
+        typer.Option("--no-cache", help="Re-run the model even for excerpts it already read."),
+    ] = False,
 ) -> None:
     """Import a document or a web page into memory."""
     from brain.ingest import FetchError, UnsupportedDocument, ingest, ingest_url, is_url
@@ -237,6 +241,10 @@ def ingest_cmd(
     settings = get_settings()
     vault = _vault(settings)
     llm = _model(settings)
+    if not no_cache:
+        from brain.llm.cache import StructuredCache
+
+        llm = StructuredCache(llm, vault.brain_dir / "cache" / "llm")
     kind = "observed" if observed else "stated"
 
     def progress(item: ChunkReport, total: int) -> None:

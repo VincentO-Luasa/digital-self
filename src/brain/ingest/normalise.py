@@ -637,7 +637,10 @@ def build_changeset(
     src: str,
     kind: Kind = "stated",
     rationale: str = "",
+    today: date | None = None,
 ) -> Normalised:
+    """``today`` is the ingest date: the model sometimes dates facts to it ("Today is …" is in
+    its prompt); a document can't, so such starts are dropped."""
     notes: list[str] = []
     profile = vault.page(SELF_PAGE)
     profile_names = [profile.title, *profile.aliases] if profile else []
@@ -668,9 +671,15 @@ def build_changeset(
             res.plan(name, entity.type, entity.aliases)
 
     facts: list[_Fact] = []
+    cutoff = (today or date.today()).isoformat()
     for extraction in extractions:
         for raw in extraction.facts:
             if fact := _convert_fact(raw, res, notes):
+                if fact.start and len(fact.start) == len(cutoff) and fact.start >= cutoff:
+                    notes.append(
+                        f"dropped start {fact.start} (the ingest day): {fact.text or fact.o}"
+                    )
+                    fact.start = None
                 facts.append(fact)
 
     owner_display = owner_all[0] if owner_all else "the owner"

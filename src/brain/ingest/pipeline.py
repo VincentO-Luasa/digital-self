@@ -261,6 +261,7 @@ def _ingest_document(
         src=report.raw_path,
         kind=kind,
         rationale=f"Imported from {source} ({len(chunks)} {noun}).",
+        today=today,
     )
     report.applied = apply(report.normalised.changeset, vault)
     report.generated = refresh_generated(vault, max_tokens=core_max_tokens, today=today)

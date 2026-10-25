@@ -271,3 +271,24 @@ def test_vague_duplicates_and_mentions_dont_become_contradictions(fresh_vault: V
     assert ("speaks", "Spanish") in facts and ("has_skill", "Python") in facts
     creates = {op.id for op in out.changeset.ops if isinstance(op, CreateEntity)}
     assert "orgs/data-platform" not in creates and "places/porto" in creates
+
+
+def test_starts_dated_to_the_ingest_day_are_dropped(fresh_vault: Vault) -> None:
+    from datetime import date
+
+    extraction = {
+        "reasoning": "Current job.",
+        "owner_names": [],
+        "entities": [entity("Northwind Labs", "org")],
+        "facts": [
+            fact("self", "role", "Data engineer", "", "2026-10-25"),
+            fact("self", "role", "Data engineer", "", "2024-04"),
+            fact("self", "works_at", "Northwind Labs", "", "2026-10"),
+        ],
+    }
+    out = build_changeset(
+        [Extraction.model_validate(extraction)], fresh_vault, src=SRC, today=date(2026, 10, 25)
+    )
+    facts = {(f.p, f.o): f for f in facts_of(out.changeset.ops)}
+    assert facts[("role", "Data engineer")].valid_from == "2024-04"
+    assert facts[("works_at", "[[orgs/northwind-labs]]")].valid_from == "2026-10"  # a month is kept
