@@ -89,4 +89,5 @@ scripts/privacy_check.sh --all   # before every push
 
 ## Status
 
-Phase 0 (scaffolding, docs, skills, runtime). See the phase table in `docs/architecture.md`.
+Phase 1 done (vault, index, ingest, read-only chat, CLI). Next: Phase 2. See the phase table in
+`docs/architecture.md`.

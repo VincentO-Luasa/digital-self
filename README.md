@@ -87,6 +87,22 @@ brain  ▸ → Ask the big model: needs multi-step reasoning.
 - **Design and research**: [architecture](docs/architecture.md) · [research notes](docs/research.md)
   · [decision log](docs/decisions.md).
 
+## Try it
+
+Needs an Apple-silicon Mac (32GB), [uv](https://docs.astral.sh/uv/) and an OpenAI-compatible
+local model server (the author uses [oMLX](https://github.com/jundot/omlx) with Qwen3.6-35B-A3B,
+Qwen3-Embedding and Qwen3-Reranker; see `.claude/skills/local-llm`).
+
+```bash
+git clone https://github.com/VincentO-Luasa/digital-self && cd digital-self
+git config core.hooksPath .githooks   # privacy guard: keeps personal data out of commits
+uv sync
+uv run brain init-vault               # creates ~/brain-vault (local git, no remote)
+uv run brain ingest ~/cv.pdf          # a CV, homepage or notes about you
+uv run brain review                   # approve what the brain wasn't sure about
+uv run brain chat
+```
+
 ## Privacy
 
 - Memory lives in `~/brain-vault`, a local git repo with no remote. This public repo holds only
@@ -101,8 +117,8 @@ brain  ▸ → Ask the big model: needs multi-step reasoning.
 | phase | | |
 |---|---|---|
 | 0 | design, research, privacy guardrails, local runtime | ✅ |
-| 1 | vault, index, ingest, read-only chat | 🚧 |
-| 2 | episodes, extraction, review queue, **interview mode** | |
+| 1 | vault, index, ingest, read-only chat | ✅ |
+| 2 | episodes, extraction, review queue, **interview mode** | 🚧 |
 | 3 | router, effort tiers, handoff, MCP server | |
 | 4 | "sleep": consolidation, briefing cards, person models | |
 | 5 | personal memory eval, tuning, web UI | |

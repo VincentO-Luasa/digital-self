@@ -175,15 +175,15 @@ and retrieved context under ~1.5k tokens.
 
 ## Phases
 
-| phase | deliverable |
-|---|---|
-| 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked |
-| 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` |
-| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** |
-| 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook |
-| 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint, decay |
-| 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI |
-| 6 | "graph of my life" visualisation (interactive, time slider, region filters) |
+| phase | deliverable | status |
+|---|---|---|
+| 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked | done |
+| 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` | done |
+| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | next |
+| 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook | |
+| 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint, decay | |
+| 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI | |
+| 6 | "graph of my life" visualisation (interactive, time slider, region filters) | |
 
 ## Open items (from Phase 0 review)
 
@@ -209,3 +209,20 @@ and retrieved context under ~1.5k tokens.
   today); `gitops` needs a public helper to unstage paths (rollback uses a private one).
 - An approved fact's `rec::` is the approval date, while an observation keeps the change set's
   date. Decide which "learned at" the brain means.
+
+## Open items (from the first real ingest)
+
+Quality issues seen on a real personal homepage (about 3.8k tokens, 10 chunks, 100 facts, ~6 min):
+
+- `core.md` lists every current fact about the owner. It needs per-section caps, dedup of
+  near-identical lines and a real salience ranking (Phase 4 consolidation; a stopgap in Phase 2).
+- HTML loaders read animated counters at their initial value ("0 years of…"). Prefer `data-*`
+  target values or drop numeric claims that read as 0.
+- The model creates pages for tools and products (an AI assistant, a code host, a database
+  record id) and for teams. Normalise those to literal values, as the prompt already asks.
+- `works_at` is misused for responsibilities ("Works on models that…"); they get merged into the
+  employer fact and lost. Map verb-led descriptions to `responsibility`.
+- Fact text sometimes uses pronouns ("his") or "their toolkit"; render from a template or
+  post-edit.
+- Dated past residences without dates contradict the current city and go to review; the
+  extractor should set `end` when the text says "previously" or uses the past tense.
