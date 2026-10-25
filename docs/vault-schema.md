@@ -17,9 +17,10 @@ explicit stated-vs-inferred split. See `docs/research.md`.
 
 ```
 brain-vault/
-  CLAUDE.md            # workspace instructions for Claude (installed from vault_template/)
-  .claude/             # skills + settings (SessionEnd hook) for escalation sessions
-  .mcp.json            # brain MCP server, privacy-filtered
+  AGENTS.md            # runtime instructions for the big model working in the vault (from vault_template/)
+  CLAUDE.md            # thin Claude Code wrapper: imports AGENTS.md + Claude-Code-specific notes
+  .claude/             # Claude Code only: skills + settings (SessionEnd hook, permissions)
+  .mcp.json            # brain MCP server, privacy-filtered, for any MCP-capable client
   SCHEMA.md            # copy of this spec's version tag + vault-local conventions
   core.md              # ≤1.5k-token profile, always in the local model's context (generated)
   index.md             # catalog: one line per wiki page, grouped by region (generated)
@@ -30,8 +31,8 @@ brain-vault/
   raw/                 # IMMUTABLE sources — episodic ground truth
     docs/              #   imported documents: CV, website snapshot, exports
     conversations/YYYY/MM/<session-id>.md   # full local chat / interview transcripts
-    claude/YYYY/MM/<session-id>.jsonl       # Claude Code transcripts copied by the SessionEnd hook
-    inbox/             #   dropped files / pasted claude.ai chats waiting for ingest
+    external/<provider>/YYYY/MM/<session-id>.*   # big-model conversations (see below)
+    inbox/             #   dropped files / pasted web chats (ChatGPT, Kimi, Claude.ai, …) waiting for ingest
   episodes/YYYY/MM/<episode-id>.md          # topic-sized chunks of conversations (see below)
   wiki/                # SEMANTIC memory — LLM-maintained, human-editable
     self/              #   profile.md, traits.md, goals.md, routine.md, health.md, …
@@ -124,7 +125,8 @@ id: ep-20261025-1412-career
 type: episode
 session: conv-20261025-1400        # raw/conversations/... transcript
 turns: [3, 17]                     # inclusive turn range in that transcript
-channel: interview                 # chat | interview | claude | import
+channel: interview                 # chat | interview | external | import
+# provider: claude-code            # channel external only: the escalation provider id
 regions: [career.current_job]
 entities: ["[[orgs/northwind-labs]]", "[[people/sam-okafor]]"]
 importance: 6                      # 1–10, scored at segmentation time
@@ -134,6 +136,19 @@ status: extracted                  # pending | extracted | consolidated
 ---
 <3–6 sentence summary of what was said>
 ```
+
+## Big-model conversations (raw/external/)
+
+Conversations with the big model (`docs/architecture.md`, Flow 4) are stored per escalation
+provider, so the pipeline knows where a transcript came from and how to parse it:
+
+| provider | path | written by |
+|---|---|---|
+| `claude-code` | `raw/external/claude-code/YYYY/MM/<session-id>.jsonl` | the SessionEnd hook (Claude Code's own transcript format) |
+| `openai-compatible` | `raw/external/openai-compatible/YYYY/MM/<session-id>.md` | `brain ask` (packet + reply; frontmatter records `model` and `base_url` host) |
+| `clipboard` | `raw/external/clipboard/YYYY/MM/<session-id>.md` | `brain capture` (pasted or exported chat) |
+
+Episodes cut from these transcripts have `channel: external` and `provider: <provider>`.
 
 ## Intentions (intentions.md)
 
@@ -174,14 +189,14 @@ are never silently dropped.
 Every change the pipeline is not allowed to auto-apply becomes a review file: a JSON block of
 operations (`create_entity`, `add_fact`, `supersede_fact`, `merge_entities`, `update_summary`,
 `add_alias`, `add_intention`). The canonical JSON shape of each operation is the Pydantic model in
-`brain.vault.ops` (Phase 1); `vault_template/CLAUDE.md` mirrors it. plus a human-readable diff. Auto-applied: plain stated/observed facts with no
+`brain.vault.ops` (Phase 1); `vault_template/AGENTS.md` mirrors it. plus a human-readable diff. Auto-applied: plain stated/observed facts with no
 contradiction. Queued: inferred facts, relationship changes, supersessions, merges, anything on a
-`private` page created by Claude.
+`private` page created by the big model.
 
 ## Privacy
 
 - Default `privacy: private` for the regions marked `privacy: private` in `config/life-map.yaml`
-  (family, friends, traits, health) and any page you mark. Colleagues are `normal` by default. The MCP server never returns private content to Claude; private facts reach Claude
+  (family, friends, traits, health) and any page you mark. Colleagues are `normal` by default. The MCP server never returns private content to the big model; private facts reach it
   only inside a handoff packet you confirmed.
 - `.privacy/denylist.txt` (one term per line, generated from private pages' titles and aliases +
   manual entries) is read by the code repo's pre-commit hook to block accidental leaks.

@@ -14,10 +14,10 @@ Bi-temporal fact lines (`from/to` + `rec`), supersede-never-delete, mandatory `s
 `aliases:` for entity resolution, stated/observed/inferred split. Why: these are what the memory
 literature shows matters (Zep/Graphiti, StateMemBench, LongMemEval), independent of storage.
 
-## 2026-10-25 — Local model performs all memory writes; Claude only proposes
-Why: a Claude Enterprise seat may be organisation-administered (Enterprise transcripts are retained
-and reachable via the Compliance API); automated nightly use of a seat conflicts with "ordinary
-use" terms; Qwen3.6-35B-A3B is close to API models on extraction benchmarks (Hindsight retain board).
+## 2026-10-25 — Local model performs all memory writes; the big model only proposes
+Why: the big model's seat may be organisation-administered (the author's is a Claude Enterprise
+seat, whose transcripts are retained and reachable via the Compliance API); automated nightly use
+of a seat conflicts with "ordinary use" terms; Qwen3.6-35B-A3B is close to API models on extraction benchmarks (Hindsight retain board).
 
 ## 2026-10-25 — Runtime: oMLX, model Qwen3.6-35B-A3B (MLX 4-bit), non-thinking
 Why: oMLX serves chat + embeddings + rerank in one process with enforced JSON schema and a
@@ -46,3 +46,20 @@ base-level activation, similarity and importance, gist-first packing, and gated 
 surfacing. No LLM call in the hot path. Why: lets a ~3B-active model work from a small, ranked,
 pre-digested context. HippoRAG 2, Synapse and EM-LLM report gains from the same mechanisms.
 Weights are priors to be fitted on the personal eval. Details in `docs/retrieval.md`.
+
+## 2026-10-25 — Big model is pluggable (Claude in the author's setup)
+The local model escalates to "the big model", chosen by an `[escalation]` provider in the config:
+`claude-code` (Claude Code in the vault workspace, the author's choice), `clipboard` (any chat UI,
+reply brought back with `brain capture`), or `openai-compatible` (OpenAI, Moonshot/Kimi,
+OpenRouter, a self-hosted server). Big-model transcripts live in `raw/external/<provider>/` and
+their episodes use `channel: external` + `provider:`. The vault's runtime instructions are
+`AGENTS.md`; `CLAUDE.md` only imports it and adds Claude-Code-specific notes.
+Why: the owner wants the project usable with OpenAI, Kimi K3 and other big models, not only
+Claude. The integration points are already cross-vendor conventions: MCP is an open protocol many
+clients speak, `AGENTS.md` is read by many coding agents, and skills use the open Agent Skills
+`SKILL.md` format. Privacy rules (confirmed packets, no private content over MCP) apply to every
+provider, since any hosted provider may retain transcripts. Earlier entries' "Claude" wording was
+generalised to "the big model".
+Alternatives: Claude-only (simpler, but ties a public project to one vendor); a multi-provider SDK
+or agent framework (conflicts with the explicit-control-flow rule; the OpenAI-compatible API
+already covers most providers).

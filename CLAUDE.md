@@ -1,11 +1,14 @@
-# local_brain — developer guide for Claude
+# local_brain — developer guide
 
 A local "second brain": a small local LLM (oMLX on an M4 32GB Mac) that chats with its owner,
 remembers conversations like a human (episodes → consolidated knowledge), keeps a markdown
-knowledge graph of their life, interviews them to fill gaps, and hands hard questions to Claude.
+knowledge graph of their life, interviews them to fill gaps, and hands hard questions to **the big
+model**: any frontier model the owner configures (Claude in the author's setup; OpenAI, Kimi K3 or
+any OpenAI-compatible endpoint also work).
 
-This file is for **building** the brain. Claude's *runtime* role (answering escalated questions
-inside the vault) is defined in `vault_template/CLAUDE.md`, not here.
+This file is for **building** the brain (the author builds it with Claude Code, which reads this
+file). The big model's *runtime* role (answering escalated questions inside the vault) is defined
+in `vault_template/AGENTS.md`, not here.
 
 ## Hard rules
 
@@ -25,12 +28,16 @@ inside the vault) is defined in `vault_template/CLAUDE.md`, not here.
    The LLM never free-writes `## Facts` sections.
 6. **The runtime is swappable.** Only `brain.llm` talks to the model server, through the
    OpenAI-compatible API. No runtime-specific calls elsewhere.
-7. **Privacy filter in every path to Claude.** MCP tools and handoff packets must exclude
-   `privacy: private` content unless the user explicitly confirmed it.
+7. **Privacy filter in every path to the big model.** MCP tools and handoff packets must exclude
+   `privacy: private` content unless the user explicitly confirmed it, whatever the provider.
+8. **The big model is pluggable.** Escalation goes through the `[escalation]` provider
+   (`claude-code` | `clipboard` | `openai-compatible`). Vendor-specific behaviour lives only in
+   the provider code and in the Claude Code files of `vault_template/` (`CLAUDE.md`, `.claude/`).
+   Elsewhere, say "the big model"; name a vendor only as the author's setup or as an example.
 
 ## Key docs (read before changing the related area)
 
-- `docs/architecture.md` — components, flows (chat turn, interview, memory pipeline, Claude), phases
+- `docs/architecture.md` — components, flows (chat turn, interview, memory pipeline, big-model integration), phases
 - `docs/vault-schema.md` — **canonical** vault format: layout, page frontmatter, fact lines, episodes,
   predicates, reviews, privacy. Change the schema there first, bump its version.
 - `docs/retrieval.md` — human-memory-inspired retrieval model (activation, working memory, surfacing)

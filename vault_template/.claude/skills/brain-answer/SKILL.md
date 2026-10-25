@@ -1,6 +1,6 @@
 ---
 name: brain-answer
-description: Answer a question the local brain escalated to Claude ("→ Ask Claude" handoff packet), or any question whose answer depends on what the brain remembers about its owner. Covers reading the packet, pulling memory through the brain MCP tools, answering with cited fact/episode ids kept apart from general knowledge, proposing new durable facts, and suggesting follow-up intentions. Use at the start of every escalated session and whenever the owner asks for advice, a plan, or a decision grounded in their own situation.
+description: Answer a question the local brain escalated to you, its big model ("→ Ask …" handoff packet), or any question whose answer depends on what the brain remembers about its owner. Covers reading the packet, pulling memory through the brain MCP tools, answering with cited fact/episode ids kept apart from general knowledge, proposing new durable facts, and suggesting follow-up intentions. Use at the start of every escalated session and whenever the owner asks for advice, a plan, or a decision grounded in their own situation.
 ---
 
 # Answer an escalated question
@@ -63,7 +63,7 @@ During the conversation, collect durable new information: decisions made, change
 people or projects, stated preferences. At a natural pause:
 
 1. `brain_search` each candidate to check it isn't already known (or is known differently).
-2. Build the operations (see the reference in `CLAUDE.md`):
+2. Build the operations (see the reference in `AGENTS.md`):
    - a new fact → `add_fact` with `kind: stated` and the owner's words quoted in the rationale;
    - a changed fact → `supersede_fact` on the old id, with `to` set to when it stopped being true;
    - a new entity → `create_entity` first, then its facts;

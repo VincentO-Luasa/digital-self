@@ -70,8 +70,16 @@ Storage: Kuzu archived (Oct 2025) → LadybugDB fork; sqlite-vec still alpha but
 - → Rules + retrieval coverage + categorical answer labels + validation; log decisions to train a
   router later.
 
-## 6. Claude integration
+## 6. Big-model integration (the author's setup: Claude)
 
+The brain hands hard questions to a pluggable big model. These findings are about the author's
+setup (Claude via an Enterprise seat and Claude Code); the cross-vendor points come first.
+
+- Cross-vendor conventions: MCP is an open protocol, so the brain's stdio server works with any
+  MCP-capable client; `AGENTS.md` is a shared instruction-file convention read by many coding
+  agents (Claude Code reads `CLAUDE.md`, which can import it with `@AGENTS.md`); skills follow the
+  open Agent Skills `SKILL.md` format. Most hosted providers (OpenAI, Moonshot/Kimi, OpenRouter)
+  and local servers expose an OpenAI-compatible chat API.
 - Enterprise seats include Claude Code; `claude -p` works headless under the subscription login.
   The Agent SDK is documented as API-key only.
 - Local stdio MCP servers work in Claude Code (`.mcp.json`) and Claude Desktop, not in claude.ai web
@@ -98,4 +106,5 @@ Inference: <https://github.com/jundot/omlx>, <https://omlx.ai/benchmarks/pcfbnl7
 Routing: <https://arxiv.org/abs/2406.18665>, <https://github.com/vllm-project/semantic-router> ·
 Claude: <https://code.claude.com/docs/en/hooks.md>, <https://code.claude.com/docs/en/mcp.md>,
 <https://code.claude.com/docs/en/skills.md>, <https://platform.claude.com/docs/en/manage-claude/compliance-api.md>,
-<https://github.com/kepano/obsidian-skills>
+<https://github.com/kepano/obsidian-skills> ·
+Cross-vendor: <https://modelcontextprotocol.io>, <https://agents.md>, <https://agentskills.io>

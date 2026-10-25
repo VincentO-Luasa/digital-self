@@ -1,6 +1,6 @@
 ---
 name: brain-review
-description: Help the owner judge pending memory reviews (proposed facts, supersessions, merges, inferred traits) before they approve or reject them with the `brain review` CLI. Use when the owner asks to go through, check, or discuss pending reviews or a specific review id. Claude only advises; it never applies, edits, or deletes a review.
+description: Help the owner judge pending memory reviews (proposed facts, supersessions, merges, inferred traits) before they approve or reject them with the `brain review` CLI. Use when the owner asks to go through, check, or discuss pending reviews or a specific review id. You only advise; you never apply, edit, or delete a review.
 ---
 
 # Help judge pending reviews
@@ -14,7 +14,7 @@ opinion.
 You cannot read `reviews/` (and must not try). Ask the owner to paste the reviews they want help
 with, as shown by `brain review`.
 
-- Before they paste, remind them once: anything pasted reaches this Claude account, so reviews
+- Before they paste, remind them once: anything pasted reaches this hosted model's provider, so reviews
   that touch private pages (family, friends, health, traits) are best judged locally.
 - Work through one review at a time, highest-impact first: merges, then supersessions, then
   inferred facts, then the rest.
@@ -25,7 +25,7 @@ Use `brain_search` and `brain_get_page` (non-private only) to see the memory it 
 the checklist for its type:
 
 **add_fact**
-- Is the predicate the right one from the v0.1 vocabulary (see `CLAUDE.md`)? `note` is a last resort.
+- Is the predicate the right one from the v0.1 vocabulary (see `AGENTS.md`)? `note` is a last resort.
 - Does `o` link to an existing entity rather than create a near-duplicate? (`[[orgs/northwind-labs]]`
   rather than the literal "Northwind").
 - Does `src` support it? Is `kind` honest? Something the owner said is `stated`. Something you or

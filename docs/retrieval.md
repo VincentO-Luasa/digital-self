@@ -50,12 +50,17 @@ Sources are at the end.
 ```
 
 The stable part is prefilled once and cached. The per-turn memory sits just before the user turn,
-where small models pay the most attention. The model only ever reasons over gists and fact lines.
+where small models pay the most attention. To keep this cheap every turn, the brain **prefetches**
+(`docs/brain-map.md` #1). After each answer it predicts the next memory block and warms the cache
+while you read. On submit it only appends a ≤200-token "late" block of items the prediction
+missed. History is trimmed 4 turns at a time so the cached prefix survives. The model only ever reasons over gists and fact lines.
 Detail costs an explicit `[recall:<id>]` round-trip.
 
-### L0: schema card (≤300 tokens, rebuilt by the nightly consolidation, local model)
+### L0: schema card (≤300 tokens, updated slowly by consolidation, local model)
 - **Impression (~80 tokens):** temperament, communication style, values, how they react to stress
   and praise. Built from the observation journal and `self` pages.
+  **Changes slowly**: a line changes only with ≥3 supporting episodes over ≥2 weeks, and the diff
+  is shown to the owner (a self-schema should not swing with one bad day).
 - **Current situation (~80 tokens):** only facts valid *today* (role, city, key people, active projects).
 - **Marking facts (5–8, ~100 tokens):** highest importance × salience × stability, still valid,
   referenced in at least 3 episodes.
@@ -89,7 +94,7 @@ episode gists and journal observations.
   episode↔entity, episode↔next episode (0.5, temporal contiguity), observation↔entity, plus
   learned co-use weights.
 - **Base level:** `B_i = ln Σ_j max(Δt_j, 1h)^-0.5` (Δt in days). Being used in an answer counts as
-  a full access; being retrieved but not used counts 0.25.
+  a full access; being retrieved but not used counts 0.05 (only real recall strengthens memory).
 
 ```
 score = 0.40·sim(c_t, i) + 0.25·PPR_i + 0.15·B_i + 0.15·Imp_i + 0.05·primed_i
@@ -99,12 +104,14 @@ score *= validity_i                 # 1 if valid at the as-of date, 0.3 if super
 
 All components are normalised to [0,1]. The weights are **priors to be tuned** on the personal eval.
 
-- **Packing:** drop near-duplicates (cos > 0.9) and anything already in L0/L1, then fill
+- **Packing:** drop near-duplicates (cos > 0.9 *and* same entities *and* same date window, so two
+  similar trips stay two memories) and anything already in L0/L1, then fill
   greedily by score per token up to 1,000 tokens. Fact lines and gists go first; summaries only
   for the top 2 episodes; verbatim never by default.
-- **Abstention / escalation signal:** if the best score is below a calibrated gate and the turn
-  is a factual question, answer "I don't know that yet" (offer to learn it) or escalate. This
-  feeds the router's coverage check (`docs/architecture.md`, flow 1).
+- **Feeling of knowing:** retrieval returns two signals for the router: *familiarity* (cue
+  entities known, with high base-level activation) and *recollection* (top score above a calibrated
+  gate, or a fact for the asked predicate found). Familiar-but-not-recalled is "tip of the
+  tongue": search deeper, then ask the owner. Personal gaps never go to the big model.
 
 ### L4: surfacing ("this reminds me of…")
 An episode is surfaced only when **all** of these hold: its score is above the 98th percentile of
@@ -117,7 +124,7 @@ threshold up or down. Intentions bypass the gate, because you asked for them.
 ### Reinforcement and decay
 - After each answer: record which memory ids the model cited (with gist↔answer similarity as a
   fallback). Append use timestamps, and strengthen co-use edges (+0.1, capped at 1). This is
-  Hebbian learning on the graph.
+  Hebbian learning on the graph. Edges also fade: ×0.97 at each consolidation, pruned below 0.05.
 - Decay needs no job: `B` falls with time. Nightly, items whose `B` stayed below the 5th
   percentile for 90 days *and* whose importance is low get archived. They are still searchable,
   never deleted.

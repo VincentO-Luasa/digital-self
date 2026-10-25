@@ -17,7 +17,7 @@ about:
 
 If it is private, or you are unsure, stop and say:
 
-> This looks private, so it shouldn't go through this Claude account. Ingest it locally instead:
+> This looks private, so it shouldn't go through a hosted model. Ingest it locally instead:
 > `brain ingest <path>`. The local model extracts it and nothing leaves your machine.
 
 Don't summarise or extract from a private document even if it has already been pasted. A CV
@@ -38,7 +38,7 @@ If the document is in the vault (`raw/docs/…`), you can't read it here. Ask th
 
 ## 2. Extract facts
 
-Map statements to predicates from the v0.1 vocabulary in `CLAUDE.md`. Typical CV mapping:
+Map statements to predicates from the v0.1 vocabulary in `AGENTS.md`. Typical CV mapping:
 
 | document says | operation |
 |---|---|
@@ -73,7 +73,7 @@ Rules:
 - Show the owner a compact table of what you proposed (entity · predicate · object · valid time)
   and anything you deliberately skipped, with the reason.
 - Remind them: approve with `brain review`. This transcript, including the document text, is
-  captured into `raw/claude/` as the provenance.
+  captured into `raw/external/<provider>/` as the provenance.
 
 ## Don't
 
