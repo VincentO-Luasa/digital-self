@@ -1,0 +1,84 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer in JSON. Fields: reasoning (one short sentence explaining the answer), answer (a single word)."
+      },
+      {
+        "role": "user",
+        "content": "Which is a primary colour: red or green-blue?"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Answer",
+        "strict": true,
+        "schema": {
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "answer": {
+              "title": "Answer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reasoning",
+            "answer"
+          ],
+          "title": "Answer",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-e150fdb5",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\n\"reasoning\": \"Red is a primary color in both additive (RGB) and subtractive (CMYK/RYB) color models, whereas green-blue is a secondary or tertiary color.\",\n\"answer\": \"red\"\n}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792925895,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 51,
+      "prompt_tokens": 49,
+      "total_tokens": 100,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 49,
+      "output_tokens": 51,
+      "time_to_first_token": 2.23,
+      "total_time": 3.4,
+      "prompt_eval_duration": 2.23,
+      "generation_duration": 1.17,
+      "prompt_tokens_per_second": 22.02,
+      "generation_tokens_per_second": 43.53
+    }
+  }
+}
