@@ -169,3 +169,25 @@ header. Why: raw/ stays the ground truth for any source, re-ingest stays idempot
 bytes reuse the copy), and the vault keeps where each page came from without a schema change.
 Alternatives: a frontmatter sidecar for the URL (a new raw format); headless-browser rendering
 (heavy; counters and JSON-LD cover the cases seen so far).
+
+## 2026-10-25 — Ingest: the model plans where to split a long document
+A document over one extraction chunk (~500 tokens) is cut into blocks (headings, paragraphs,
+lists, tables, code); the model gets an outline (one line per block: number, size, first 16
+words) and returns `parts: [{first_block, title}]` (`prompts/ingest_split.md`, temperature 0).
+Code repairs the plan (sort, dedupe, drop out-of-range starts, start at the first block, keep
+headings with their text), splits a part over the cap at headings/paragraphs without another
+call, joins parts under a quarter of the cap to a neighbour, and falls back to the old
+heading-bounded packing if the call fails. Each part is one extraction call whose "Section:" is
+the part's title. Outlines over 6k tokens are planned in overlapping windows. Why: the owner
+asked that long documents be cut where the topic changes (a job, a project, a period of life)
+rather than wherever 500 tokens run out; the outline keeps the call cheap (fictional 1.9k-token
+page: one call, ~10 s, vs ~2.5 min of extraction) and the model never reproduces the text.
+Findings: the model follows headings well but never split a long heading-free section, even
+with section sizes or an "OVER CAP" flag in the outline; listing those stretches explicitly in
+the user message ("blocks 24 to 33 (645 tok): split into 2 or more parts") made it split them
+at subject changes; at temperature 0.2 it sometimes still did not, at 0 it did. Known cost: a
+part loses the context of its neighbours (on the homepage the projects part, cut off from the
+job history, yields a role taken from the page title, which goes to review as a
+contradiction). Alternatives: model-free greedy packing (cuts mid-topic); asking for topic
+boundaries and packing them up to the cap in code (fewer calls, but the model's parts are no
+longer the chunks); sending the full text (too slow on a 50-page PDF).

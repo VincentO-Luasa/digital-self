@@ -1,0 +1,108 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You split a long document into parts that are read one at a time to extract facts about the owner.\n\nThe user message gives the document title, the token cap per part and an outline: one line per block, in document order. [n] is the block number. A line starting with # is a heading. Any other line gives the block's size in tokens and its first words.\n\nFields, in this order:\n- reasoning: one short sentence on how the document is organised.\n- parts: the parts in order. Each part has first_block (the number of the block where it starts) and title (2 to 6 words naming its topic, e.g. \"Job at Northwind Labs\", \"Education\", \"Running and hiking\"). A part runs until the next part's first_block.\n\nRules:\n- The first part starts at the first block of the outline.\n- One topic per part: a job, a project, a period of life, a theme. Start a part where the topic changes, never in the middle of one.\n- A part starts at a heading, not just after it.\n- Keep each part under the token cap. The user message lists the stretches too long for one part: split each where its subject changes, even without a heading there.\n- Join short neighbouring blocks on the same topic into one part.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"parts\":[{\"first_block\":0,\"title\":\"…\"},{\"first_block\":9,\"title\":\"…\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Document: Alex Rivera — about me\nToken cap per part: 500\nOutline of blocks 0 to 35 of 36 (1899 tokens):\n\n[0] # Alex Rivera — about me\n[1] (46 tok) This is the long version of my story, written for friends and for future me. Everything …\n[2] ## Career\n[3] (57 tok) I have spent my whole working life around data: first as an intern counting things in …\n[4] ### Northwind Labs\n[5] (121 tok) I joined Northwind Labs in Porto in February 2023 as a Data Engineer on the Data …\n[6] (63 tok) In March 2025 I was promoted to Senior Data Engineer. I now run the platform team's …\n[7] (69 tok) What I like most about Northwind Labs is the writing culture: every significant change starts as …\n[8] (56 tok) - Stack: Python, SQL, Apache Spark, Airflow and dbt on a managed cloud warehouse. - Team: …\n[9] ### Fabrikam Retail\n[10] (84 tok) From September 2019 to January 2023 I was a Data Analyst at Fabrikam Retail in Lisbon. …\n[11] (94 tok) I also built the first stock-forecasting dashboard for the store managers and ran a monthly \"data …\n[12] ### Contoso Analytics\n[13] (60 tok) My first job was a summer internship at Contoso Analytics in Madrid in 2017, during my …\n[14] ## Projects\n[15] ### Atlas Migration\n[16] (90 tok) Since 2026 I have been leading the Atlas Migration at Northwind Labs. We are moving every …\n[17] (106 tok) The hard part is not the code but the trust: each migrated pipeline runs in parallel …\n[18] ### Tidepool\n[19] (118 tok) Tidepool is a small open-source library for data quality checks that I started in 2022. It …\n[20] ## Education\n[21] (44 tok) I studied Computer Science at Calder College in Seville from 2014 to 2018 (BSc). My final …\n[22] (53 tok) I then did an MSc in Data Science at Westbridge University from 2018 to 2019. My …\n[23] (41 tok) In 2024 I earned a cloud data engineering certification, mostly to have a structured reason to …\n[24] ## Life outside work\n[25] (92 tok) I grew up in Valencia, by the sea, in a family that argued about football at …\n[26] (81 tok) Bouldering is my main sport. I climb three evenings a week at a gym near the …\n[27] (72 tok) I also bake sourdough bread every weekend. My starter is six years old and has survived …\n[28] (51 tok) Every morning starts with twenty minutes of calisthenics: push-ups, pull-ups and a few handstand attempts. I …\n[29] (52 tok) Since 2024 I have been learning Portuguese with a weekly tutor and a lot of podcasts. …\n[30] (67 tok) On Saturday mornings I volunteer at a coding club for teenagers at the Porto public library, …\n[31] (79 tok) My family is still in Valencia. My older sister teaches maths at a secondary school there, …\n[32] (80 tok) Travel is the other thing I save up for. Every autumn Sam and I pick one …\n[33] (65 tok) I play the guitar badly and enthusiastically. I took lessons for a year in Lisbon, and …\n[34] ## What I care about\n[35] (100 tok) I value reliable systems, clear writing and teams where knowledge is shared rather than hoarded. I …\n\nToo long for one part, no heading inside:\n- blocks 24 to 33 (645 tok, ## Life outside work): split into 2 or more parts where the subject changes"
+      }
+    ],
+    "temperature": 0.0,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "SplitPlan",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "PlannedPart": {
+              "properties": {
+                "first_block": {
+                  "title": "First Block",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "first_block",
+                "title"
+              ],
+              "title": "PlannedPart",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/PlannedPart"
+              },
+              "title": "Parts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "parts"
+          ],
+          "title": "SplitPlan",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-2513c02e",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\n  \"reasoning\": \"The document is structured by major headings (Career, Projects, Education, Life, Values), with Career and Projects further subdivided by company/project names; Life outside work is split by topic (hobbies vs family/travel) to respect the token cap.\",\n  \"parts\": [\n    {\n      \"first_block\": 0,\n      \"title\": \"Alex Rivera — about me\"\n    },\n    {\n      \"first_block\": 2,\n      \"title\": \"Career Overview\"\n    },\n    {\n      \"first_block\": 4,\n      \"title\": \"Northwind Labs Role\"\n    },\n    {\n      \"first_block\": 9,\n      \"title\": \"Fabrikam Retail Role\"\n    },\n    {\n      \"first_block\": 12,\n      \"title\": \"Contoso Analytics Internship\"\n    },\n    {\n      \"first_block\": 14,\n      \"title\": \"Projects Overview\"\n    },\n    {\n      \"first_block\": 15,\n      \"title\": \"Atlas Migration Project\"\n    },\n    {\n      \"first_block\": 18,\n      \"title\": \"Tidepool Library Project\"\n    },\n    {\n      \"first_block\": 20,\n      \"title\": \"Education History\"\n    },\n    {\n      \"first_block\": 24,\n      \"title\": \"Hobbies and Interests\"\n    },\n    {\n      \"first_block\": 31,\n      \"title\": \"Family and Travel\"\n    },\n    {\n      \"first_block\": 34,\n      \"title\": \"Values and Principles\"\n    }\n  ]\n}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792944772,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 386,
+      "prompt_tokens": 1310,
+      "total_tokens": 1696,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1303
+      },
+      "input_tokens": 1310,
+      "output_tokens": 386,
+      "time_to_first_token": 0.15,
+      "total_time": 9.84,
+      "prompt_eval_duration": 0.15,
+      "generation_duration": 9.68,
+      "prompt_tokens_per_second": 45.7,
+      "generation_tokens_per_second": 39.86
+    }
+  }
+}

@@ -8,12 +8,17 @@ from datetime import date
 
 import httpx
 import pytest
-from conftest import DOCS, homepage_extraction  # type: ignore[import-not-found]
+from conftest import (  # type: ignore[import-not-found]
+    DOCS,
+    homepage_extraction,
+    homepage_plan,
+)
 
 from brain.index.db import open_index
 from brain.index.search import search
 from brain.ingest import FetchError, ingest, ingest_url
-from brain.ingest.chunking import chunk_markdown, halve
+from brain.ingest.chunking import halve
+from brain.ingest.planning import plan_chunks
 from brain.ingest.readers import load_document
 from brain.llm import OutputTruncated, StructuredOutputError
 from brain.llm.fake import FakeLLM
@@ -22,7 +27,16 @@ from brain.vault.store import Vault
 
 TODAY = date(2026, 10, 25)
 HOMEPAGE = DOCS / "alex-rivera.html"
-N_CHUNKS = len(chunk_markdown(load_document(HOMEPAGE).text))
+
+
+def homepage_chunks():
+    doc = load_document(HOMEPAGE)
+    return plan_chunks(
+        FakeLLM(structured_responses=[homepage_plan()]), doc.text, doc_title=""
+    ).chunks
+
+
+N_CHUNKS = len(homepage_chunks())
 
 
 def empty_extraction() -> dict:
@@ -30,8 +44,9 @@ def empty_extraction() -> dict:
 
 
 def homepage_responses() -> list:
-    """The scripted extraction for the first chunk, nothing for the others."""
-    return [homepage_extraction(), *[empty_extraction() for _ in range(N_CHUNKS - 1)]]
+    """The scripted split plan, the extraction for the first chunk, nothing for the others."""
+    empty = [empty_extraction() for _ in range(N_CHUNKS - 1)]
+    return [homepage_plan(), homepage_extraction(), *empty]
 
 
 def run(vault: Vault, llm: FakeLLM):
@@ -48,10 +63,20 @@ def test_ingest_homepage(fresh_vault: Vault) -> None:
     assert report.source == "alex-rivera.html"
     assert (fresh_vault.root / report.raw_path).exists()
     assert len(report.chunks) == N_CHUNKS
-    # the prompt carries the chunk and the (empty) known entities
-    messages = llm.calls[0][1]["messages"]
-    assert "Fabrikam Retail" in messages[1]["content"]
-    assert "- self: the owner (name unknown)" in messages[1]["content"]
+    assert report.plan is not None and report.plan.planned and report.plan.calls == 1
+    assert [p.title for p in report.plan.parts] == [
+        "Profile and about me",
+        "Career, projects and education",
+    ]
+    # the plan sees an outline; each extraction prompt carries its part's title and text and
+    # the known entities
+    plan_user = llm.calls[0][1]["messages"][1]["content"]
+    assert "] ## Experience" in plan_user and "moved it from spreadsheets" not in plan_user
+    first, second = (llm.calls[i][1]["messages"][1]["content"] for i in (1, 2))
+    assert "Section: Profile and about me" in first and "I grew up in Valencia" in first
+    assert "Section: Alex Rivera > Career, projects and education" in second
+    assert "Fabrikam Retail" in second and "Fabrikam Retail" not in first
+    assert "- self: the owner (name unknown)" in first
 
     result = report.applied
     assert result is not None and result.facts_added >= 8
@@ -93,10 +118,11 @@ def test_reingest_is_idempotent(fresh_vault: Vault) -> None:
 
 
 def test_truncated_chunk_is_split_and_retried(fresh_vault: Vault) -> None:
-    halves = halve(chunk_markdown(load_document(HOMEPAGE).text)[0])
+    halves = halve(homepage_chunks()[0])
     assert len(halves) >= 2
     llm = FakeLLM(
         structured_responses=[
+            homepage_plan(),
             OutputTruncated("cut off", '{"reasoning"'),
             homepage_extraction(),
             *[empty_extraction() for _ in halves[1:]],
@@ -112,6 +138,7 @@ def test_truncated_chunk_is_split_and_retried(fresh_vault: Vault) -> None:
 def test_failed_chunk_is_skipped_not_fatal(fresh_vault: Vault) -> None:
     llm = FakeLLM(
         structured_responses=[
+            homepage_plan(),
             StructuredOutputError("bad json", "{"),
             *[empty_extraction() for _ in range(N_CHUNKS - 1)],
         ]

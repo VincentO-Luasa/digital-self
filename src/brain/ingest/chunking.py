@@ -1,4 +1,6 @@
-"""Split a markdown document into heading-bounded chunks of about ``max_tokens`` tokens."""
+"""Split a markdown document into heading-bounded chunks of about ``max_tokens`` tokens, or into
+ordered blocks (headings, paragraphs, lists, tables, code) for a model-planned split
+(``brain.ingest.planning``)."""
 
 from __future__ import annotations
 
@@ -27,6 +29,111 @@ class Chunk:
     @property
     def heading(self) -> str:
         return " > ".join(self.trail)
+
+
+@dataclass(frozen=True)
+class Block:
+    index: int
+    trail: tuple[str, ...]  # heading path; a heading block's trail ends with itself
+    text: str
+    heading: bool = False
+
+    @property
+    def tokens(self) -> int:
+        return estimate_tokens(self.text)
+
+
+def split_blocks(markdown: str, max_tokens: int = CHUNK_TOKENS) -> list[Block]:
+    """Blank-line separated blocks; a heading line is a block of its own and a fenced code block
+    stays whole. A block larger than ``max_tokens`` is cut into paragraph/line pieces."""
+    raw: list[tuple[tuple[str, ...], str, bool]] = []
+    stack: list[tuple[int, str]] = []
+    trail: tuple[str, ...] = ()
+    lines: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        text = "\n".join(lines).strip("\n")
+        lines.clear()
+        if text.strip():
+            raw.append((trail, text, False))
+
+    for line in markdown.split("\n"):
+        if FENCE.match(line):
+            if not in_fence:
+                flush()
+            in_fence = not in_fence
+            lines.append(line)
+            if not in_fence:
+                flush()
+            continue
+        if in_fence:
+            lines.append(line)
+            continue
+        m = HEADING.match(line)
+        if m:
+            flush()
+            level = len(m.group(1))
+            stack = [(lvl, name) for lvl, name in stack if lvl < level] + [(level, m.group(2))]
+            trail = tuple(name for _, name in stack)
+            raw.append((trail, line.strip(), True))
+        elif not line.strip():
+            flush()
+        else:
+            lines.append(line)
+    flush()
+
+    blocks: list[Block] = []
+    for block_trail, text, is_heading in raw:
+        pieces = [text] if estimate_tokens(text) <= max_tokens else _split_large(text, max_tokens)
+        for piece in pieces:
+            if piece.strip():
+                blocks.append(Block(len(blocks), block_trail, piece.strip("\n"), is_heading))
+    return blocks
+
+
+def pack_blocks(blocks: list[Block], max_tokens: int = CHUNK_TOKENS) -> list[list[Block]]:
+    """Greedily pack consecutive blocks into groups of at most ``max_tokens``, cutting at
+    headings where possible: whole heading-led sections are packed first, an oversized section
+    block by block."""
+    sections: list[list[Block]] = []
+    for block in blocks:
+        prev_heading = bool(sections) and sections[-1][-1].heading
+        if not sections or (block.heading and not prev_heading):
+            sections.append([block])  # consecutive headings stay together
+        else:
+            sections[-1].append(block)
+    groups: list[list[Block]] = []
+    current: list[Block] = []
+
+    def size(group: list[Block]) -> int:
+        return estimate_tokens(join_blocks(group))
+
+    for section in sections:
+        if size(current + section) <= max_tokens:
+            current += section
+            continue
+        if current:
+            groups.append(current)
+            current = []
+        if size(section) <= max_tokens:
+            current = list(section)
+            continue
+        for block in section:
+            if current and size([*current, block]) > max_tokens:
+                if all(b.heading for b in current):
+                    current.append(block)  # never leave a heading on its own
+                    continue
+                groups.append(current)
+                current = []
+            current.append(block)
+    if current:
+        groups.append(current)
+    return groups
+
+
+def join_blocks(blocks: list[Block]) -> str:
+    return "\n\n".join(b.text for b in blocks)
 
 
 def split_sections(markdown: str) -> list[Section]:

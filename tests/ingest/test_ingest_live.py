@@ -7,7 +7,6 @@ Set ``BRAIN_RECORD_FIXTURES=1`` to (re-)record the replay fixture in
 from __future__ import annotations
 
 import os
-import shutil
 import time
 from datetime import date
 from pathlib import Path
@@ -51,8 +50,9 @@ class OrderedRecorder(Recorder):
 @pytest.fixture
 def llm():
     write = bool(os.environ.get("BRAIN_RECORD_FIXTURES"))
-    if write:
-        shutil.rmtree(FIXTURE_DIR, ignore_errors=True)
+    if write:  # only this test's fixtures: split/ holds the long document's plan
+        for old in FIXTURE_DIR.glob("alex-rivera-*.json"):
+            old.unlink()
     client = LLM(load_settings().llm, recorder=OrderedRecorder(FIXTURE_DIR, write=write))
     if not client.health():
         client.close()
@@ -68,8 +68,17 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     total = time.perf_counter() - start
     result = report.applied
     assert result is not None and report.normalised is not None
-    print(f"\n{len(report.chunks)} chunk(s), total {total:.1f}s")
+    plan = report.plan
+    assert plan is not None
+    print(f"\n{len(report.chunks)} chunk(s), total {total:.1f}s, plan {plan.seconds:.1f}s")
+    for part in plan.parts:
+        print(f"  part: {part.title} ({part.tokens} tok)")
     usage = llm.recorder.usage if isinstance(llm.recorder, OrderedRecorder) else []
+    if usage:
+        print(
+            f"  plan: {usage[0].get('prompt_tokens')} prompt / {usage[0].get('completion_tokens')} output tokens"
+        )
+    usage = usage[plan.calls :]
     for c, u in zip(report.chunks, usage, strict=False):
         print(
             f"  chunk {c.chunk.index}: {c.seconds:.1f}s, {c.entities} entities, {c.facts} facts, "

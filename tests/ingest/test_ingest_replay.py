@@ -14,6 +14,7 @@ from conftest import DOCS, quality_problems  # type: ignore[import-not-found]
 
 from brain.ingest import ingest
 from brain.ingest.extract import Extraction
+from brain.ingest.planning import SplitPlan
 from brain.llm.client import response_format
 from brain.llm.fake import FakeLLM
 from brain.llm.recorder import load_exchange
@@ -36,7 +37,9 @@ def test_recorded_requests_match_the_pinned_prompt(fresh_vault: Vault) -> None:
     sent = [call[1]["messages"] for call in fake.calls if call[0] == "structured"]
     recorded = [load_exchange(p).request for p in paths]
     assert sent == [r["messages"] for r in recorded]
-    assert all(r["response_format"] == response_format(Extraction) for r in recorded)
+    # a split plan first (the page is over one chunk), then one extraction per part
+    assert recorded[0]["response_format"] == response_format(SplitPlan)
+    assert all(r["response_format"] == response_format(Extraction) for r in recorded[1:])
     assert all(
         r["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False for r in recorded
     )

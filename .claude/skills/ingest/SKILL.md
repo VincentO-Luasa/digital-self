@@ -13,8 +13,29 @@ description: How `brain ingest` turns a file or web page into vault facts — re
    `vault.raw.save_doc_bytes` (raw copy, committed with the URL in the message) → read from the
    raw copy like any file. `--follow N` takes the first N same-origin links of the page
    (`same_origin_links`), each ingested as its own raw doc and change set.
-2. **Chunk**: `chunking.chunk_markdown` packs heading-bounded sections into ~500-token chunks.
-   A chunk whose reply is truncated is halved (twice at most).
+2. **Split**: `planning.plan_chunks`. A document that fits one ~500-token chunk (`CHUNK_TOKENS`;
+   the extraction reply is ~8x the excerpt) goes as is. A larger one is split by the model:
+   - `chunking.split_blocks` cuts the markdown into ordered blocks (a heading, a paragraph, a
+     list, a table, a fenced code block; a block over the cap is pre-split by paragraph/line).
+   - The model sees an **outline**, not the text: `[n] # Heading` or `[n] (size tok) first 16
+     words …`, plus a list of the heading-free stretches over the cap (`long_stretches`). Without
+     that list the model never split inside a headed section, even with sizes shown or an
+     "OVER CAP" flag. An outline over `WINDOW_TOKENS` (6k) is planned in windows sharing 8
+     blocks; each window keeps the starts up to the middle of the overlaps.
+   - One call per window: prompt `prompts/ingest_split.md`, schema `SplitPlan` (`reasoning`,
+     then `parts: [{first_block, title}]`), temperature 0 (at 0.2 it sometimes kept a long
+     stretch whole).
+   - Code repairs the plan and notes each repair: out-of-range starts dropped (most out of
+     range = unusable), sorted, deduplicated, a start at the window's first block added; a
+     start moves back onto the heading(s) right before it and a headings-only part joins the
+     next; a part over the cap is split at headings, then paragraphs (`pack_blocks`, no second
+     call); a part under a quarter of the cap joins a neighbour when both fit.
+   - A failed or unusable plan falls back to `chunk_markdown` (heading-bounded packing), or,
+     for one window of several, to heading packing of that window.
+   - Each part becomes a `Chunk` whose heading is the headings enclosing it plus the model's
+     title (the extraction prompt's "Section:" line). `IngestReport.plan` (`PlanReport`) keeps
+     the parts, notes, calls and seconds; the CLI prints it before extraction (`on_plan`).
+   A chunk whose reply is truncated is still halved (twice at most).
 3. **Extract**: `extract.extract_chunk`, one structured call per chunk. System prompt
    `prompts/ingest_extract.md` (byte-stable, cached), then the user message with the date,
    document title, section, known entities named in the chunk (cap 40) and the excerpt. Flat
@@ -43,8 +64,12 @@ description: How `brain ingest` turns a file or web page into vault facts — re
   cut output from ~4k to ~2.5k tokens on the fixture page (decode is ~42 tok/s, so output tokens
   are almost all of the time). The model indents JSON unless that example is there.
 - `text` may be `""`: code renders it from `normalise.TEMPLATES`, which saves output tokens.
-- After any prompt, schema or reader change, re-record and re-run:
-  `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/ingest/test_ingest_live.py -s`, then
+- The split prompt (`ingest_split vN`) follows the same rules: version line, one-line JSON
+  example last. Its fixture is `tests/fixtures/llm/ingest/split/` (the long fictional page
+  `tests/fixtures/docs/alex-rivera-long.md`), recorded by `tests/ingest/test_ingest_split_live.py`.
+  The homepage (654 tokens) is over one chunk, so its fixtures start with a plan call too.
+- After any prompt, schema, outline or reader change, re-record and re-run:
+  `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/ingest/test_ingest_live.py tests/ingest/test_ingest_split_live.py -s`, then
   `uv run pytest tests/ingest tests/cli`. The replay test fails while the pinned request differs.
   Check the recorded JSON contains only fictional data before committing.
 
@@ -67,6 +92,8 @@ The model is ~3B active and will slip; code repairs or drops, and notes every re
 
 - [ ] `uv run pytest -q` and `uv run pytest -m llm` green; `uv run ruff check . && uv run ruff format --check .`
 - [ ] Live test output: seconds and output tokens per chunk no worse than before; read every note.
+- [ ] Split plan: each job/project stays in one part, long heading-free stretches are split by
+      the model (no "split into" note), no part ends with a heading, every block is covered.
 - [ ] Smoke run on a scratch vault, never the real one:
       `BRAIN_VAULT=<tmp> uv run brain init-vault && uv run brain ingest tests/fixtures/docs/alex-rivera.html && uv run brain review --list`
 - [ ] No pages for tools, products, ids or teams; works_at points at orgs only.

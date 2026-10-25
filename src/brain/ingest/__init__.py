@@ -1,9 +1,10 @@
-"""Document ingest: read a file or URL, keep a raw copy, chunk, extract, normalise, apply."""
+"""Document ingest: read a file or URL, keep a raw copy, split, extract, normalise, apply."""
 
 from brain.ingest.chunking import Chunk, chunk_markdown
 from brain.ingest.extract import Extraction, extract_chunk
 from brain.ingest.normalise import Normalised, build_changeset
 from brain.ingest.pipeline import IngestReport, WebReport, ingest, ingest_url
+from brain.ingest.planning import PlanReport, plan_chunks
 from brain.ingest.readers import Document, UnsupportedDocument, load_document
 from brain.ingest.readers.web import FetchError, is_url
 
@@ -14,6 +15,7 @@ __all__ = [
     "FetchError",
     "IngestReport",
     "Normalised",
+    "PlanReport",
     "UnsupportedDocument",
     "WebReport",
     "build_changeset",
@@ -23,4 +25,5 @@ __all__ = [
     "ingest_url",
     "is_url",
     "load_document",
+    "plan_chunks",
 ]

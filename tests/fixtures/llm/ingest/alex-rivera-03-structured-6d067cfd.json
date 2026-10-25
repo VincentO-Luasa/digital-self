@@ -9,7 +9,7 @@
       },
       {
         "role": "user",
-        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera > Projects > Tidepool\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera)\n- orgs/fabrikam-retail: Fabrikam Retail\n- orgs/northwind-labs: Northwind Labs\n- places/lisbon: Lisbon\n- places/madrid: Madrid\n- places/porto: Porto\n- places/seville: Seville\n- places/valencia: Valencia\n- projects/atlas-migration: Atlas Migration\n\nEXCERPT:\n<<<\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor. Its code lives on CodeHarbor and its\ntest suite runs on the public TripLog dataset (record TL4521).\n\n## Skills\n\n- Python and SQL\n- Apache Spark\n- Airflow and dbt\n- Data modelling\n\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and\nthe Lumen notebook app.\n\n## Education\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\nBSc in Computer Science, Calder College, 2014–2018.\n>>>"
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera > Professional Experience\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera)\n- orgs/northwind-labs: Northwind Labs\n- places/lisbon: Lisbon\n- places/madrid: Madrid\n- places/porto: Porto\n- places/seville: Seville\n- places/valencia: Valencia\n\nEXCERPT:\n<<<\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n>>>"
       }
     ],
     "temperature": 0.2,
@@ -182,38 +182,38 @@
     }
   },
   "response": {
-    "id": "chatcmpl-e9b33a69",
+    "id": "chatcmpl-22410f46",
     "choices": [
       {
         "finish_reason": "stop",
         "index": 0,
         "message": {
-          "content": "{\"reasoning\":\"The excerpt details the Tidepool project, the owner's skills and tools, and educational background.\",\"owner_names\":[\"Alex Rivera\"],\"entities\":[{\"name\":\"Tidepool\",\"type\":\"project\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Sam Okafor\",\"type\":\"person\",\"id\":\"\",\"aliases\":[]},{\"name\":\"CodeHarbor\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"TripLog\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Python\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"SQL\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Apache Spark\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Airflow\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"dbt\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Pebble\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Lumen\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Westbridge University\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Calder College\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"name\",\"object\":\"Alex Rivera\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"Tidepool\",\"predicate\":\"owner\",\"object\":\"self\",\"text\":\"started in 2022\",\"start\":\"2022\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"friend_of\",\"object\":\"Sam Okafor\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"Tidepool\",\"predicate\":\"uses\",\"object\":\"CodeHarbor\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"Tidepool\",\"predicate\":\"uses\",\"object\":\"TripLog\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Python\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"SQL\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Apache Spark\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Airflow\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"dbt\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Pebble\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Lumen\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"studied_at\",\"object\":\"Westbridge University\",\"text\":\"\",\"start\":\"2018\",\"end\":\"2019\"},{\"subject\":\"self\",\"predicate\":\"degree\",\"object\":\"MSc in Data Science\",\"text\":\"\",\"start\":\"2018\",\"end\":\"2019\"},{\"subject\":\"self\",\"predicate\":\"studied_at\",\"object\":\"Calder College\",\"text\":\"\",\"start\":\"2014\",\"end\":\"2018\"},{\"subject\":\"self\",\"predicate\":\"degree\",\"object\":\"BSc in Computer Science\",\"text\":\"\",\"start\":\"2014\",\"end\":\"2018\"}]}",
+          "content": "{\n  \"reasoning\": \"The excerpt details Alex Rivera's professional experience at Northwind Labs and Fabrikam Retail, including roles, responsibilities, projects, and timelines.\",\n  \"owner_names\": [\n    \"Alex Rivera\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"Northwind Labs\",\n      \"type\": \"org\",\n      \"id\": \"orgs/northwind-labs\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Porto\",\n      \"type\": \"place\",\n      \"id\": \"places/porto\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Atlas Migration\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"platform team\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Data Platform team\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Fabrikam Retail\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Lisbon\",\n      \"type\": \"place\",\n      \"id\": \"places/lisbon\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"product analytics team\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"ingestion framework\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"streaming ingestion\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"weekly sales reporting\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"SQL models\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Senior Data Engineer\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"team\",\n      \"object\": \"platform team\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"lead the Atlas Migration\",\n      \"text\": \"Leads the Atlas Migration\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"run the platform team's on-call rotation\",\n      \"text\": \"Runs the platform team's on-call rotation\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Engineer\",\n      \"text\": \"\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"ingestion framework\",\n      \"text\": \"Built the ingestion framework\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"team\",\n      \"object\": \"product analytics team\",\n      \"text\": \"\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"Experiments with streaming ingestion\",\n      \"text\": \"Experiments with streaming ingestion\",\n      \"start\": \"2023-02\",\n      \"end\": \"2025-03\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Fabrikam Retail\",\n      \"text\": \"\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Analyst\",\n      \"text\": \"\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"Owned the weekly sales reporting\",\n      \"text\": \"Owned the weekly sales reporting\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"moved it from spreadsheets to SQL models\",\n      \"text\": \"Moved weekly sales reporting from spreadsheets to SQL models\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    }\n  ]\n}",
           "role": "assistant"
         }
       }
     ],
-    "created": 1792940272,
+    "created": 1792945170,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
-      "completion_tokens": 630,
-      "prompt_tokens": 1198,
-      "total_tokens": 1828,
+      "completion_tokens": 1467,
+      "prompt_tokens": 1149,
+      "total_tokens": 2616,
       "completion_tokens_details": {
         "reasoning_tokens": 0
       },
       "prompt_tokens_details": {
-        "cached_tokens": 0
+        "cached_tokens": 1142
       },
-      "input_tokens": 1198,
-      "output_tokens": 630,
-      "time_to_first_token": 2.38,
-      "total_time": 17.1,
-      "prompt_eval_duration": 2.38,
-      "generation_duration": 14.72,
-      "prompt_tokens_per_second": 503.82,
-      "generation_tokens_per_second": 42.8
+      "input_tokens": 1149,
+      "output_tokens": 1467,
+      "time_to_first_token": 0.12,
+      "total_time": 37.59,
+      "prompt_eval_duration": 0.12,
+      "generation_duration": 37.47,
+      "prompt_tokens_per_second": 59.11,
+      "generation_tokens_per_second": 39.15
     }
   }
 }

@@ -230,6 +230,7 @@ def ingest_cmd(
     """Import a document or a web page into memory."""
     from brain.ingest import FetchError, UnsupportedDocument, ingest, ingest_url, is_url
     from brain.ingest.pipeline import ChunkReport
+    from brain.ingest.planning import PlanReport
 
     url = is_url(source)
     if not url:
@@ -253,6 +254,16 @@ def ingest_cmd(
             f"{item.entities} entities, {item.facts} facts ({item.seconds:.1f}s)"
         )
 
+    def plan(report: PlanReport) -> None:
+        if len(report.chunks) <= 1 and not report.calls:
+            return
+        how = f"planned by the model ({report.seconds:.1f}s)" if report.planned else "at headings"
+        console.print(f"split into {len(report.parts)} parts, {how}:")
+        for n, part in enumerate(report.parts, 1):
+            console.print(f"  {n}. {escape(part.title)} [dim]({part.tokens} tok)[/]")
+        for note in report.notes:
+            console.print(f"  [dim]· {escape(note)}[/]")
+
     def page(page_url: str, n: int, total: int) -> None:
         console.print(f"[bold]page {n}/{total}[/] {escape(page_url)}")
 
@@ -271,6 +282,7 @@ def ingest_cmd(
                     kind=kind,
                     core_max_tokens=settings.core_max_tokens,
                     on_page=page,
+                    on_plan=plan,
                     on_chunk=progress,
                 )
             finally:
@@ -285,6 +297,7 @@ def ingest_cmd(
                     db=db,
                     kind=kind,
                     core_max_tokens=settings.core_max_tokens,
+                    on_plan=plan,
                     on_chunk=progress,
                 )
             ]

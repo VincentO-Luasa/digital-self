@@ -23,7 +23,7 @@ runner = CliRunner()
 
 
 def recorded_extractions() -> list[str]:
-    """The recorded extraction of each chunk of the fictional homepage, in order."""
+    """The recorded split plan and extraction of each part of the fictional homepage, in order."""
     contents = []
     for path in FIXTURE:
         data = json.loads(path.read_text())
@@ -85,7 +85,10 @@ def test_ingest_review_and_chat(env) -> None:
         structured_responses=recorded_extractions(), chat_responses=["You work at Northwind Labs."]
     )
     out = invoke("ingest", str(DOCS / "alex-rivera.html")).output
-    assert "chunk 1/2" in out and "chunk 2/2" in out
+    parts = len(FIXTURE) - 1  # the first exchange is the split plan
+    assert f"split into {parts} parts, planned by the model" in out
+    assert "1. Profile and Introduction" in out
+    assert f"chunk 1/{parts}" in out and f"chunk {parts}/{parts}" in out
     assert "raw copy: raw/docs/" in out and "review: r-" in out
     vault = Vault(settings.vault)
     assert vault.page("orgs/northwind-labs") is not None

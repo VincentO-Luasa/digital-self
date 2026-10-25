@@ -8,6 +8,8 @@ from typing import Any
 
 import pytest
 
+from brain.ingest.chunking import split_blocks
+from brain.ingest.readers import load_document
 from brain.vault.init import init_vault
 from brain.vault.store import Vault
 
@@ -27,6 +29,19 @@ def fact(subject: str, p: str, o: str, text: str, start: str = "", end: str = ""
 
 def entity(name: str, type_: str, id_: str = "", aliases: list[str] | None = None) -> dict:
     return {"name": name, "type": type_, "id": id_, "aliases": aliases or []}
+
+
+def homepage_plan() -> dict[str, Any]:
+    """A split plan for tests/fixtures/docs/alex-rivera.html: profile, then the career."""
+    blocks = split_blocks(load_document(DOCS / "alex-rivera.html").text)
+    experience = next(b.index for b in blocks if b.heading and b.text == "## Experience")
+    return {
+        "reasoning": "A homepage: profile and about, then experience, projects and education.",
+        "parts": [
+            {"first_block": 0, "title": "Profile and about me"},
+            {"first_block": experience, "title": "Career, projects and education"},
+        ],
+    }
 
 
 def homepage_extraction() -> dict[str, Any]:
@@ -139,4 +154,43 @@ def quality_problems(vault: Vault) -> list[str]:
     ]
     if any("porto" not in o.lower() for o in current):
         problems.append(f"past city as current lives_in: {current}")
+    return problems
+
+
+# --- the long fictional "about me" page (tests/fixtures/docs/alex-rivera-long.md) -------------
+
+LONG_DOC = DOCS / "alex-rivera-long.md"
+# lines that belong to one topic and must land in the same part
+LONG_TOPICS = {
+    "Northwind Labs": ("I joined Northwind Labs", "promoted to Senior", "writing culture"),
+    "Fabrikam Retail": ("From September 2019", "stock-forecasting dashboard"),
+    "Atlas Migration": ("Since 2026 I have been leading", "The hard part is not the code"),
+    "Tidepool": ("Tidepool is a small open-source",),
+}
+
+
+def split_problems(report: Any, text: str, cap: int) -> list[str]:
+    """What is wrong with a plan for the long page ([] if nothing)."""
+    from brain.ingest.chunking import join_blocks
+
+    problems: list[str] = []
+    if not report.planned:
+        problems.append(f"not planned: {report.notes}")
+    if "\n\n".join(c.text for c in report.chunks) != join_blocks(split_blocks(text, cap)).strip():
+        problems.append("the chunks do not cover every block exactly once, in order")
+    for part in report.parts:
+        if part.tokens > cap:
+            problems.append(f"part over the cap: {part.title} ({part.tokens} tok)")
+
+    def where(line: str) -> int:
+        return next(i for i, c in enumerate(report.chunks) if line in c.text)
+
+    for topic, lines in LONG_TOPICS.items():
+        if len({where(line) for line in lines}) > 1:
+            problems.append(f"{topic} is split across parts")
+    if where("Bouldering is my main sport") == where("I play the guitar"):
+        problems.append("the long hobbies section was not split")
+    for chunk in report.chunks:
+        if chunk.text.rstrip().split("\n")[-1].startswith("#"):
+            problems.append(f"a part ends with a heading: {chunk.heading}")
     return problems

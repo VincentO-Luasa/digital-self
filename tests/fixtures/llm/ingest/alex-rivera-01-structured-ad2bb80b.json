@@ -1,0 +1,108 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You split a long document into parts that are read one at a time to extract facts about the owner.\n\nThe user message gives the document title, the token cap per part and an outline: one line per block, in document order. [n] is the block number. A line starting with # is a heading. Any other line gives the block's size in tokens and its first words.\n\nFields, in this order:\n- reasoning: one short sentence on how the document is organised.\n- parts: the parts in order. Each part has first_block (the number of the block where it starts) and title (2 to 6 words naming its topic, e.g. \"Job at Northwind Labs\", \"Education\", \"Running and hiking\"). A part runs until the next part's first_block.\n\nRules:\n- The first part starts at the first block of the outline.\n- One topic per part: a job, a project, a period of life, a theme. Start a part where the topic changes, never in the middle of one.\n- A part starts at a heading, not just after it.\n- Keep each part under the token cap. The user message lists the stretches too long for one part: split each where its subject changes, even without a heading there.\n- Join short neighbouring blocks on the same topic into one part.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"parts\":[{\"first_block\":0,\"title\":\"…\"},{\"first_block\":9,\"title\":\"…\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Document: Alex Rivera — Data Engineer\nToken cap per part: 500\nOutline of blocks 0 to 25 of 26 (651 tokens):\n\n[0] (23 tok) Page description: Personal homepage of Alex Rivera, a fictional data engineer.\n[1] (32 tok) Profile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - …\n[2] # Alex Rivera\n[3] (16 tok) Senior data engineer at Northwind Labs · Porto, Portugal\n[4] (17 tok) - 7+ years building data pipelines - 2 university degrees\n[5] ## About me\n[6] (76 tok) Hi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since …\n[7] (42 tok) I care about boring, reliable pipelines, clear documentation and teams that share knowledge. Outside work I …\n[8] (38 tok) Alex has done calisthenics every morning for ten years: it is his longest-running habit. Python sits …\n[9] ## Experience\n[10] ### Northwind Labs — Porto\n[11] (68 tok) - **Senior Data Engineer**, March 2025 – present. I lead the Atlas Migration and run the …\n[12] (37 tok) Part of the Data Platform team. Works on pipelines that help analysts trust their numbers. Experiments …\n[13] ### Fabrikam Retail — Lisbon\n[14] (37 tok) **Data Analyst**, September 2019 – January 2023. Owned the weekly sales reporting and moved it from …\n[15] ## Projects\n[16] ### Atlas Migration\n[17] (66 tok) Since 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly …\n[18] ### Tidepool\n[19] (68 tok) Tidepool is a small open-source library for data quality checks that I started in 2022. I …\n[20] ## Skills\n[21] (19 tok) - Python and SQL - Apache Spark - Airflow and dbt - Data modelling\n[22] (32 tok) Tools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the …\n[23] ## Education\n[24] (16 tok) MSc in Data Science, Westbridge University, 2018–2019.\n[25] (15 tok) BSc in Computer Science, Calder College, 2014–2018.\n\nToo long for one part, no heading inside:\n- none"
+      }
+    ],
+    "temperature": 0.0,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "SplitPlan",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "PlannedPart": {
+              "properties": {
+                "first_block": {
+                  "title": "First Block",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "first_block",
+                "title"
+              ],
+              "title": "PlannedPart",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/PlannedPart"
+              },
+              "title": "Parts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "parts"
+          ],
+          "title": "SplitPlan",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-f9a6b947",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The document is structured with clear Markdown headings for major sections (About, Experience, Projects, Skills, Education), allowing parts to be defined by these headings while respecting the token cap.\",\"parts\":[{\"first_block\":0,\"title\":\"Profile and Introduction\"},{\"first_block\":9,\"title\":\"Professional Experience\"},{\"first_block\":15,\"title\":\"Technical Projects\"},{\"first_block\":20,\"title\":\"Skills and Tools\"},{\"first_block\":23,\"title\":\"Education History\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792945096,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 98,
+      "prompt_tokens": 955,
+      "total_tokens": 1053,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 948
+      },
+      "input_tokens": 955,
+      "output_tokens": 98,
+      "time_to_first_token": 0.16,
+      "total_time": 2.64,
+      "prompt_eval_duration": 0.16,
+      "generation_duration": 2.47,
+      "prompt_tokens_per_second": 43.22,
+      "generation_tokens_per_second": 39.61
+    }
+  }
+}

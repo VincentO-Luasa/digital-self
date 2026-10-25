@@ -1,5 +1,5 @@
-"""``brain ingest``: load → raw copy → chunk → extract per chunk → one change set → apply →
-regenerate index.md / core.md → reindex.
+"""``brain ingest``: load → raw copy → plan the split (``planning``, if over one chunk) →
+extract per chunk → one change set → apply → regenerate index.md / core.md → reindex.
 
 A URL is fetched first; the fetched bytes become the raw copy and are read from there, so a web
 page goes through exactly the same path as a file. ``follow`` ingests same-origin linked pages,
@@ -19,7 +19,7 @@ from typing import Protocol
 import httpx
 
 from brain.index.reindex import ReindexStats, reindex
-from brain.ingest.chunking import CHUNK_TOKENS, Chunk, chunk_markdown, halve
+from brain.ingest.chunking import CHUNK_TOKENS, Chunk, halve
 from brain.ingest.extract import (
     Extraction,
     KnownEntity,
@@ -30,6 +30,7 @@ from brain.ingest.extract import (
     relevant_known,
 )
 from brain.ingest.normalise import LITERAL_TYPES, TYPE_DIRS, Normalised, build_changeset
+from brain.ingest.planning import PlanReport, plan_chunks
 from brain.ingest.readers import Document, UnsupportedDocument, load_document
 from brain.ingest.readers.web import Fetched, FetchError, fetch, make_client, same_origin_links
 from brain.llm.base import OutputTruncated, RetrievalModel, StructuredOutputError
@@ -63,6 +64,7 @@ class IngestReport:
     raw_path: str
     raw_created: bool
     source: str = ""  # the file name or URL the document came from
+    plan: PlanReport | None = None  # how the document was split into chunks
     chunks: list[ChunkReport] = field(default_factory=list)
     failed: list[tuple[Chunk, str]] = field(default_factory=list)  # skipped chunks + reason
     extractions: list[Extraction] = field(default_factory=list)
@@ -106,6 +108,7 @@ def ingest(
     today: date | None = None,
     core_max_tokens: int = 1500,
     chunk_tokens: int = CHUNK_TOKENS,
+    on_plan: Callable[[PlanReport], None] | None = None,
     on_chunk: Callable[[ChunkReport, int], None] | None = None,
 ) -> IngestReport:
     """Ingest one document. ``kind`` is ``stated`` for the owner's own documents (CV, homepage)
@@ -125,6 +128,7 @@ def ingest(
         today=today,
         core_max_tokens=core_max_tokens,
         chunk_tokens=chunk_tokens,
+        on_plan=on_plan,
         on_chunk=on_chunk,
     )
 
@@ -142,6 +146,7 @@ def ingest_url(
     core_max_tokens: int = 1500,
     chunk_tokens: int = CHUNK_TOKENS,
     on_page: Callable[[str, int, int], None] | None = None,
+    on_plan: Callable[[PlanReport], None] | None = None,
     on_chunk: Callable[[ChunkReport, int], None] | None = None,
 ) -> WebReport:
     """Fetch and ingest a web page, then up to ``follow`` same-origin pages it links to.
@@ -187,6 +192,7 @@ def ingest_url(
                     today=today,
                     core_max_tokens=core_max_tokens,
                     chunk_tokens=chunk_tokens,
+                    on_plan=on_plan,
                     on_chunk=on_chunk,
                 )
             )
@@ -209,10 +215,14 @@ def _ingest_document(
     today: date,
     core_max_tokens: int,
     chunk_tokens: int,
+    on_plan: Callable[[PlanReport], None] | None,
     on_chunk: Callable[[ChunkReport, int], None] | None,
 ) -> IngestReport:
     report = IngestReport(doc, rel_path(vault, raw), created, source)
-    chunks = chunk_markdown(doc.text, chunk_tokens)
+    report.plan = plan_chunks(llm, doc.text, doc_title=doc.title, max_tokens=chunk_tokens)
+    if on_plan:
+        on_plan(report.plan)
+    chunks = report.plan.chunks
     pages = vault.pages()
     known = known_entities(pages)
     owner = owner_names(pages)
