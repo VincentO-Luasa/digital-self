@@ -1,0 +1,63 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year.\n### Senior Data Engineer at Northwind Labs\nSince March 2025 I have been a senior data engineer at Northwind Labs in Porto.\n### Data Analyst at Fabrikam Retail\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, where I owned the weekly sales reporting.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these is not an organisation the person works or worked for, but one they studied at, joined as a member or volunteer, or only mention?",
+        "choices": [
+          {
+            "value": "Northwind Labs"
+          },
+          {
+            "value": "Fabrikam Retail"
+          },
+          {
+            "value": "Porto library club"
+          },
+          {
+            "value": "none of them",
+            "description": "each is an organisation the person works or worked for"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "Porto library club",
+        "probabilities": [
+          {
+            "value": "Northwind Labs",
+            "probability": 0.0015
+          },
+          {
+            "value": "Fabrikam Retail",
+            "probability": 0.0003
+          },
+          {
+            "value": "Porto library club",
+            "probability": 0.9981
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0001
+          }
+        ],
+        "confidence": 0.9975
+      }
+    ],
+    "usage": {
+      "input_tokens": 212,
+      "output_tokens": 0
+    }
+  }
+}

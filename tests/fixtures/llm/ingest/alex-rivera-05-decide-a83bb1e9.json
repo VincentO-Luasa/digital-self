@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Profile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - Works for: Northwind Labs\n# Alex Rivera\nSenior data engineer at Northwind Labs · Porto, Portugal",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "instructions": "In the text, what is the person's relation to \"Northwind Labs\"?",
+        "choices": [
+          {
+            "value": "employer",
+            "description": "the person works or worked there"
+          },
+          {
+            "value": "school",
+            "description": "the person studied there"
+          },
+          {
+            "value": "member",
+            "description": "the person joined it as a member or volunteer"
+          },
+          {
+            "value": "other",
+            "description": "it is only mentioned, or the text does not mention it"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "choice": "employer",
+        "probabilities": [
+          {
+            "value": "employer",
+            "probability": 0.9997
+          },
+          {
+            "value": "school",
+            "probability": 0.0003
+          },
+          {
+            "value": "member",
+            "probability": 0.0001
+          },
+          {
+            "value": "other",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.9995
+      }
+    ],
+    "usage": {
+      "input_tokens": 139,
+      "output_tokens": 0
+    }
+  }
+}

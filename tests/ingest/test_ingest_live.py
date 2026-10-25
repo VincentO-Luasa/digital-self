@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import DOCS, quality_problems  # type: ignore[import-not-found]
+from conftest import (  # type: ignore[import-not-found]
+    DOCS,
+    portfolio_problems,
+    quality_problems,
+)
 
 from brain.config import load_settings
 from brain.index.db import open_index
@@ -29,36 +33,73 @@ TODAY = date(2026, 10, 25)
 
 
 class OrderedRecorder(Recorder):
-    """Keep each call's token usage; when recording, save fixtures prefixed with the call
-    number so replay keeps chunk order."""
+    """Keep each call's kind and token usage; when recording, save fixtures prefixed with the
+    call number so replay keeps the order."""
 
-    def __init__(self, directory: Path, *, write: bool) -> None:
+    def __init__(self, directory: Path, *, write: bool, prefix: str = "alex-rivera-") -> None:
         super().__init__(directory)
         self.write = write
+        self.stem = prefix
         self.n = 0
-        self.usage: list[dict[str, Any]] = []
+        self.usage: list[tuple[str, dict[str, Any]]] = []
 
     def save(self, kind: str, request: dict[str, Any], response: dict[str, Any]) -> Path:
         self.n += 1
-        self.usage.append(response.get("usage") or {})
+        self.usage.append((kind, response.get("usage") or {}))
         if not self.write:
             return self.directory
-        self.prefix = f"alex-rivera-{self.n:02d}-"
+        self.prefix = f"{self.stem}{self.n:02d}-"
         return super().save(kind, request, response)
+
+
+def live_llm(directory: Path, stem: str):
+    write = bool(os.environ.get("BRAIN_RECORD_FIXTURES"))
+    if write:
+        for old in directory.glob(f"{stem}[0-9]*.json"):
+            old.unlink()
+    client = LLM(load_settings().llm, recorder=OrderedRecorder(directory, write=write, prefix=stem))
+    if not client.health():
+        client.close()
+        pytest.skip("local model server is not running")
+    return client
 
 
 @pytest.fixture
 def llm():
-    write = bool(os.environ.get("BRAIN_RECORD_FIXTURES"))
-    if write:  # only this test's fixtures: split/ holds the long document's plan
-        for old in FIXTURE_DIR.glob("alex-rivera-*.json"):
-            old.unlink()
-    client = LLM(load_settings().llm, recorder=OrderedRecorder(FIXTURE_DIR, write=write))
-    if not client.health():
-        client.close()
-        pytest.skip("local model server is not running")
+    client = live_llm(FIXTURE_DIR, "alex-rivera-")
     yield client
     client.close()
+
+
+def print_report(report: Any, llm: LLM, total: float) -> None:
+    """Timings, token counts, the plan, decisions and notes of a live ingest."""
+    plan = report.plan
+    print(f"\n{len(report.chunks)} chunk(s), total {total:.1f}s, plan {plan.seconds:.1f}s")
+    for part in plan.parts:
+        print(f"  part: {part.title} ({part.tokens} tok)")
+    usage = llm.recorder.usage if isinstance(llm.recorder, OrderedRecorder) else []
+    structured = [u for kind, u in usage if kind == "structured"]
+    if structured:
+        u = structured[0]
+        print(
+            f"  plan: {u.get('prompt_tokens')} prompt / {u.get('completion_tokens')} output tokens"
+        )
+    extraction = structured[plan.calls :]
+    for c, u in zip(report.chunks, extraction, strict=False):
+        print(
+            f"  chunk {c.chunk.index} [{c.chunk.heading}]: {c.seconds:.1f}s, {c.entities} entities, "
+            f"{c.facts} facts, {u.get('prompt_tokens')} prompt / {u.get('completion_tokens')} "
+            f"output tokens; gate p={c.p_about} {c.gate_seconds:.2f}s, {c.checks} checks "
+            f"{c.check_seconds:.2f}s, {c.changed} changed"
+        )
+    for c in report.skipped:
+        print(f"  skipped chunk {c.chunk.index} [{c.chunk.heading}]: p={c.p_about:.3f}")
+    result = report.applied
+    print(f"applied {result.facts_added} facts, created {result.created}")
+    for op, reason in result.queued:
+        print(f"  queued {op.op}: {reason}")
+    for note in report.normalised.notes:
+        print(f"  note: {note}")
 
 
 def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
@@ -67,28 +108,8 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     report = ingest(DOCS / "alex-rivera.html", fresh_vault, llm, db=db, today=TODAY)
     total = time.perf_counter() - start
     result = report.applied
-    assert result is not None and report.normalised is not None
-    plan = report.plan
-    assert plan is not None
-    print(f"\n{len(report.chunks)} chunk(s), total {total:.1f}s, plan {plan.seconds:.1f}s")
-    for part in plan.parts:
-        print(f"  part: {part.title} ({part.tokens} tok)")
-    usage = llm.recorder.usage if isinstance(llm.recorder, OrderedRecorder) else []
-    if usage:
-        print(
-            f"  plan: {usage[0].get('prompt_tokens')} prompt / {usage[0].get('completion_tokens')} output tokens"
-        )
-    usage = usage[plan.calls :]
-    for c, u in zip(report.chunks, usage, strict=False):
-        print(
-            f"  chunk {c.chunk.index}: {c.seconds:.1f}s, {c.entities} entities, {c.facts} facts, "
-            f"{u.get('prompt_tokens')} prompt / {u.get('completion_tokens')} output tokens"
-        )
-    print(f"applied {result.facts_added} facts, created {result.created}")
-    for op, reason in result.queued:
-        print(f"  queued {op.op}: {reason}")
-    for note in report.normalised.notes:
-        print(f"  note: {note}")
+    assert result is not None and report.normalised is not None and report.plan is not None
+    print_report(report, llm, total)
 
     facts = {(f.p, f.o) for p in fresh_vault.pages() if p.subject == "self" for f in p.facts}
     assert ("works_at", "[[orgs/northwind-labs]]") in facts
@@ -102,3 +123,25 @@ def test_ingest_homepage_live(fresh_vault: Vault, llm: LLM) -> None:
     assert any(getattr(op, "p", "") == "friend_of" for op, _ in result.queued)
     assert not any(getattr(op, "p", "") == "lives_in" for op, _ in result.queued)
     assert quality_problems(fresh_vault) == []
+
+
+PORTFOLIO_DIR = FIXTURE_DIR / "portfolio"
+
+
+@pytest.fixture
+def portfolio_llm():
+    PORTFOLIO_DIR.mkdir(exist_ok=True)
+    client = live_llm(PORTFOLIO_DIR, "alex-rivera-portfolio-")
+    yield client
+    client.close()
+
+
+def test_ingest_portfolio_live(fresh_vault: Vault, portfolio_llm: LLM) -> None:
+    """The page that exercises the gate and the typed checks (see ``portfolio_problems``)."""
+    llm = portfolio_llm
+    start = time.perf_counter()
+    report = ingest(DOCS / "alex-rivera-portfolio.html", fresh_vault, llm, today=TODAY)
+    total = time.perf_counter() - start
+    assert report.applied is not None and report.normalised is not None
+    print_report(report, llm, total)
+    assert portfolio_problems(report, fresh_vault) == []

@@ -170,3 +170,55 @@ def test_save_doc_bytes(tmp_vault: Vault) -> None:
     assert again == path and not created
     other, created = save_doc_bytes(tmp_vault, b"<p>v2</p>", "Alex Example CV", "HTML", today=today)
     assert created and other.name == "2026-10-25-alex-example-cv-2.html"
+
+
+def test_section_numbers_are_dropped_and_inline_elements_kept_apart() -> None:
+    _, text = html_to_markdown(
+        page(
+            # a kicker: zero-padded index + label, above a heading
+            '<p class="section__kicker"><span class="section__index">02</span>'
+            '<span class="section__label">Side lab</span></p><h2>Notes from the lab</h2>'
+            # no class names at all: the structure is enough
+            "<p><span>04</span><span>Career</span></p><h2>Career path</h2>"
+            "<div>05</div><h2>Education</h2>"  # a bare number right before a heading
+            "<h2><span>06</span>Life</h2>"  # a number inside a heading
+            # counts are content, not decoration
+            '<p><span class="count" data-target="7">0</span>+ years building pipelines</p>'
+            "<p><span>12</span> talks given</p>"
+            "<p>Hero: <span>Data engineer</span><span>Porto</span></p>"
+            "<p><span>H</span><span>e</span><span>y</span> there</p>"  # letter-by-letter spans
+        )
+    )
+    assert text.splitlines() == [
+        "Side lab",
+        "",
+        "## Notes from the lab",
+        "",
+        "Career",
+        "",
+        "## Career path",
+        "",
+        "## Education",
+        "",
+        "## Life",
+        "",
+        "7+ years building pipelines",
+        "",
+        "12 talks given",
+        "",
+        "Hero: Data engineer Porto",
+        "",
+        "Hey there",
+    ]
+
+
+def test_fixture_homepage_kickers_read_cleanly() -> None:
+    doc = load_document(
+        Path(__file__).resolve().parents[1] / "fixtures" / "docs" / "alex-rivera.html"
+    )
+    assert (
+        "\nCareer\n\n## Experience" in doc.text
+        and "02Career" not in doc.text
+        and "02 Career" not in doc.text
+    )
+    assert "7+ years building data pipelines" in doc.text

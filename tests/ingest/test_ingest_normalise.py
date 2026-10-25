@@ -292,3 +292,43 @@ def test_starts_dated_to_the_ingest_day_are_dropped(fresh_vault: Vault) -> None:
     facts = {(f.p, f.o): f for f in facts_of(out.changeset.ops)}
     assert facts[("role", "Data engineer")].valid_from == "2024-04"
     assert facts[("works_at", "[[orgs/northwind-labs]]")].valid_from == "2026-10"  # a month is kept
+
+
+def test_entity_kinds_from_checks_never_touch_the_fact_kind(fresh_vault: Vault) -> None:
+    """Regression: a loop over the checks' kinds once shadowed ``kind`` (stated/observed), and
+    facts were built with kind='org'."""
+    extraction = Extraction.model_validate(
+        {
+            "reasoning": "r",
+            "owner_names": [],
+            "entities": [
+                entity("Data Platform", "org"),
+                entity("Lakehouse Cloud", "project"),
+                entity("Harbor Guild", "project"),
+            ],
+            "facts": [
+                fact("self", "works_at", "Northwind Labs", ""),
+                fact("self", "member_of", "Data Platform", ""),
+                fact("self", "worked_on", "Lakehouse Cloud", ""),
+                fact("self", "member_of", "Harbor Guild", ""),
+            ],
+        }
+    )
+    out = build_changeset(
+        [extraction],
+        fresh_vault,
+        src=SRC,
+        kind="observed",
+        entity_kinds={
+            "data platform": "team",
+            "lakehouse cloud": "tool",
+            "harbor guild": "org",
+            "northwind labs": "org",
+        },
+    )
+    facts = facts_of(out.changeset.ops)
+    assert facts and {f.kind for f in facts} == {"observed"}
+    creates = {op.id: op.type for op in out.changeset.ops if isinstance(op, CreateEntity)}
+    assert creates == {"orgs/northwind-labs": "org", "orgs/harbor-guild": "org"}
+    assert ("team", "Data Platform") in {(f.p, f.o) for f in facts}
+    assert any("'Lakehouse Cloud' is a tool" in n for n in out.notes)

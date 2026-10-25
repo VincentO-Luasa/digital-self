@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Quick guide: partitioning tables\nPartitioning splits a large table into smaller pieces by a key such as the event date. Queries that filter on the key read only …",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.0601
+      }
+    ],
+    "usage": {
+      "input_tokens": 116,
+      "output_tokens": 0
+    }
+  }
+}

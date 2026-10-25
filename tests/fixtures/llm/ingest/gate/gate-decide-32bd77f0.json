@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "© 2026 · Built with a static site generator · Last updated October 2026",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.1192
+      }
+    ],
+    "usage": {
+      "input_tokens": 103,
+      "output_tokens": 0
+    }
+  }
+}

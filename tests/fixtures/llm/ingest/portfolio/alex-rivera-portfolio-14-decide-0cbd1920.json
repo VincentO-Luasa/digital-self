@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Quick guide: partitioning warehouse tables\nPartitioning splits a large table into smaller pieces by a key such as the event date. Queries that filter on the key read only …\nCluster each partition on the columns you filter by most often, and re-cluster after large backfills. Avoid partitioning on a column that changes after …\nWhen a table is small, under a few gigabytes, partitioning rarely helps: the planner reads it quickly anyway, and the extra metadata only adds …\n## Privacy on this site\nThis site stores a small file in your browser to remember whether you prefer the dark theme. Anonymous page counts are collected without any …\n## Get in touch\nThe best way to reach me is by email at alex@example.com. Press and speaking requests are welcome.",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.852
+      }
+    ],
+    "usage": {
+      "input_tokens": 240,
+      "output_tokens": 0
+    }
+  }
+}

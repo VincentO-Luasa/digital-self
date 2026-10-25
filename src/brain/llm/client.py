@@ -30,6 +30,15 @@ from brain.llm.base import (
     l2_normalise,
     parse_arguments,
 )
+from brain.llm.decide import (
+    Decision,
+    Question,
+    fallback_decisions,
+    fallback_messages,
+    fallback_schema,
+    parse_answers,
+    request_payload,
+)
 from brain.llm.recorder import Recorder
 
 log = logging.getLogger(__name__)
@@ -38,6 +47,7 @@ T = TypeVar("T", bound=BaseModel)
 
 NO_THINKING = {"chat_template_kwargs": {"enable_thinking": False}}
 MAX_ERROR_CHARS = 1500
+NO_ENDPOINT = (404, 405, 501)  # the runtime has no /v1/decisions
 
 
 def server_root(base_url: str) -> str:
@@ -69,6 +79,17 @@ def retry_message(error: ValidationError) -> dict[str, str]:
     }
 
 
+def _no_endpoint(resp: httpx.Response) -> bool:
+    """The route does not exist (as opposed to e.g. an unknown model, a 404 with an API error)."""
+    if resp.status_code not in NO_ENDPOINT:
+        return False
+    try:
+        body = resp.json()
+    except ValueError:
+        return True
+    return not (isinstance(body, dict) and "error" in body)
+
+
 class LLM:
     """Client for chat, structured output, embeddings and rerank.
 
@@ -94,6 +115,7 @@ class LLM:
             max_retries=max_retries,
         )
         self._dim: int | None = None
+        self._decisions: bool | None = None  # does the server have /v1/decisions? (learned)
 
     # -- lifecycle ---------------------------------------------------------------------------
 
@@ -280,6 +302,42 @@ class LLM:
                     retry_message(err),
                 ]
         raise StructuredOutputError(f"{schema.__name__}: invalid JSON after retry", raw)
+
+    # -- decisions ---------------------------------------------------------------------------
+
+    def decide(self, text: str, questions: Sequence[Question]) -> list[Decision]:
+        """Answer closed questions about ``text``: one ``Decision`` per question, in order.
+
+        Uses ``POST /v1/decisions`` (a probability per option, one token per question). A
+        server without it (404/405/501) gets one ``structured`` call instead, answers marked
+        ``fallback``; that is remembered for the client's lifetime.
+        """
+        if not questions:
+            return []
+        if self._decisions is not False:
+            payload = request_payload(self.settings.chat_model, text, questions)
+            start = time.perf_counter()
+            resp = self._http.post(f"{self.settings.base_url.rstrip('/')}/decisions", json=payload)
+            if not _no_endpoint(resp) or self._decisions:
+                resp.raise_for_status()
+                data = resp.json()
+                self._decisions = True
+                log.debug(
+                    "decide %d questions: %.2fs input=%s",
+                    len(questions),
+                    time.perf_counter() - start,
+                    (data.get("usage") or {}).get("input_tokens", "?"),
+                )
+                if self.recorder:
+                    self.recorder.save("decide", payload, data)
+                return parse_answers(data, questions)
+            log.info("no /v1/decisions (HTTP %d): structured fallback", resp.status_code)
+            self._decisions = False
+        schema = fallback_schema(questions)
+        reply = self.structured(
+            fallback_messages(text, questions), schema, temperature=0.0, max_tokens=512
+        )
+        return fallback_decisions(reply, questions)
 
     # -- embeddings / rerank -----------------------------------------------------------------
 

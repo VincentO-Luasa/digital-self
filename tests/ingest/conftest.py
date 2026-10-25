@@ -112,6 +112,19 @@ def homepage_extraction() -> dict[str, Any]:
     }
 
 
+def homepage_extractions() -> tuple[dict[str, Any], dict[str, Any]]:
+    """``homepage_extraction`` split over the two parts of ``homepage_plan``: each fact goes with
+    the part whose text names its entities (ingest drops facts about entities a part never
+    names)."""
+    full = homepage_extraction()
+    profile_preds = {"name", "lives_in", "born", "knows"}
+    profile = {**full, "entities": [], "facts": []}
+    career = {**full, "facts": []}
+    for f in full["facts"]:
+        (profile if f["predicate"] in profile_preds else career)["facts"].append(f)
+    return profile, career
+
+
 @pytest.fixture
 def fresh_vault(tmp_path: Path, git_env: None) -> Vault:
     """A brand-new vault from ``brain init-vault`` (no pages except self/profile)."""
@@ -121,7 +134,9 @@ def fresh_vault(tmp_path: Path, git_env: None) -> Vault:
 # --- quality checks shared by the replay and live tests (problems seen on a real homepage) ----
 
 TOOLS = ("codeharbor", "pebble", "lumen", "triplog", "tl4521", "python", "airflow", "dbt")
-PRONOUN = re.compile(r"\b(?:he|she|his|her|they|their|i|my)\b", re.I)
+# pronouns that can stand for the owner ("they"/"their" only as the leading subject: in "help
+# analysts trust their numbers" it is the analysts' numbers)
+PRONOUN = re.compile(r"\b(?:he|she|his|her|i|my)\b|^(?:they|their)\b", re.I)
 OWNER = re.compile(r"\balex\b|\brivera\b", re.I)
 ZERO = re.compile(r"(?<![\w.,])0\+?\s+[a-z]", re.I)
 
@@ -194,3 +209,98 @@ def split_problems(report: Any, text: str, cap: int) -> list[str]:
         if chunk.text.rstrip().split("\n")[-1].startswith("#"):
             problems.append(f"a part ends with a heading: {chunk.heading}")
     return problems
+
+
+# --- the portfolio page (tests/fixtures/docs/alex-rivera-portfolio.html): gate and checks ------
+
+PORTFOLIO = DOCS / "alex-rivera-portfolio.html"
+HOBBIES = ("bouldering", "sourdough", "chess")
+
+
+def portfolio_problems(report: Any, vault: Vault) -> list[str]:
+    """What is wrong with an ingest of the portfolio page ([] if nothing)."""
+    problems: list[str] = []
+    pages = {p.id: p for p in vault.pages()}
+    for page_id, page in pages.items():
+        slug = page_id.rsplit("/", 1)[-1]
+        if any(t in slug for t in ("data-platform", "lakehouse", "causal", "python", "spark")):
+            problems.append(f"page for a team, tool or topic: {page_id}")
+        if re.match(r"\d", page.title):
+            problems.append(f"page title glued to a section number: {page.title}")
+    for name in ("projects/tidepool", "orgs/northwind-labs", "orgs/fabrikam-retail"):
+        if name not in pages:
+            problems.append(f"missing page {name}")
+    self_facts = [f for p in pages.values() if p.subject == "self" for f in p.facts]
+    for f in self_facts:
+        if f.p == "has_skill" and any(h in f.o.lower() for h in HOBBIES):
+            problems.append(f"hobby as a skill: {f.o}")
+        if f.p == "works_at" and "northwind" not in f.o and "fabrikam" not in f.o:
+            problems.append(f"works_at {f.o}")
+        if f.p == "speaks" and f.o.lower() not in ("english", "spanish", "portuguese"):
+            problems.append(f"speaks a non-language: {f.o}")
+    if not any(f.p == "has_skill" and "python" in f.o.lower() for f in self_facts):
+        problems.append("Python is not a skill")
+    for chunk in report.plan.chunks:
+        job = "Since March 2025" in chunk.text
+        if job and ("Side projects" in chunk.heading or "reading-list" in chunk.heading):
+            problems.append(f"the job's part is labelled as a side project: {chunk.heading}")
+    # a part that is only the generic tutorial and the privacy notice must be skipped (the plan
+    # varies: when it puts the contact block or the education in the same part, it is kept)
+    personal = ("Westbridge", "Get in touch", "Northwind", "Tidepool")
+    junk = [
+        c
+        for c in report.plan.chunks
+        if c.text.count("partition") > 5 and not any(p in c.text for p in personal)
+    ]
+    skipped = {c.chunk.index for c in report.skipped}
+    if any(c.index not in skipped for c in junk):
+        problems.append("the generic tutorial part was extracted, not skipped")
+    if any("Northwind" in c.chunk.text for c in report.skipped):
+        problems.append("a part about the owner was skipped")
+    return problems
+
+
+# --- fictional parts for the extraction gate (tests/ingest/test_ingest_gate_*.py) ---------------
+
+GATE_PARTS = {  # name → (text, should be extracted)
+    "cv": (
+        "## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – "
+        "present. I lead the Atlas Migration and run the platform team's on-call rotation.\n"
+        "- **Data Engineer**, February 2023 – March 2025. Built the ingestion framework for the "
+        "product analytics team.",
+        True,
+    ),
+    "hobbies": (
+        "## Life outside work\n\nAlex has done calisthenics every morning for ten years. On "
+        "weekends he goes bouldering with Sam Okafor and bakes sourdough bread.",
+        True,
+    ),
+    "opinion": (
+        "## Why I prefer boring pipelines\n\nI have come to value boring, predictable pipelines "
+        "over clever ones. After years of on-call I care more about clear documentation than "
+        "about the newest framework.",
+        True,
+    ),
+    "cookie banner": (
+        "## Privacy and cookies\n\nThis site uses cookies to measure traffic and remember your "
+        "preferences. Analytics cookies are only set if you accept them. You can withdraw consent "
+        "at any time from the settings page. Data is stored for 13 months and never sold to "
+        "third parties. For details, see the full privacy policy.",
+        False,
+    ),
+    "footer": ("© 2026 · Built with a static site generator · Last updated October 2026", False),
+    "tutorial": (
+        "## Quick guide: partitioning tables\n\nPartitioning splits a large table into smaller "
+        "pieces by a key such as the event date. Queries that filter on the key read only the "
+        "matching partitions, which cuts scan time and cost. Choose a key with a few hundred to a "
+        "few thousand distinct values; too many tiny partitions slow the planner down. "
+        "Re-cluster the table after large backfills.",
+        False,
+    ),
+    # a contact block says little but is not junk either: it must not be skipped by mistake
+    "contact": (
+        "## Get in touch\n\nThe best way to reach me is by email. I try to answer within a week. "
+        "Press and speaking requests are welcome.\n\nalex@example.com",
+        None,
+    ),
+}

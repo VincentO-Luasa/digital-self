@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Page description: Fictional portfolio of Alex Rivera, a data engineer in Porto.\n# Alex Rivera\nData engineer Porto\nResearch\n## What I am reading about\nLately I have been reading a lot about Causal Inference, mostly to understand why our dashboards disagree with each other. I keep a reading …\nSide projects\n## Side projects\n### Tidepool\nTidepool is a small open-source library for data quality checks that I started in 2022. I maintain it together with my friend Sam Okafor. …\n### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year. It reads …\nCareer\n## Career path\n### Senior Data Engineer at Northwind Labs\nSince March 2025 I have been a senior data engineer at Northwind Labs in Porto. I am part of Data Platform, the group that …\n### Data Analyst at Fabrikam Retail\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, where I owned the weekly sales reporting.\nEducation\n## Education & toolkit\nMSc in Data Science, Westbridge University, 2018–2019.\n- Python, SQL and Apache Spark - Data modelling and public speaking - Bouldering (V5) and sourdough baking - Chess, mostly online\nNotes",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.9994
+      }
+    ],
+    "usage": {
+      "input_tokens": 392,
+      "output_tokens": 0
+    }
+  }
+}

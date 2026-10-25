@@ -9,7 +9,7 @@
       },
       {
         "role": "user",
-        "content": "Document: Alex Rivera — Data Engineer\nToken cap per part: 500\nOutline of blocks 0 to 25 of 26 (651 tokens):\n\n[0] (23 tok) Page description: Personal homepage of Alex Rivera, a fictional data engineer.\n[1] (32 tok) Profile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - …\n[2] # Alex Rivera\n[3] (16 tok) Senior data engineer at Northwind Labs · Porto, Portugal\n[4] (17 tok) - 7+ years building data pipelines - 2 university degrees\n[5] ## About me\n[6] (76 tok) Hi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since …\n[7] (42 tok) I care about boring, reliable pipelines, clear documentation and teams that share knowledge. Outside work I …\n[8] (38 tok) Alex has done calisthenics every morning for ten years: it is his longest-running habit. Python sits …\n[9] ## Experience\n[10] ### Northwind Labs — Porto\n[11] (68 tok) - **Senior Data Engineer**, March 2025 – present. I lead the Atlas Migration and run the …\n[12] (37 tok) Part of the Data Platform team. Works on pipelines that help analysts trust their numbers. Experiments …\n[13] ### Fabrikam Retail — Lisbon\n[14] (37 tok) **Data Analyst**, September 2019 – January 2023. Owned the weekly sales reporting and moved it from …\n[15] ## Projects\n[16] ### Atlas Migration\n[17] (66 tok) Since 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly …\n[18] ### Tidepool\n[19] (68 tok) Tidepool is a small open-source library for data quality checks that I started in 2022. I …\n[20] ## Skills\n[21] (19 tok) - Python and SQL - Apache Spark - Airflow and dbt - Data modelling\n[22] (32 tok) Tools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the …\n[23] ## Education\n[24] (16 tok) MSc in Data Science, Westbridge University, 2018–2019.\n[25] (15 tok) BSc in Computer Science, Calder College, 2014–2018.\n\nToo long for one part, no heading inside:\n- none"
+        "content": "Document: Alex Rivera — Data Engineer\nToken cap per part: 500\nOutline of blocks 0 to 27 of 28 (655 tokens):\n\n[0] (23 tok) Page description: Personal homepage of Alex Rivera, a fictional data engineer.\n[1] (32 tok) Profile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - …\n[2] # Alex Rivera\n[3] (16 tok) Senior data engineer at Northwind Labs · Porto, Portugal\n[4] (17 tok) - 7+ years building data pipelines - 2 university degrees\n[5] ## About me\n[6] (76 tok) Hi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since …\n[7] (42 tok) I care about boring, reliable pipelines, clear documentation and teams that share knowledge. Outside work I …\n[8] (38 tok) Alex has done calisthenics every morning for ten years: it is his longest-running habit. Python sits …\n[9] (2 tok) Career\n[10] ## Experience\n[11] ### Northwind Labs — Porto\n[12] (68 tok) - **Senior Data Engineer**, March 2025 – present. I lead the Atlas Migration and run the …\n[13] (37 tok) Part of the Data Platform team. Works on pipelines that help analysts trust their numbers. Experiments …\n[14] ### Fabrikam Retail — Lisbon\n[15] (37 tok) **Data Analyst**, September 2019 – January 2023. Owned the weekly sales reporting and moved it from …\n[16] (2 tok) Work\n[17] ## Projects\n[18] ### Atlas Migration\n[19] (66 tok) Since 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly …\n[20] ### Tidepool\n[21] (68 tok) Tidepool is a small open-source library for data quality checks that I started in 2022. I …\n[22] ## Skills\n[23] (19 tok) - Python and SQL - Apache Spark - Airflow and dbt - Data modelling\n[24] (32 tok) Tools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the …\n[25] ## Education\n[26] (16 tok) MSc in Data Science, Westbridge University, 2018–2019.\n[27] (15 tok) BSc in Computer Science, Calder College, 2014–2018.\n\nToo long for one part, no heading inside:\n- none"
       }
     ],
     "temperature": 0.0,
@@ -71,38 +71,38 @@
     }
   },
   "response": {
-    "id": "chatcmpl-f9a6b947",
+    "id": "chatcmpl-338d55d8",
     "choices": [
       {
         "finish_reason": "stop",
         "index": 0,
         "message": {
-          "content": "{\"reasoning\":\"The document is structured with clear Markdown headings for major sections (About, Experience, Projects, Skills, Education), allowing parts to be defined by these headings while respecting the token cap.\",\"parts\":[{\"first_block\":0,\"title\":\"Profile and Introduction\"},{\"first_block\":9,\"title\":\"Professional Experience\"},{\"first_block\":15,\"title\":\"Technical Projects\"},{\"first_block\":20,\"title\":\"Skills and Tools\"},{\"first_block\":23,\"title\":\"Education History\"}]}",
+          "content": "{\"reasoning\":\"The document is a standard resume/CV structure with clear hierarchical headings for sections like About, Experience, Projects, Skills, and Education, allowing parts to be split at these major topic boundaries while respecting the token cap.\",\"parts\":[{\"first_block\":0,\"title\":\"Profile and About Me\"},{\"first_block\":9,\"title\":\"Career Experience\"},{\"first_block\":17,\"title\":\"Projects\"},{\"first_block\":22,\"title\":\"Skills and Education\"}]}",
           "role": "assistant"
         }
       }
     ],
-    "created": 1792945096,
+    "created": 1792955287,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
-      "completion_tokens": 98,
-      "prompt_tokens": 955,
-      "total_tokens": 1053,
+      "completion_tokens": 94,
+      "prompt_tokens": 975,
+      "total_tokens": 1069,
       "completion_tokens_details": {
         "reasoning_tokens": 0
       },
       "prompt_tokens_details": {
-        "cached_tokens": 948
+        "cached_tokens": 0
       },
-      "input_tokens": 955,
-      "output_tokens": 98,
-      "time_to_first_token": 0.16,
-      "total_time": 2.64,
-      "prompt_eval_duration": 0.16,
-      "generation_duration": 2.47,
-      "prompt_tokens_per_second": 43.22,
-      "generation_tokens_per_second": 39.61
+      "input_tokens": 975,
+      "output_tokens": 94,
+      "time_to_first_token": 2.04,
+      "total_time": 4.2,
+      "prompt_eval_duration": 2.04,
+      "generation_duration": 2.16,
+      "prompt_tokens_per_second": 478.51,
+      "generation_tokens_per_second": 43.42
     }
   }
 }

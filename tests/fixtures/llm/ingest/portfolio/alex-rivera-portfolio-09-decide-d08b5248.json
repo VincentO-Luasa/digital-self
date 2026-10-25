@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "instructions": "In the text, what is the person's relation to \"Porto library club\"?",
+        "choices": [
+          {
+            "value": "employer",
+            "description": "the person works or worked there"
+          },
+          {
+            "value": "school",
+            "description": "the person studied there"
+          },
+          {
+            "value": "member",
+            "description": "the person joined it as a member or volunteer"
+          },
+          {
+            "value": "other",
+            "description": "it is only mentioned, or the text does not mention it"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "choice": "member",
+        "probabilities": [
+          {
+            "value": "employer",
+            "probability": 0.0008
+          },
+          {
+            "value": "school",
+            "probability": 0.0002
+          },
+          {
+            "value": "member",
+            "probability": 0.999
+          },
+          {
+            "value": "other",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.9987
+      }
+    ],
+    "usage": {
+      "input_tokens": 137,
+      "output_tokens": 0
+    }
+  }
+}

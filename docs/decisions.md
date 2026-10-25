@@ -191,3 +191,80 @@ job history, yields a role taken from the page title, which goes to review as a
 contradiction). Alternatives: model-free greedy packing (cuts mid-topic); asking for topic
 boundaries and packing them up to the cap in code (fewer calls, but the model's parts are no
 longer the chunks); sending the full text (too slow on a 50-page PDF).
+
+## 2026-10-25 — Typed decisions: `LLM.decide` over `/v1/decisions`, structured fallback
+`brain.llm` gains `decide(text, questions) -> list[Decision]` (`brain/llm/decide.py`): choice and
+yes/no (`predicate`) questions answered with a probability per option and a confidence, via
+`POST /v1/decisions` (OpenAI Decisions-compatible; oMLX serves it for the chat model by reading
+the option letters' next-token probabilities, one token per question). A refusal (the letters
+hold under half the mass) is `Decision.refusal`; FakeLLM's unscripted questions are refusals, so
+code must treat "no answer" as "keep what you have". A server without the route (404/405/501 that
+is not an API error such as an unknown model) gets one `structured` call with an enum per
+question, answers marked `fallback` with confidence 1.0; the client remembers it. Recorder,
+FakeLLM replay and StructuredCache cover `decide` (refusals are not cached). Why: closed questions
+cost one forward pass, cannot come back malformed, and give a number to threshold; rule 6 keeps
+the runtime swappable. Measured on the base M4 (oMLX 0.7.2, Qwen3.6-35B-A3B): the server answers
+questions one after the other and re-reads the input for each (~0.35 s + ~1.6 ms per input
+token); on this hybrid (GatedDeltaNet) model only the full prompt is cached, so questions sharing
+one input do not reuse it, and concurrent requests are serialised. Cost therefore scales with
+questions × input tokens; callers keep inputs short and questions few.
+
+## 2026-10-25 — Ingest gate: skip parts that say nothing about a person
+Before extracting a part of a multi-part document, one yes/no decision on a compact view of it
+(headings and the first 24 words of each block): "Does this excerpt say anything about its author
+or the person it describes (work, education, projects, people, places, interests, values or
+habits)?". Below `SKIP_BELOW = 0.15` the part is skipped and reported with its probability. A
+document's only part is never skipped; a failed or refused decision extracts. Measured on
+fictional parts: CV 0.995, hobbies 0.996, opinion post 0.992, contact block 0.59, footer 0.12,
+tutorial 0.06, cookie notice 0.05 (phrasings naming "the owner" scored a third-person hobbies
+part 0.80 and a contact block 0.56, less separation). The compact view kept the separation
+(tutorial part 0.03; a tutorial with one personal line at the end 0.91) at half the tokens of a
+long part. Cost ~0.6–0.9 s per part against ~40 s of extraction for a skipped one. Why 0.15 and
+not the research's 0.05: positives sit at ≥ 0.99, negatives spread 0.01–0.12, the contact block
+(~0.6) must stay. Alternatives: reader rules per kind of boilerplate (the reader already drops
+what it can recognise structurally; the rest varies per site); asking on the full part (2× the
+tokens, same verdicts).
+
+## 2026-10-25 — Ingest checks: ground, screen, then ask; evidence, never the proposal
+After each part's extraction: (1) **grounding** in code: a fact whose subject (unless the owner)
+or page-type object the part never names is dropped. A part that passed the gate weakly (a
+tutorial with a contact block, p 0.85) restated every entity of its KNOWN ENTITIES list
+(works_at the university, worked_on "Bouldering", friend_of the manager) and created seven junk
+pages on a vault that already held the homepage. (2) **typed decisions** on what code cannot
+verify: new entities (person / org / team / project / place / event / tool / topic / activity;
+team, tool, topic and activity become literal values through the normaliser's literal path),
+works_at organisations (employer / school / member / other → studied_at, member_of or dropped),
+skill vs leisure values (skill / hobby / interest / other → has_skill or interest), and `speaks`
+values that are not a known language. Questions show the sentences or list lines naming the
+items, under their heading, never the extractor's answer (shown a proposal, the model agrees
+with it). A change needs confidence ≥ `ACT_ABOVE = 0.8`; below it the extractor stands and a
+note records the answer. Cost decides the shape: each question costs ~0.5–0.8 s (see the decide
+entry), so asking about every item of a CV part took 8–14 s; each set is instead screened by one
+choice question ("which of these is a team, a tool, a topic or an activity rather than a person,
+organisation, project, place or event? / none of them") in groups of at most 6, and only items
+at or above `SCREEN_FLAG = 0.15`, items the part never names, and sets of one or two get their
+own question. Findings: a re-screen after removing the flagged item mostly flagged ordinary
+items (0.86–0.92), so one round; one screen of 11 names missed two of three suspects, so groups
+of 6 and a low flag; "none of them" rarely wins a 2-item screen (the past employer next to the
+current one at 0.99), so small sets are asked directly; wording the project option "including
+the person's own app or library" stopped own libraries reading as products; "skill or hobby?"
+sent a work-related interest to has_skill (0.89), a third option "a subject of interest" fixed
+it (0.96) and a fourth "none of these" stopped an own library listed as an interest becoming a
+skill (0.88 → other 0.81); without an "activity" kind, hobbies typed as projects got 0.39–0.44
+for tool/topic, with it 0.83–0.99. Known gaps: the ~2 s per part target is met by the gate alone,
+checks add ~2–6 s per part (a fraction of the 20–60 s extraction); grounding can drop a fact that
+names its entity only by pronoun across parts. Alternatives: one question per item (8–14 s);
+the reranker as a classifier (judges relatedness, not kind); more regexes for teams/tools/hobbies
+(per-site rules).
+
+## 2026-10-25 — Section labels from the part's own headings; inline HTML kept apart
+A part's "Section:" label is its first heading's trail plus the model's title. A part that
+started with a kicker line ("Career" above "## Career path") took that line's trail, which is the
+previous section's ("Side projects > A voice companion > Research Engineer at …"), and the
+extraction attributed the side project to the job. A part with no heading continues its
+section; one starting with real text of another section keeps only the shared trail. The HTML
+reader puts a space between adjacent inline elements whose texts would touch ("02Claude lab")
+and drops decorative ordinals by structure (a bare 1–2 digit element before a heading, first in a
+heading, or first in a short line followed by another element when zero-padded or above a
+heading), not by class names: the fix must hold for any site. Counters and counts in sentences
+("7+ years", "12 talks") stay.

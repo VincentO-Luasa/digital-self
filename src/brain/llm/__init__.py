@@ -8,13 +8,17 @@ from brain.llm.base import (
     ToolCall,
 )
 from brain.llm.client import LLM
+from brain.llm.decide import ChoiceQuestion, Decision, PredicateQuestion
 from brain.llm.fake import FakeLLM
 
 __all__ = [
     "LLM",
     "ChatResult",
+    "ChoiceQuestion",
+    "Decision",
     "FakeLLM",
     "OutputTruncated",
+    "PredicateQuestion",
     "RetrievalModel",
     "StructuredOutputError",
     "ToolCall",

@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Why I prefer boring pipelines\nI have come to value boring, predictable pipelines over clever ones. After years of on-call I care more about clear documentation than about the …",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.9924
+      }
+    ],
+    "usage": {
+      "input_tokens": 116,
+      "output_tokens": 0
+    }
+  }
+}

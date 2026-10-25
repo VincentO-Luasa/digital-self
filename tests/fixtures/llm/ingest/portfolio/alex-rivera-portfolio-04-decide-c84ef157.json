@@ -1,0 +1,84 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## What I am reading about\nLately I have been reading a lot about Causal Inference, mostly to understand why our dashboards disagree with each other.\n### Tidepool\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor.\n### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year.\n### Senior Data Engineer at Northwind Labs\nSince March 2025 I have been a senior data engineer at Northwind Labs in Porto.\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
+        "choices": [
+          {
+            "value": "Causal Inference"
+          },
+          {
+            "value": "Tidepool"
+          },
+          {
+            "value": "Sam Okafor"
+          },
+          {
+            "value": "Porto library club"
+          },
+          {
+            "value": "Northwind Labs"
+          },
+          {
+            "value": "Data Platform"
+          },
+          {
+            "value": "none of them",
+            "description": "each is a person, organisation, project, place or event"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "Causal Inference",
+        "probabilities": [
+          {
+            "value": "Causal Inference",
+            "probability": 0.9859
+          },
+          {
+            "value": "Tidepool",
+            "probability": 0.0005
+          },
+          {
+            "value": "Sam Okafor",
+            "probability": 0.004
+          },
+          {
+            "value": "Porto library club",
+            "probability": 0.0002
+          },
+          {
+            "value": "Northwind Labs",
+            "probability": 0.0001
+          },
+          {
+            "value": "Data Platform",
+            "probability": 0.0085
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0007
+          }
+        ],
+        "confidence": 0.9836
+      }
+    ],
+    "usage": {
+      "input_tokens": 319,
+      "output_tokens": 0
+    }
+  }
+}

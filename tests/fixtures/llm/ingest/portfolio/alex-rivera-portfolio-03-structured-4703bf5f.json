@@ -1,0 +1,219 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You extract facts about the owner from one excerpt of a document the owner wrote or that is about the owner.\n\nFields, in this order:\n- reasoning: one short sentence on what the excerpt covers.\n- owner_names: names the excerpt uses for the owner (full name, short name); [] if none.\n- entities: the people, organisations (company, university, school, club), projects, places and events that facts point to. Never the owner. Each entity has name (as written), type, id (its id in KNOWN ENTITIES, else \"\") and aliases (other names the excerpt uses; [] if none). type is person, org, project, place, event, or tool for a tool, app, product, website, dataset, record id or technology. Teams, skills and languages are not entities.\n- facts: one per fact, one value each. Each fact has:\n  - subject: \"self\" for the owner, otherwise an entity name.\n  - predicate: one of the predicates below.\n  - object: an entity name, \"self\", or a short literal such as \"Python\", \"Spanish\", \"Senior data engineer\".\n  - text: \"\" when predicate and object say it all (speaks Spanish, has_skill Python, works_at Northwind Labs, responsibility \"Runs the on-call rotation\"). Otherwise a short sentence that starts with a verb, contains the object and has no name and no pronoun (he, his, she, her, they, their, I, my), e.g. \"Does calisthenics every morning\".\n  - start, end: when it began and when it stopped, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given); \"\" if not said or still true.\n\nPredicates:\n- name: full name. born: birth date. hometown: where they grew up. lives_in: the city they live in. nationality. speaks: a language.\n- works_at: an employer organisation, nothing else. role: a job title. team: a team name. manager: who they report to. responsibility: one duty in a job, as a short verb phrase (\"Works on…\", \"Builds…\", \"Experiments with…\", \"Runs…\"). worked_on: a project.\n- studied_at: a school or university. degree. certification.\n- has_skill: a skill, tool, technology or programming language. habit: something they do regularly.\n- values, interest, likes: what the owner cares about, enjoys or is into.\n- goal: an aim of the owner or of a project.\n- About a project (subject: the project): owner (who leads it; object: the person or \"self\"), status, deadline, stakeholder, uses (a tool).\n- friend_of, family_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person, object: \"self\").\n- member_of: a club or group. located_in: where an organisation or place is. part_of: a larger whole.\n\nRules:\n- Every fact the excerpt states (values, interests, team and each job duty too), and only those: no guesses, no outside knowledge.\n- Each job: works_at (object: the organisation) and role, with the same start and end.\n- Past tense or \"before\", \"previously\": set end to when it stopped if the excerpt tells (e.g. the start of what came next). If it does not, use no lives_in, works_at or role fact for it.\n- Months as YYYY-MM (March 2025 → 2025-03).\n- Reuse KNOWN ENTITIES: put their id in id.\n- Skip contact details, copyright lines and navigation text.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"owner_names\":[\"…\"],\"entities\":[{\"name\":\"…\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"…\",\"text\":\"\",\"start\":\"2021\",\"end\":\"\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera · notes and projects\nSection: Alex Rivera > Reading About Causal Inference; Tidepool Library Project; Porto Library Club Bot\n\nKNOWN ENTITIES (id: names):\n- self: the owner (name unknown)\n\nEXCERPT:\n<<<\nPage description: Fictional portfolio of Alex Rivera, a data engineer in Porto.\n\n# Alex Rivera\n\nData engineer Porto\n\nResearch\n\n## What I am reading about\n\nLately I have been reading a lot about Causal Inference, mostly to understand why our\ndashboards disagree with each other. I keep a reading group with two colleagues every\nother Thursday.\n\nSide projects\n\n## Side projects\n\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor. It now has a few hundred users, mostly\nanalytics teams that run nightly checks on their warehouse tables.\n\n### A reading-list bot for the Porto library club\n\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club\nI joined that year. It reads the club's past votes and proposes three titles each month.\nI wrote it in Python over a few weekends and handed it over to the club in 2026.\n\nCareer\n\n## Career path\n\n### Senior Data Engineer at Northwind Labs\n\nSince March 2025 I have been a senior data engineer at Northwind Labs in Porto. I am part\nof Data Platform, the group that owns the company warehouse, and I lead the Atlas\nMigration, which moves our nightly batch jobs to Lakehouse Cloud. My manager is Priya\nRaman.\n\n### Data Analyst at Fabrikam Retail\n\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon,\nwhere I owned the weekly sales reporting.\n\nEducation\n\n## Education & toolkit\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\n- Python, SQL and Apache Spark\n- Data modelling and public speaking\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online\n\nNotes\n>>>"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 6144,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Extraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "ExtractedFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "habit",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end"
+              ],
+              "title": "ExtractedFact",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "owner_names": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Owner Names",
+              "type": "array"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ExtractedFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "owner_names",
+            "entities",
+            "facts"
+          ],
+          "title": "Extraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-a0d65316",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\n  \"reasoning\": \"The excerpt provides Alex Rivera's professional history, education, skills, side projects, and personal interests.\",\n  \"owner_names\": [\n    \"Alex Rivera\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"Causal Inference\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Tidepool\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Sam Okafor\",\n      \"type\": \"person\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Porto library club\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Northwind Labs\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Data Platform\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Atlas Migration\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Lakehouse Cloud\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Priya Raman\",\n      \"type\": \"person\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Fabrikam Retail\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Westbridge University\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Python\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"SQL\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Apache Spark\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Bouldering\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Chess\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"name\",\n      \"object\": \"Alex Rivera\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"lives_in\",\n      \"object\": \"Porto\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Senior Data Engineer\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"team\",\n      \"object\": \"Data Platform\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"leads the Atlas Migration\",\n      \"text\": \"Moves nightly batch jobs to Lakehouse Cloud\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"manager\",\n      \"object\": \"Priya Raman\",\n      \"text\": \"\",\n      \"start\": \"2025-03\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Fabrikam Retail\",\n      \"text\": \"\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Analyst\",\n      \"text\": \"\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"owned the weekly sales reporting\",\n      \"text\": \"Owns the weekly sales reporting\",\n      \"start\": \"2019-09\",\n      \"end\": \"2023-01\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"studied_at\",\n      \"object\": \"Westbridge University\",\n      \"text\": \"\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"degree\",\n      \"object\": \"MSc in Data Science\",\n      \"text\": \"\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Python\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"SQL\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Apache Spark\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Data modelling\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"public speaking\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"Causal Inference\",\n      \"text\": \"Reads about Causal Inference to understand why dashboards disagree\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"Bouldering\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"sourdough baking\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"interest\",\n      \"object\": \"Chess\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Porto library club\",\n      \"text\": \"\",\n      \"start\": \"2025\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"member_of\",\n      \"object\": \"Porto library club\",\n      \"text\": \"\",\n      \"start\": \"2025\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"owner\",\n      \"object\": \"self\",\n      \"text\": \"\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"status\",\n      \"object\": \"open-source library for data quality checks\",\n      \"text\": \"\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"friend_of\",\n      \"object\": \"Sam Okafor\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"Tidepool\",\n      \"text\": \"Maintains Tidepool together with Sam Okafor\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"A reading-list bot for the Porto library club\",\n      \"text\": \"Built a chat bot that suggests the next book for the Porto library club\",\n      \"start\": \"2025\",\n      \"end\": \"2026\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Python\",\n      \"text\": \"Wrote the reading-list bot in Python\",\n      \"start\": \"2025\",\n      \"end\": \"2026\"\n    }\n  ]\n}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792955425,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 2332,
+      "prompt_tokens": 1384,
+      "total_tokens": 3716,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1384,
+      "output_tokens": 2332,
+      "time_to_first_token": 3.09,
+      "total_time": 58.14,
+      "prompt_eval_duration": 3.09,
+      "generation_duration": 55.05,
+      "prompt_tokens_per_second": 448.2,
+      "generation_tokens_per_second": 42.36
+    }
+  }
+}

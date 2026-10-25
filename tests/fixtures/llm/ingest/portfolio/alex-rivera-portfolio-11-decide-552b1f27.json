@@ -1,0 +1,70 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## What I am reading about\nLately I have been reading a lot about Causal Inference, mostly to understand why our dashboards disagree with each other.\n## Education & toolkit\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these is a professional skill or tool used for work rather than a hobby, interest or habit?",
+        "choices": [
+          {
+            "value": "Causal Inference"
+          },
+          {
+            "value": "Bouldering"
+          },
+          {
+            "value": "sourdough baking"
+          },
+          {
+            "value": "Chess"
+          },
+          {
+            "value": "none of them",
+            "description": "none of them is a professional skill or tool"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "Causal Inference",
+        "probabilities": [
+          {
+            "value": "Causal Inference",
+            "probability": 0.9737
+          },
+          {
+            "value": "Bouldering",
+            "probability": 0.0026
+          },
+          {
+            "value": "sourdough baking",
+            "probability": 0.0139
+          },
+          {
+            "value": "Chess",
+            "probability": 0.0003
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0095
+          }
+        ],
+        "confidence": 0.9672
+      }
+    ],
+    "usage": {
+      "input_tokens": 150,
+      "output_tokens": 0
+    }
+  }
+}

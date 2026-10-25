@@ -1,0 +1,219 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You extract facts about the owner from one excerpt of a document the owner wrote or that is about the owner.\n\nFields, in this order:\n- reasoning: one short sentence on what the excerpt covers.\n- owner_names: names the excerpt uses for the owner (full name, short name); [] if none.\n- entities: the people, organisations (company, university, school, club), projects, places and events that facts point to. Never the owner. Each entity has name (as written), type, id (its id in KNOWN ENTITIES, else \"\") and aliases (other names the excerpt uses; [] if none). type is person, org, project, place, event, or tool for a tool, app, product, website, dataset, record id or technology. Teams, skills and languages are not entities.\n- facts: one per fact, one value each. Each fact has:\n  - subject: \"self\" for the owner, otherwise an entity name.\n  - predicate: one of the predicates below.\n  - object: an entity name, \"self\", or a short literal such as \"Python\", \"Spanish\", \"Senior data engineer\".\n  - text: \"\" when predicate and object say it all (speaks Spanish, has_skill Python, works_at Northwind Labs, responsibility \"Runs the on-call rotation\"). Otherwise a short sentence that starts with a verb, contains the object and has no name and no pronoun (he, his, she, her, they, their, I, my), e.g. \"Does calisthenics every morning\".\n  - start, end: when it began and when it stopped, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given); \"\" if not said or still true.\n\nPredicates:\n- name: full name. born: birth date. hometown: where they grew up. lives_in: the city they live in. nationality. speaks: a language.\n- works_at: an employer organisation, nothing else. role: a job title. team: a team name. manager: who they report to. responsibility: one duty in a job, as a short verb phrase (\"Works on…\", \"Builds…\", \"Experiments with…\", \"Runs…\"). worked_on: a project.\n- studied_at: a school or university. degree. certification.\n- has_skill: a skill, tool, technology or programming language. habit: something they do regularly.\n- values, interest, likes: what the owner cares about, enjoys or is into.\n- goal: an aim of the owner or of a project.\n- About a project (subject: the project): owner (who leads it; object: the person or \"self\"), status, deadline, stakeholder, uses (a tool).\n- friend_of, family_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person, object: \"self\").\n- member_of: a club or group. located_in: where an organisation or place is. part_of: a larger whole.\n\nRules:\n- Every fact the excerpt states (values, interests, team and each job duty too), and only those: no guesses, no outside knowledge.\n- Each job: works_at (object: the organisation) and role, with the same start and end.\n- Past tense or \"before\", \"previously\": set end to when it stopped if the excerpt tells (e.g. the start of what came next). If it does not, use no lives_in, works_at or role fact for it.\n- Months as YYYY-MM (March 2025 → 2025-03).\n- Reuse KNOWN ENTITIES: put their id in id.\n- Skip contact details, copyright lines and navigation text.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"owner_names\":[\"…\"],\"entities\":[{\"name\":\"…\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"…\",\"text\":\"\",\"start\":\"2021\",\"end\":\"\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Profile and About Me\n\nKNOWN ENTITIES (id: names):\n- self: the owner (name unknown)\n\nEXCERPT:\n<<<\nPage description: Personal homepage of Alex Rivera, a fictional data engineer.\n\nProfile data from the page:\n- Name: Alex Rivera\n- Job title: Senior Data Engineer\n- Works for: Northwind Labs\n\n# Alex Rivera\n\nSenior data engineer at Northwind Labs · Porto, Portugal\n\n- 7+ years building data pipelines\n- 2 university degrees\n\n## About me\n\nHi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since\n2024, after five years in Lisbon. Before that I lived in Seville and worked in Madrid.\nI grew up in Valencia, so I speak Spanish and English, and I'm slowly learning\nPortuguese.\n\nI care about boring, reliable pipelines, clear documentation and teams that share\nknowledge. Outside work I go bouldering and bake sourdough bread.\n\nAlex has done calisthenics every morning for ten years: it is his longest-running\nhabit. Python sits at the centre of his toolkit.\n>>>"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 6144,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Extraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "ExtractedFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "habit",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end"
+              ],
+              "title": "ExtractedFact",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "owner_names": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Owner Names",
+              "type": "array"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ExtractedFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "owner_names",
+            "entities",
+            "facts"
+          ],
+          "title": "Extraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-d4d4f92b",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The excerpt provides Alex Rivera's name, current role and location, past residences, languages spoken, skills, interests, habits, and a specific personal habit.\", \"owner_names\":[\"Alex Rivera\",\"Alex\"], \"entities\":[{\"name\":\"Northwind Labs\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Porto\",\"type\":\"place\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Lisbon\",\"type\":\"place\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Seville\",\"type\":\"place\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Madrid\",\"type\":\"place\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Valencia\",\"type\":\"place\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Python\",\"type\":\"tool\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"name\",\"object\":\"Alex Rivera\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Northwind Labs\",\"text\":\"\",\"start\":\"2024\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Senior Data Engineer\",\"text\":\"\",\"start\":\"2024\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"lives_in\",\"object\":\"Porto\",\"text\":\"\",\"start\":\"2024\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"hometown\",\"object\":\"Valencia\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"speaks\",\"object\":\"Spanish\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"speaks\",\"object\":\"English\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"Python\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"values\",\"object\":\"boring, reliable pipelines\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"values\",\"object\":\"clear documentation\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"values\",\"object\":\"teams that share knowledge\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"interest\",\"object\":\"bouldering\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"interest\",\"object\":\"baking sourdough bread\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"habit\",\"object\":\"calisthenics\",\"text\":\"Does calisthenics every morning\",\"start\":\"2016\",\"end\":\"\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792955301,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 481,
+      "prompt_tokens": 1165,
+      "total_tokens": 1646,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1165,
+      "output_tokens": 481,
+      "time_to_first_token": 2.31,
+      "total_time": 13.48,
+      "prompt_eval_duration": 2.31,
+      "generation_duration": 11.17,
+      "prompt_tokens_per_second": 504.18,
+      "generation_tokens_per_second": 43.06
+    }
+  }
+}

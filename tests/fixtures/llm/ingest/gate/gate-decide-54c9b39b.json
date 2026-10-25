@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Privacy and cookies\nThis site uses cookies to measure traffic and remember your preferences. Analytics cookies are only set if you accept them. You can withdraw consent …",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.0474
+      }
+    ],
+    "usage": {
+      "input_tokens": 113,
+      "output_tokens": 0
+    }
+  }
+}

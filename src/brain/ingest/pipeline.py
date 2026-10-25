@@ -1,5 +1,6 @@
 """``brain ingest``: load → raw copy → plan the split (``planning``, if over one chunk) →
-extract per chunk → one change set → apply → regenerate index.md / core.md → reindex.
+per chunk: gate (skip a part with nothing about a person), extract, typed checks
+(``decisions``) → one change set → apply → regenerate index.md / core.md → reindex.
 
 A URL is fetched first; the fetched bytes become the raw copy and are read from there, so a web
 page goes through exactly the same path as a file. ``follow`` ingests same-origin linked pages,
@@ -10,7 +11,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -20,6 +21,14 @@ import httpx
 
 from brain.index.reindex import ReindexStats, reindex
 from brain.ingest.chunking import CHUNK_TOKENS, Chunk, halve
+from brain.ingest.decisions import (
+    PAGE_KINDS,
+    SKIP_BELOW,
+    DecisionModel,
+    Gate,
+    check_part,
+    gate,
+)
 from brain.ingest.extract import (
     Extraction,
     KnownEntity,
@@ -46,16 +55,26 @@ log = logging.getLogger(__name__)
 MAX_SPLITS = 2  # a truncated chunk is halved at most twice (quarters)
 
 
-class IngestModel(StructuredModel, RetrievalModel, Protocol):
-    """Structured output (extraction) + embeddings (reindex)."""
+class IngestModel(StructuredModel, DecisionModel, RetrievalModel, Protocol):
+    """Structured output (extraction) + decisions (gate, checks) + embeddings (reindex)."""
 
 
 @dataclass
 class ChunkReport:
     chunk: Chunk
-    seconds: float
+    seconds: float  # extraction
     entities: int
     facts: int
+    p_about: float | None = None  # the gate's p(the part says anything about a person)
+    skipped: bool = False  # the gate skipped the part: not extracted
+    gate_seconds: float = 0.0
+    check_seconds: float = 0.0
+    checks: int = 0  # questions asked after extraction
+    changed: int = 0  # extractor choices the checks overrode
+
+    @property
+    def decide_seconds(self) -> float:
+        return self.gate_seconds + self.check_seconds
 
 
 @dataclass
@@ -67,6 +86,8 @@ class IngestReport:
     plan: PlanReport | None = None  # how the document was split into chunks
     chunks: list[ChunkReport] = field(default_factory=list)
     failed: list[tuple[Chunk, str]] = field(default_factory=list)  # skipped chunks + reason
+    skipped: list[ChunkReport] = field(default_factory=list)  # parts the gate skipped
+    decision_notes: list[str] = field(default_factory=list)  # every gate/check decision
     extractions: list[Extraction] = field(default_factory=list)
     normalised: Normalised | None = None
     applied: ApplyResult | None = None
@@ -74,15 +95,22 @@ class IngestReport:
     reindexed: ReindexStats | None = None
 
 
-def remember_entities(known: dict[str, KnownEntity], extraction: Extraction) -> list[str]:
+def remember_entities(
+    known: dict[str, KnownEntity],
+    extraction: Extraction,
+    entity_kinds: Mapping[str, str] | None = None,
+) -> list[str]:
     """Add the chunk's entities to ``known`` (new ones under the id the normaliser will give
-    them) so later chunks of the same document reuse them; return their ids."""
+    them, after the typed checks' ``entity_kinds``) so later chunks of the same document reuse them;
+    return their ids."""
+    entity_kinds = entity_kinds or {}
     ids = []
     for entity in extraction.entities:
-        if not entity.name.strip() or entity.type in LITERAL_TYPES:
+        etype = entity_kinds.get(" ".join(entity.name.split()).casefold(), entity.type)
+        if not entity.name.strip() or etype in LITERAL_TYPES or etype not in PAGE_KINDS:
             continue
         entity_id = entity.id if entity.id in known else ""
-        entity_id = entity_id or f"{TYPE_DIRS[entity.type]}/{slugify(entity.name)}"
+        entity_id = entity_id or f"{TYPE_DIRS[etype]}/{slugify(entity.name)}"
         names = list(known[entity_id].names) if entity_id in known else []
         for name in (entity.name, *entity.aliases):
             if name.strip() and name.strip().casefold() not in map(str.casefold, names):
@@ -227,9 +255,20 @@ def _ingest_document(
     known = known_entities(pages)
     owner = owner_names(pages)
     seen: set[str] = set()  # entities named in earlier chunks of this document
+    entity_kinds: dict[str, str] = {}  # folded name → entity kind from a typed check
+    values: dict[str, str] = {}  # folded names of values (tools) seen in this document
     queue: list[tuple[Chunk, int]] = [(chunk, 0) for chunk in chunks]
     while queue:
         chunk, splits = queue.pop(0)
+        verdict = None
+        if splits == 0 and len(chunks) > 1:  # never skip a document's only part
+            verdict = _gate(llm, chunk, report)
+            if verdict and verdict.skip:
+                item = ChunkReport(chunk, 0.0, 0, 0, verdict.p_yes, True, verdict.seconds)
+                report.skipped.append(item)
+                if on_chunk:
+                    on_chunk(item, len(chunks))
+                continue
         start = time.perf_counter()
         try:
             extraction = extract_chunk(
@@ -256,8 +295,11 @@ def _ingest_document(
         for name in extraction.owner_names:
             if name.strip() and name.strip().casefold() not in map(str.casefold, owner):
                 owner.append(name.strip())
-        seen.update(remember_entities(known, extraction))
         item = ChunkReport(chunk, seconds, len(extraction.entities), len(extraction.facts))
+        if verdict:
+            item.p_about, item.gate_seconds = verdict.p_yes, verdict.seconds
+        _check(llm, chunk, extraction, item, report, known, owner, entity_kinds, values)
+        seen.update(remember_entities(known, extraction, entity_kinds))
         log.info("ingest %s chunk %d: %.1fs", doc.path.name, chunk.index, seconds)
         report.chunks.append(item)
         report.extractions.append(extraction)
@@ -272,9 +314,63 @@ def _ingest_document(
         kind=kind,
         rationale=f"Imported from {source} ({len(chunks)} {noun}).",
         today=today,
+        entity_kinds=entity_kinds,
     )
+    report.normalised.notes[:0] = report.decision_notes
     report.applied = apply(report.normalised.changeset, vault)
     report.generated = refresh_generated(vault, max_tokens=core_max_tokens, today=today)
     if db is not None:
         report.reindexed = reindex(vault, db, llm)
     return report
+
+
+DECIDE_ERRORS = (httpx.HTTPError, StructuredOutputError, ValueError)
+
+
+def _gate(llm: IngestModel, chunk: Chunk, report: IngestReport) -> Gate | None:
+    """The gate's verdict on a part (None if the decision failed: the part is extracted)."""
+    where = chunk.heading or f"part {chunk.index + 1}"
+    try:
+        verdict = gate(llm, chunk.text)
+    except DECIDE_ERRORS as err:
+        log.warning("ingest gate failed for chunk %d: %s", chunk.index, err)
+        report.decision_notes.append(f"gate: {where}: no decision ({err}); extracted")
+        return None
+    p = verdict.p_yes
+    if p is None:
+        report.decision_notes.append(f"gate: {where}: no answer; extracted")
+    elif verdict.skip:
+        report.decision_notes.append(
+            f"gate: skipped {where}: p(about a person)={p:.3f} < {SKIP_BELOW}"
+        )
+    return verdict
+
+
+def _check(
+    llm: IngestModel,
+    chunk: Chunk,
+    extraction: Extraction,
+    item: ChunkReport,
+    report: IngestReport,
+    known: Mapping[str, KnownEntity],
+    owner: list[str],
+    entity_kinds: dict[str, str],
+    values: dict[str, str],
+) -> None:
+    """Typed checks of one part's extraction; updates ``entity_kinds`` and ``values`` (the names of
+    values in this document, never asked about again)."""
+    for entity in extraction.entities:
+        if entity.type in LITERAL_TYPES:
+            values.setdefault(" ".join(entity.name.split()).casefold(), "a tool")
+    names = [n for e in known.values() for n in e.names]
+    try:
+        literal = {**values, **entity_kinds}
+        checks = check_part(llm, chunk.text, extraction, known=names, owner=owner, literal=literal)
+    except DECIDE_ERRORS as err:
+        log.warning("ingest checks failed for chunk %d: %s", chunk.index, err)
+        report.decision_notes.append(f"check: part {chunk.index + 1}: no decision ({err})")
+        return
+    entity_kinds.update(checks.kinds)
+    item.check_seconds, item.checks = checks.seconds, checks.asked
+    item.changed = checks.overridden + checks.rerouted
+    report.decision_notes += checks.notes

@@ -2,7 +2,9 @@
 
 - embeddings: hashed bag of words (texts sharing words have high cosine similarity);
 - chat / structured: scripted responses, consumed in order (or replayed from fixtures);
-- rerank: lexical overlap with the query.
+- rerank: lexical overlap with the query;
+- decide: scripted answers (a list of ``Decision``s, a recorded ``/v1/decisions`` response, or a
+  ``decider(text, questions)`` callable); unscripted questions are refusals ("no answer").
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import deque
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -19,12 +21,16 @@ from pydantic import BaseModel, ValidationError
 
 from brain.config import LLMSettings
 from brain.llm.base import ChatResult, Messages, StructuredOutputError, l2_normalise
+from brain.llm.decide import Decision, Question, parse_answers, refusals
 from brain.llm.recorder import load_exchange
 
 T = TypeVar("T", bound=BaseModel)
 WORD = re.compile(r"\w+")
 
 Scripted = str | dict[str, Any] | BaseModel | Exception  # an Exception is raised
+Decider = Callable[[str, Sequence[Question]], Sequence[Decision | dict[str, Any]]]
+# one decide() call: its decisions, a raw /v1/decisions response, or an Exception to raise
+ScriptedDecisions = Sequence[Decision | dict[str, Any]] | dict[str, Any] | Exception
 
 
 def words(text: str) -> list[str]:
@@ -53,6 +59,8 @@ class FakeLLM:
         dim: int = 1024,
         chat_responses: Iterable[str | ChatResult] = (),
         structured_responses: Iterable[Scripted] = (),
+        decisions: Iterable[ScriptedDecisions] = (),
+        decider: Decider | None = None,
         healthy: bool = True,
         default_reply: str = "ok",
     ) -> None:
@@ -62,6 +70,8 @@ class FakeLLM:
         self.default_reply = default_reply
         self.chat_queue: deque[str | ChatResult] = deque(chat_responses)
         self.structured_queue: deque[Scripted] = deque(structured_responses)
+        self.decision_queue: deque[ScriptedDecisions] = deque(decisions)
+        self.decider = decider
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.embedded: list[str] = []  # every text ever embedded, in order
 
@@ -74,6 +84,8 @@ class FakeLLM:
                 fake.chat_queue.append(exchange.content)
             elif exchange.kind == "structured":
                 fake.structured_queue.append(exchange.content)
+            elif exchange.kind == "decide":
+                fake.decision_queue.append(exchange.response)
         return fake
 
     @property
@@ -127,6 +139,23 @@ class FakeLLM:
             return schema.model_validate_json(item)
         except ValidationError as err:
             raise StructuredOutputError(str(err), str(item)) from err
+
+    def decide(self, text: str, questions: Sequence[Question]) -> list[Decision]:
+        if not questions:
+            return []
+        self.calls.append(("decide", {"text": text, "questions": list(questions)}))
+        if self.decision_queue:
+            item: Any = self.decision_queue.popleft()
+        elif self.decider is not None:
+            item = self.decider(text, questions)
+        else:
+            return refusals(questions)
+        if isinstance(item, Exception):
+            raise item
+        if isinstance(item, dict):
+            return parse_answers(item, questions)
+        given = {d.name: d for d in (Decision.model_validate(x) for x in item)}
+        return [given.get(q.name) or refusals([q])[0] for q in questions]
 
     def embed(self, texts: Sequence[str], *, query: bool = False) -> np.ndarray:
         self.calls.append(("embed", {"n": len(texts), "query": query}))

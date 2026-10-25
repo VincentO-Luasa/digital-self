@@ -1,0 +1,84 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Profile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - Works for: Northwind Labs\n# Alex Rivera\nSenior data engineer at Northwind Labs · Porto, Portugal\n## About me\nI've lived in Porto since 2024, after five years in Lisbon.\nBefore that I lived in Seville and worked in Madrid.\nI grew up in Valencia, so I speak Spanish and English, and I'm slowly learning Portuguese.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
+        "choices": [
+          {
+            "value": "Northwind Labs"
+          },
+          {
+            "value": "Porto"
+          },
+          {
+            "value": "Lisbon"
+          },
+          {
+            "value": "Seville"
+          },
+          {
+            "value": "Madrid"
+          },
+          {
+            "value": "Valencia"
+          },
+          {
+            "value": "none of them",
+            "description": "each is a person, organisation, project, place or event"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Northwind Labs",
+            "probability": 0.0096
+          },
+          {
+            "value": "Porto",
+            "probability": 0.0011
+          },
+          {
+            "value": "Lisbon",
+            "probability": 0.0007
+          },
+          {
+            "value": "Seville",
+            "probability": 0.0007
+          },
+          {
+            "value": "Madrid",
+            "probability": 0.0019
+          },
+          {
+            "value": "Valencia",
+            "probability": 0.0008
+          },
+          {
+            "value": "none of them",
+            "probability": 0.9853
+          }
+        ],
+        "confidence": 0.9828
+      }
+    ],
+    "usage": {
+      "input_tokens": 230,
+      "output_tokens": 0
+    }
+  }
+}

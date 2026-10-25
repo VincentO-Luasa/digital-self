@@ -5,6 +5,9 @@
 - Scripts, styles, navigation, footers, forms, cookie banners and hidden elements are dropped;
   link targets and images too (link text is kept). Headings are kept for chunking.
 - schema.org ``Person`` data (JSON-LD) and ``<meta name="description">`` become a short header.
+- Adjacent inline elements are kept apart (``<span>02</span><span>Lab</span>`` would read
+  "02Lab"), and decorative ordinals ("01", "02" in front of a section's kicker or heading) are
+  dropped: the model took "02Lab" for a name.
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, NavigableString, Tag
 from markdownify import markdownify
 
 from brain.ingest.readers.base import tidy
@@ -66,6 +69,15 @@ PERSON_FIELDS = (  # (schema.org property, label); contact details are left out 
     ("award", "Awards"),
     ("description", "Description"),
 )
+INLINE = frozenset(
+    {
+        *("a", "abbr", "b", "bdi", "bdo", "cite", "code", "data", "dfn", "em", "i", "kbd"),
+        *("label", "mark", "q", "s", "samp", "small", "span", "strong", "time", "u", "var"),
+    }
+)
+HEADINGS = frozenset(f"h{n}" for n in range(1, 7))
+ORDINAL = re.compile(r"^(?:\d{1,2})[.)]?$")  # "01", "7", "12."
+KICKER_WORDS = 8  # a line this short next to an ordinal is a kicker/eyebrow, not a sentence
 MAX_FIELD_CHARS = 300
 MAX_LIST_ITEMS = 15
 
@@ -89,6 +101,67 @@ def fix_counters(soup: BeautifulSoup) -> int:
         el.append(f"{prefix}{target}{suffix}{after}")
         changed += 1
     return changed
+
+
+def _children(tag: Tag) -> list[Any]:
+    return [c for c in tag.contents if not (isinstance(c, NavigableString) and not c.strip())]
+
+
+def _next_element(tag: Tag) -> Tag | None:
+    """The next sibling if it is an element (whitespace between them ignored)."""
+    sibling = tag.next_sibling
+    while isinstance(sibling, NavigableString) and not sibling.strip():
+        sibling = sibling.next_sibling
+    return sibling if isinstance(sibling, Tag) else None
+
+
+def _decorative_ordinal(el: Tag) -> bool:
+    """A bare 1–2 digit number used as a section index: the whole text of an element that comes
+    right before a heading, or the first piece of a heading or of a short line followed by more
+    elements ("<span>02</span><span>Research</span>"; zero-padded, or the line is a heading's
+    kicker). A count in a sentence ("7 years") is followed by text and stays."""
+    text = el.get_text("", strip=True)
+    if not ORDINAL.match(text) or el.find(True) or any(el.has_attr(a) for a in COUNTER_ATTRS):
+        return False
+    after = _next_element(el)
+    if after is not None and after.name in HEADINGS:
+        return True
+    parent = el.parent
+    if not isinstance(parent, Tag) or el.name not in INLINE:
+        return False
+    pieces = _children(parent)
+    if len(pieces) < 2 or pieces[0] is not el:
+        return False
+    rest = parent.get_text(" ", strip=True)[len(text) :].split()
+    if not rest or len(rest) > KICKER_WORDS:
+        return False
+    if parent.name in HEADINGS:
+        return True
+    following = _next_element(parent)
+    before_heading = following is not None and following.name in HEADINGS
+    return isinstance(pieces[1], Tag) and (text.startswith("0") or before_heading)
+
+
+def drop_ordinals(soup: BeautifulSoup) -> int:
+    found = [el for el in soup.find_all(True) if _decorative_ordinal(el)]
+    for el in found:
+        el.decompose()
+    return len(found)
+
+
+def space_inline(soup: BeautifulSoup) -> None:
+    """Put a space between two adjacent inline elements whose texts would otherwise touch
+    ("<span>Lab</span><span>Notes</span>"); single characters (letter-by-letter animation
+    spans) are left as they are."""
+    for el in soup.find_all(INLINE):
+        after = el.next_sibling
+        if not isinstance(after, Tag) or after.name not in INLINE:
+            continue
+        left, right = el.get_text(""), after.get_text("")
+        if len(left.strip()) < 2 or len(right.strip()) < 2:
+            continue
+        if not left[-1].isspace() and not right[0].isspace():
+            el.insert_after(" ")
 
 
 def _hidden(tag: Tag) -> bool:
@@ -174,6 +247,8 @@ def html_to_markdown(html: str) -> tuple[str, str]:
     for tag in soup.find_all(_hidden):
         if not tag.decomposed:
             tag.decompose()
+    drop_ordinals(soup)
+    space_inline(soup)
     if not title and (h1 := soup.find("h1")):
         title = h1.get_text(" ", strip=True)
     body = soup.body or soup

@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Career\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\nWork",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "instructions": "In the text, what is the person's relation to \"Northwind Labs\"?",
+        "choices": [
+          {
+            "value": "employer",
+            "description": "the person works or worked there"
+          },
+          {
+            "value": "school",
+            "description": "the person studied there"
+          },
+          {
+            "value": "member",
+            "description": "the person joined it as a member or volunteer"
+          },
+          {
+            "value": "other",
+            "description": "it is only mentioned, or the text does not mention it"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "relation",
+        "choice": "employer",
+        "probabilities": [
+          {
+            "value": "employer",
+            "probability": 0.9997
+          },
+          {
+            "value": "school",
+            "probability": 0.0002
+          },
+          {
+            "value": "member",
+            "probability": 0.0001
+          },
+          {
+            "value": "other",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.9996
+      }
+    ],
+    "usage": {
+      "input_tokens": 245,
+      "output_tokens": 0
+    }
+  }
+}

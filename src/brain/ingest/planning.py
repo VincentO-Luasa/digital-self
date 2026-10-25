@@ -40,6 +40,7 @@ MIN_PART = 0.25  # a part under this share of the cap joins a neighbour when bot
 TITLE_CHARS = 80
 PLAN_MAX_TOKENS = 2048
 PLAN_TEMPERATURE = 0.0  # greedy: at 0.2 the model sometimes kept a long stretch whole
+LEAD_TOKENS = 30  # text before a part's first heading up to this size is that heading's kicker
 
 
 class PlannedPart(BaseModel):
@@ -242,13 +243,35 @@ def _split_over_cap(
     return out
 
 
+def section_trail(group: list[Block]) -> tuple[str, ...]:
+    """The headings a part's text sits under: its first heading's trail. A part may start with
+    a few words before that heading (a kicker such as "Career" above "## Career path") whose
+    trail is still the previous section's; that trail must not label the part (it once made a
+    job read as part of the side project above it). Only a part with no heading of its own (a
+    continuation of one section) takes its first block's trail; one that starts with real text
+    of an earlier section keeps only what both sections share."""
+    first = group[0]
+    heading = next((b for b in group if b.heading), None)
+    if heading is None:
+        return first.trail
+    lead = group[: group.index(heading)]
+    if sum(b.tokens for b in lead) <= LEAD_TOKENS:
+        return heading.trail
+    shared = 0
+    while (
+        shared < min(len(first.trail), len(heading.trail))
+        and first.trail[shared] == heading.trail[shared]
+    ):
+        shared += 1
+    return heading.trail[:shared]
+
+
 def to_chunk(index: int, part: Part, blocks: list[Block]) -> Chunk:
-    """The part's text; its heading is the headings enclosing the part, then its title."""
-    first = blocks[part.start]
-    enclosing = first.trail[:-1] if first.heading else first.trail
-    trail = enclosing
-    if not enclosing or enclosing[-1].casefold() != part.title.casefold():
-        trail = (*enclosing, part.title)
+    """The part's text; its heading is the part's section trail (``section_trail``), then the
+    model's title."""
+    trail = section_trail(blocks[part.start : part.end])
+    if not trail or trail[-1].casefold() != part.title.casefold():
+        trail = (*trail, part.title)
     return Chunk(index, trail, join_blocks(blocks[part.start : part.end]).strip())
 
 

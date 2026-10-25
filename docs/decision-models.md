@@ -1,10 +1,25 @@
-# Decision models: where they fit in the brain (v0.1, proposed)
+# Decision models: where they fit in the brain (v0.2, partly built)
 
 Can "decision models" make the brain's judgement calls (split points, topic boundaries, entity
 types, predicate repair, duplicates, routing, importance) faster or more accurate? This page
 answers that question. Measurements were taken on 2026-10-25 on the base M4 (32 GB) with
 oMLX 0.7.2 and Qwen3.6-35B-A3B-4bit, using fictional inputs (Alex Rivera persona). Sources are at
 the end.
+
+## Status (2026-10-25)
+
+- **Built**: `brain.llm` `decide()` (`/v1/decisions`, structured fallback, fixtures, cache);
+  the ingest gate (#8) and typed checks for entity kinds, works_at relations (employer /
+  school / member) and skill vs leisure values (#3, part of #4) in `brain/ingest/decisions.py`.
+  See the decision-log entries of 2026-10-25.
+- **Measured since**: questions are answered one after another and each re-reads its input
+  (~0.35 s + ~1.6 ms per input token); on this hybrid model a shared input is not reused and
+  concurrent requests are serialised, so the "8 concurrent 0.27 s each" figure below did not
+  hold in the pipeline. Keep inputs to the sentences that matter, and screen a set with one
+  choice question before asking about its items.
+- **Calibration**: the gate's numbers separate well (positives ≥ 0.99, junk 0.03–0.12); choice
+  confidences on the portfolio fixture ranged 0.56–1.00 with the low ones on genuinely
+  ambiguous items. Every decision is a `check:`/`gate:` note, ready for a reliability table.
 
 ## In plain terms
 

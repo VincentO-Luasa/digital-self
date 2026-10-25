@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Career\n## Experience\n### Northwind Labs — Porto\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas Migration and run the platform team's on-call rotation. - **Data Engineer**, February …\nPart of the Data Platform team. Works on pipelines that help analysts trust their numbers. Experiments with streaming ingestion.\n### Fabrikam Retail — Lisbon\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales reporting and moved it from spreadsheets to SQL models.\nWork",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.9909
+      }
+    ],
+    "usage": {
+      "input_tokens": 198,
+      "output_tokens": 0
+    }
+  }
+}

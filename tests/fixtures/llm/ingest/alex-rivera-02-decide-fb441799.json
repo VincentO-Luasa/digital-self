@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Page description: Personal homepage of Alex Rivera, a fictional data engineer.\nProfile data from the page: - Name: Alex Rivera - Job title: Senior Data Engineer - Works for: Northwind Labs\n# Alex Rivera\nSenior data engineer at Northwind Labs · Porto, Portugal\n- 7+ years building data pipelines - 2 university degrees\n## About me\nHi, I'm Alex. I build data platforms that people can trust. I've lived in Porto since 2024, after five years in Lisbon. Before that …\nI care about boring, reliable pipelines, clear documentation and teams that share knowledge. Outside work I go bouldering and bake sourdough bread.\nAlex has done calisthenics every morning for ten years: it is his longest-running habit. Python sits at the centre of his toolkit.",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.9954
+      }
+    ],
+    "usage": {
+      "input_tokens": 253,
+      "output_tokens": 0
+    }
+  }
+}

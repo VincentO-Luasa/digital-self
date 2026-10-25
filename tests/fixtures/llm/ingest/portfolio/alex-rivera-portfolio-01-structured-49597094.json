@@ -1,0 +1,108 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You split a long document into parts that are read one at a time to extract facts about the owner.\n\nThe user message gives the document title, the token cap per part and an outline: one line per block, in document order. [n] is the block number. A line starting with # is a heading. Any other line gives the block's size in tokens and its first words.\n\nFields, in this order:\n- reasoning: one short sentence on how the document is organised.\n- parts: the parts in order. Each part has first_block (the number of the block where it starts) and title (2 to 6 words naming its topic, e.g. \"Job at Northwind Labs\", \"Education\", \"Running and hiking\"). A part runs until the next part's first_block.\n\nRules:\n- The first part starts at the first block of the outline.\n- One topic per part: a job, a project, a period of life, a theme. Start a part where the topic changes, never in the middle of one.\n- A part starts at a heading, not just after it.\n- Keep each part under the token cap. The user message lists the stretches too long for one part: split each where its subject changes, even without a heading there.\n- Join short neighbouring blocks on the same topic into one part.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"parts\":[{\"first_block\":0,\"title\":\"…\"},{\"first_block\":9,\"title\":\"…\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Document: Alex Rivera · notes and projects\nToken cap per part: 500\nOutline of blocks 0 to 30 of 31 (939 tokens):\n\n[0] (23 tok) Page description: Fictional portfolio of Alex Rivera, a data engineer in Porto.\n[1] # Alex Rivera\n[2] (6 tok) Data engineer Porto\n[3] (3 tok) Research\n[4] ## What I am reading about\n[5] (54 tok) Lately I have been reading a lot about Causal Inference, mostly to understand why our dashboards …\n[6] (4 tok) Side projects\n[7] ## Side projects\n[8] ### Tidepool\n[9] (70 tok) Tidepool is a small open-source library for data quality checks that I started in 2022. I …\n[10] ### A reading-list bot for the Porto library club\n[11] (74 tok) In 2025 I built a small chat bot that suggests the next book for the Porto …\n[12] (2 tok) Career\n[13] ## Career path\n[14] ### Senior Data Engineer at Northwind Labs\n[15] (76 tok) Since March 2025 I have been a senior data engineer at Northwind Labs in Porto. I …\n[16] ### Data Analyst at Fabrikam Retail\n[17] (37 tok) From September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, …\n[18] (3 tok) Education\n[19] ## Education & toolkit\n[20] (16 tok) MSc in Data Science, Westbridge University, 2018–2019.\n[21] (37 tok) - Python, SQL and Apache Spark - Data modelling and public speaking - Bouldering (V5) and …\n[22] (2 tok) Notes\n[23] ## Quick guide: partitioning warehouse tables\n[24] (98 tok) Partitioning splits a large table into smaller pieces by a key such as the event date. …\n[25] (116 tok) Cluster each partition on the columns you filter by most often, and re-cluster after large backfills. …\n[26] (81 tok) When a table is small, under a few gigabytes, partitioning rarely helps: the planner reads it …\n[27] ## Privacy on this site\n[28] (116 tok) This site stores a small file in your browser to remember whether you prefer the dark …\n[29] ## Get in touch\n[30] (28 tok) The best way to reach me is by email at alex@example.com. Press and speaking requests are …\n\nToo long for one part, no heading inside:\n- none"
+      }
+    ],
+    "temperature": 0.0,
+    "top_p": 0.8,
+    "max_tokens": 2048,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "SplitPlan",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "PlannedPart": {
+              "properties": {
+                "first_block": {
+                  "title": "First Block",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "first_block",
+                "title"
+              ],
+              "title": "PlannedPart",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/PlannedPart"
+              },
+              "title": "Parts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "parts"
+          ],
+          "title": "SplitPlan",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-4a7594b2",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The document is organized into distinct sections by headings (Research, Side projects, Career, Education, Notes, Privacy, Contact), with each section containing specific content blocks that can be grouped into parts based on their topic.\",\"parts\":[{\"first_block\":0,\"title\":\"Fictional Portfolio Description\"},{\"first_block\":1,\"title\":\"Alex Rivera Introduction\"},{\"first_block\":4,\"title\":\"Reading About Causal Inference\"},{\"first_block\":7,\"title\":\"Side Projects Overview\"},{\"first_block\":8,\"title\":\"Tidepool Library Project\"},{\"first_block\":10,\"title\":\"Porto Library Club Bot\"},{\"first_block\":13,\"title\":\"Career Path Overview\"},{\"first_block\":14,\"title\":\"Senior Data Engineer Role\"},{\"first_block\":16,\"title\":\"Data Analyst Role\"},{\"first_block\":19,\"title\":\"Education and Toolkit\"},{\"first_block\":23,\"title\":\"Partitioning Warehouse Tables\"},{\"first_block\":27,\"title\":\"Site Privacy Policy\"},{\"first_block\":29,\"title\":\"Contact Information\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792955366,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 211,
+      "prompt_tokens": 986,
+      "total_tokens": 1197,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 986,
+      "output_tokens": 211,
+      "time_to_first_token": 2.06,
+      "total_time": 6.96,
+      "prompt_eval_duration": 2.06,
+      "generation_duration": 4.9,
+      "prompt_tokens_per_second": 478.84,
+      "generation_tokens_per_second": 43.07
+    }
+  }
+}

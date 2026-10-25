@@ -1,0 +1,103 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## What I am reading about\nLately I have been reading a lot about Causal Inference, mostly to understand why our dashboards disagree with each other.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "instructions": "What kind of thing is \"Causal Inference\" in the text?",
+        "choices": [
+          {
+            "value": "person"
+          },
+          {
+            "value": "org",
+            "description": "organisation: company, university, school or club"
+          },
+          {
+            "value": "team",
+            "description": "team or department"
+          },
+          {
+            "value": "project",
+            "description": "work the person builds, leads or takes part in, including their own app or library"
+          },
+          {
+            "value": "place"
+          },
+          {
+            "value": "event"
+          },
+          {
+            "value": "tool",
+            "description": "tool, product, dataset or technology the person uses"
+          },
+          {
+            "value": "topic",
+            "description": "topic or field"
+          },
+          {
+            "value": "activity",
+            "description": "activity, hobby or sport"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "choice": "topic",
+        "probabilities": [
+          {
+            "value": "person",
+            "probability": 0.0007
+          },
+          {
+            "value": "org",
+            "probability": 0.0001
+          },
+          {
+            "value": "team",
+            "probability": 0.0007
+          },
+          {
+            "value": "project",
+            "probability": 0.0001
+          },
+          {
+            "value": "place",
+            "probability": 0.0002
+          },
+          {
+            "value": "event",
+            "probability": 0.0004
+          },
+          {
+            "value": "tool",
+            "probability": 0.0203
+          },
+          {
+            "value": "topic",
+            "probability": 0.9773
+          },
+          {
+            "value": "activity",
+            "probability": 0.0001
+          }
+        ],
+        "confidence": 0.9745
+      }
+    ],
+    "usage": {
+      "input_tokens": 168,
+      "output_tokens": 0
+    }
+  }
+}

@@ -1,0 +1,219 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You extract facts about the owner from one excerpt of a document the owner wrote or that is about the owner.\n\nFields, in this order:\n- reasoning: one short sentence on what the excerpt covers.\n- owner_names: names the excerpt uses for the owner (full name, short name); [] if none.\n- entities: the people, organisations (company, university, school, club), projects, places and events that facts point to. Never the owner. Each entity has name (as written), type, id (its id in KNOWN ENTITIES, else \"\") and aliases (other names the excerpt uses; [] if none). type is person, org, project, place, event, or tool for a tool, app, product, website, dataset, record id or technology. Teams, skills and languages are not entities.\n- facts: one per fact, one value each. Each fact has:\n  - subject: \"self\" for the owner, otherwise an entity name.\n  - predicate: one of the predicates below.\n  - object: an entity name, \"self\", or a short literal such as \"Python\", \"Spanish\", \"Senior data engineer\".\n  - text: \"\" when predicate and object say it all (speaks Spanish, has_skill Python, works_at Northwind Labs, responsibility \"Runs the on-call rotation\"). Otherwise a short sentence that starts with a verb, contains the object and has no name and no pronoun (he, his, she, her, they, their, I, my), e.g. \"Does calisthenics every morning\".\n  - start, end: when it began and when it stopped, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given); \"\" if not said or still true.\n\nPredicates:\n- name: full name. born: birth date. hometown: where they grew up. lives_in: the city they live in. nationality. speaks: a language.\n- works_at: an employer organisation, nothing else. role: a job title. team: a team name. manager: who they report to. responsibility: one duty in a job, as a short verb phrase (\"Works on…\", \"Builds…\", \"Experiments with…\", \"Runs…\"). worked_on: a project.\n- studied_at: a school or university. degree. certification.\n- has_skill: a skill, tool, technology or programming language. habit: something they do regularly.\n- values, interest, likes: what the owner cares about, enjoys or is into.\n- goal: an aim of the owner or of a project.\n- About a project (subject: the project): owner (who leads it; object: the person or \"self\"), status, deadline, stakeholder, uses (a tool).\n- friend_of, family_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person, object: \"self\").\n- member_of: a club or group. located_in: where an organisation or place is. part_of: a larger whole.\n\nRules:\n- Every fact the excerpt states (values, interests, team and each job duty too), and only those: no guesses, no outside knowledge.\n- Each job: works_at (object: the organisation) and role, with the same start and end.\n- Past tense or \"before\", \"previously\": set end to when it stopped if the excerpt tells (e.g. the start of what came next). If it does not, use no lives_in, works_at or role fact for it.\n- Months as YYYY-MM (March 2025 → 2025-03).\n- Reuse KNOWN ENTITIES: put their id in id.\n- Skip contact details, copyright lines and navigation text.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"owner_names\":[\"…\"],\"entities\":[{\"name\":\"…\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"…\",\"text\":\"\",\"start\":\"2021\",\"end\":\"\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera > Experience > Career Experience\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera, Alex)\n- orgs/northwind-labs: Northwind Labs\n- places/lisbon: Lisbon\n- places/madrid: Madrid\n- places/porto: Porto\n- places/seville: Seville\n- places/valencia: Valencia\n\nEXCERPT:\n<<<\nCareer\n\n## Experience\n\n### Northwind Labs — Porto\n\n- **Senior Data Engineer**, March 2025 – present. I lead the Atlas\n  Migration and run the platform team's on-call rotation.\n- **Data Engineer**, February 2023 – March 2025. Built the ingestion\n  framework for the product analytics team.\n\nPart of the Data Platform team. Works on pipelines that help analysts trust their\nnumbers. Experiments with streaming ingestion.\n\n### Fabrikam Retail — Lisbon\n\n**Data Analyst**, September 2019 – January 2023. Owned the weekly sales\nreporting and moved it from spreadsheets to SQL models.\n\nWork\n>>>"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 6144,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Extraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "ExtractedFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "habit",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end"
+              ],
+              "title": "ExtractedFact",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "owner_names": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Owner Names",
+              "type": "array"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ExtractedFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "owner_names",
+            "entities",
+            "facts"
+          ],
+          "title": "Extraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-26742987",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The excerpt details Alex Rivera's work experience at Northwind Labs and Fabrikam Retail, including roles, responsibilities, projects, and dates.\",\"owner_names\":[\"Alex Rivera\",\"Alex\"],\"entities\":[{\"name\":\"Northwind Labs\",\"type\":\"org\",\"id\":\"orgs/northwind-labs\",\"aliases\":[]},{\"name\":\"Porto\",\"type\":\"place\",\"id\":\"places/porto\",\"aliases\":[]},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"id\":\"\",\"aliases\":[]},{\"name\":\"platform team\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"product analytics team\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]},{\"name\":\"Lisbon\",\"type\":\"place\",\"id\":\"places/lisbon\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Northwind Labs\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Senior Data Engineer\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"leads the Atlas Migration\",\"text\":\"Leads the Atlas Migration\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"runs the platform team's on-call rotation\",\"text\":\"Runs the platform team's on-call rotation\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"team\",\"object\":\"platform team\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Northwind Labs\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Data Engineer\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"worked_on\",\"object\":\"Atlas Migration\",\"text\":\"\",\"start\":\"2025-03\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"worked_on\",\"object\":\"ingestion framework\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Built the ingestion framework for the product analytics team\",\"text\":\"Built the ingestion framework for the product analytics team\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"team\",\"object\":\"product analytics team\",\"text\":\"\",\"start\":\"2023-02\",\"end\":\"2025-03\"},{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"Fabrikam Retail\",\"text\":\"\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"role\",\"object\":\"Data Analyst\",\"text\":\"\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"Owned the weekly sales reporting\",\"text\":\"Owned the weekly sales reporting\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"responsibility\",\"object\":\"moved weekly sales reporting from spreadsheets to SQL models\",\"text\":\"Moved weekly sales reporting from spreadsheets to SQL models\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"subject\":\"self\",\"predicate\":\"has_skill\",\"object\":\"SQL\",\"text\":\"\",\"start\":\"\",\"end\":\"\"},{\"subject\":\"self\",\"predicate\":\"interest\",\"object\":\"streaming ingestion\",\"text\":\"Experiments with streaming ingestion\",\"start\":\"\",\"end\":\"\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792955326,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 787,
+      "prompt_tokens": 1157,
+      "total_tokens": 1944,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1157,
+      "output_tokens": 787,
+      "time_to_first_token": 2.66,
+      "total_time": 20.99,
+      "prompt_eval_duration": 2.66,
+      "generation_duration": 18.33,
+      "prompt_tokens_per_second": 434.99,
+      "generation_tokens_per_second": 42.93
+    }
+  }
+}

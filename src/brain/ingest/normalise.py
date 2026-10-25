@@ -24,7 +24,7 @@ later by the writer.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -356,6 +356,7 @@ class _Resolver:
         self.doc_names: dict[str, str] = {}  # names seen in this document → entity id
         self.planned: dict[str, _Planned] = {}  # new entity id → create op
         self.literals: dict[str, str] = {}  # folded name → why it is a value, not a page
+        self.entity_kinds: dict[str, str] = {}  # folded name → page type from a typed check
 
     def is_self(self, name: str) -> bool:
         return fold(name) in self.owner or name.strip() in (SELF_ID, SELF_PAGE, f"[[{SELF_ID}]]")
@@ -592,7 +593,7 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
             notes.append(f"dropped {p} fact: {value!r} is {why}, not a page: {about}")
             return None
         elif target is None and p in ENTITY_OBJECTS and subject == SELF_ID:
-            target = res.plan(value, ENTITY_OBJECTS[p], [])
+            target = res.plan(value, res.entity_kinds.get(fold(value), ENTITY_OBJECTS[p]), [])
     if target == subject:
         notes.append(f"dropped {p} fact whose subject is its object: {about}")
         return None
@@ -638,9 +639,16 @@ def build_changeset(
     kind: Kind = "stated",
     rationale: str = "",
     today: date | None = None,
+    entity_kinds: Mapping[str, str] | None = None,
 ) -> Normalised:
     """``today`` is the ingest date: the model sometimes dates facts to it ("Today is …" is in
-    its prompt); a document can't, so such starts are dropped."""
+    its prompt); a document can't, so such starts are dropped.
+
+    ``entity_kinds``: folded name → entity kind decided by a typed check
+    (``brain.ingest.decisions``): a page kind (person, org, project, place, event) replaces the
+    extractor's type; any other kind (team, tool, topic, activity) makes the name a literal
+    value. (Not the facts' ``kind``, stated/observed/inferred.)"""
+    entity_kinds = entity_kinds or {}
     notes: list[str] = []
     profile = vault.page(SELF_PAGE)
     profile_names = [profile.title, *profile.aliases] if profile else []
@@ -652,6 +660,12 @@ def build_changeset(
                 doc_owner.append(n)
     owner_all = [*profile_names, *doc_owner]
     res = _Resolver(vault, owner_all)
+    for name, decided in entity_kinds.items():
+        if decided in TYPE_DIRS and decided != "topic":
+            res.entity_kinds[name] = decided
+        else:  # a team, a tool, a topic, an activity: a value
+            article = "an" if decided[:1] in "aeiou" else "a"
+            res.literals.setdefault(name, f"{article} {decided}")
 
     for extraction in extractions:
         for entity in extraction.entities:
@@ -663,12 +677,14 @@ def build_changeset(
                 for alias in entity.aliases:
                     res.doc_names.setdefault(fold(alias), entity.id.strip())
                 continue
-            why = "a tool" if entity.type in LITERAL_TYPES else literal_reason(name)
+            etype = res.entity_kinds.get(fold(name), entity.type)
+            why = res.literals.get(fold(name))
+            why = why or ("a tool" if etype in LITERAL_TYPES else literal_reason(name))
             if why:
                 for alias in (name, *entity.aliases):
                     res.literals.setdefault(fold(alias), why)
                 continue
-            res.plan(name, entity.type, entity.aliases)
+            res.plan(name, etype, entity.aliases)
 
     facts: list[_Fact] = []
     cutoff = (today or date.today()).isoformat()

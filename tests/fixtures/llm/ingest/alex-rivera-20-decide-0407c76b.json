@@ -1,0 +1,70 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Tidepool\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor.\n## Education\nMSc in Data Science, Westbridge University, 2018–2019.\nBSc in Computer Science, Calder College, 2014–2018.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
+        "choices": [
+          {
+            "value": "Tidepool"
+          },
+          {
+            "value": "Sam Okafor"
+          },
+          {
+            "value": "Westbridge University"
+          },
+          {
+            "value": "Calder College"
+          },
+          {
+            "value": "none of them",
+            "description": "each is a person, organisation, project, place or event"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Tidepool",
+            "probability": 0.132
+          },
+          {
+            "value": "Sam Okafor",
+            "probability": 0.0042
+          },
+          {
+            "value": "Westbridge University",
+            "probability": 0.0021
+          },
+          {
+            "value": "Calder College",
+            "probability": 0.0007
+          },
+          {
+            "value": "none of them",
+            "probability": 0.8609
+          }
+        ],
+        "confidence": 0.8262
+      }
+    ],
+    "usage": {
+      "input_tokens": 214,
+      "output_tokens": 0
+    }
+  }
+}

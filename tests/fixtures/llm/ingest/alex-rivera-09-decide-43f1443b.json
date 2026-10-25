@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## About me\nAlex has done calisthenics every morning for ten years: it is his longest-running habit.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "use",
+        "instructions": "In the text, is \"calisthenics\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
+        "choices": [
+          {
+            "value": "skill",
+            "description": "a professional skill or tool the person can use"
+          },
+          {
+            "value": "hobby",
+            "description": "a hobby, sport or leisure activity"
+          },
+          {
+            "value": "interest",
+            "description": "a subject the person reads about, follows or is curious about"
+          },
+          {
+            "value": "other",
+            "description": "none of these: a project, an organisation, a place or something else"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "use",
+        "choice": "hobby",
+        "probabilities": [
+          {
+            "value": "skill",
+            "probability": 0.0086
+          },
+          {
+            "value": "hobby",
+            "probability": 0.991
+          },
+          {
+            "value": "interest",
+            "probability": 0.0003
+          },
+          {
+            "value": "other",
+            "probability": 0.0001
+          }
+        ],
+        "confidence": 0.9881
+      }
+    ],
+    "usage": {
+      "input_tokens": 150,
+      "output_tokens": 0
+    }
+  }
+}

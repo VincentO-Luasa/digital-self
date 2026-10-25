@@ -14,13 +14,18 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, TypeVar
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
+
+from brain.llm.decide import Decision, Question
+
+DECISIONS = TypeAdapter(list[Decision])
 
 T = TypeVar("T", bound=BaseModel)
 
 
 class StructuredCache:
-    """Wraps a model: ``structured`` is cached, everything else is passed through."""
+    """Wraps a model: ``structured`` and ``decide`` are cached, everything else is passed
+    through."""
 
     def __init__(self, llm: Any, directory: Path) -> None:
         self.llm = llm
@@ -63,4 +68,31 @@ class StructuredCache:
         tmp = path.with_suffix(".tmp")
         tmp.write_text(out.model_dump_json(), encoding="utf-8")
         tmp.replace(path)
+        return out
+
+    def decide(self, text: str, questions: Sequence[Question]) -> list[Decision]:
+        if not questions:
+            return []
+        settings = getattr(self.llm, "settings", None)
+        request = {
+            "model": getattr(settings, "chat_model", None),
+            "input": text,
+            "questions": [q.model_dump() for q in questions],
+        }
+        blob = json.dumps(request, sort_keys=True, default=str).encode()
+        path = self.directory / f"decide-{hashlib.sha256(blob).hexdigest()[:24]}.json"
+        if path.exists():
+            try:
+                out = DECISIONS.validate_json(path.read_text(encoding="utf-8"))
+            except ValidationError:
+                path.unlink(missing_ok=True)
+            else:
+                self.hits += 1
+                return out
+        out = list(self.llm.decide(text, questions))
+        if not any(d.refusal for d in out):  # a refusal may be a transient no-answer: re-ask
+            self.directory.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_bytes(DECISIONS.dump_json(out))
+            tmp.replace(path)
         return out

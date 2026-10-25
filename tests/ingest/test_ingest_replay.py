@@ -10,12 +10,19 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from conftest import DOCS, quality_problems  # type: ignore[import-not-found]
+from conftest import (  # type: ignore[import-not-found]
+    DOCS,
+    PORTFOLIO,
+    portfolio_problems,
+    quality_problems,
+)
 
+from brain.config import LLMSettings
 from brain.ingest import ingest
 from brain.ingest.extract import Extraction
 from brain.ingest.planning import SplitPlan
 from brain.llm.client import response_format
+from brain.llm.decide import request_payload
 from brain.llm.fake import FakeLLM
 from brain.llm.recorder import load_exchange
 from brain.vault.store import Vault
@@ -34,9 +41,21 @@ def test_recorded_requests_match_the_pinned_prompt(fresh_vault: Vault) -> None:
     paths = fixtures()
     fake = FakeLLM.from_fixtures(paths)
     ingest(DOCS / "alex-rivera.html", fresh_vault, fake, today=TODAY)
+    exchanges = [load_exchange(p) for p in paths]
     sent = [call[1]["messages"] for call in fake.calls if call[0] == "structured"]
-    recorded = [load_exchange(p).request for p in paths]
+    recorded = [e.request for e in exchanges if e.kind == "structured"]
     assert sent == [r["messages"] for r in recorded]
+    # the gate and checks: same inputs and questions, in the same order
+    asked = [
+        request_payload(LLMSettings().chat_model, c[1]["text"], c[1]["questions"])
+        for c in fake.calls
+        if c[0] == "decide"
+    ]
+    decided = [e.request for e in exchanges if e.kind == "decide"]
+    assert [(a["input"], a["questions"]) for a in asked] == [
+        (d["input"], d["questions"]) for d in decided
+    ]
+    assert decided, "the recording has no gate/check decisions"
     # a split plan first (the page is over one chunk), then one extraction per part
     assert recorded[0]["response_format"] == response_format(SplitPlan)
     assert all(r["response_format"] == response_format(Extraction) for r in recorded[1:])
@@ -68,3 +87,28 @@ def test_replayed_extraction_lands_in_the_vault(fresh_vault: Vault) -> None:
     assert quality_problems(fresh_vault) == []
     core = fresh_vault.core_path.read_text()
     assert "Name: Alex Rivera" in core
+
+
+PORTFOLIO_DIR = FIXTURE_DIR / "portfolio"
+
+
+def test_replayed_portfolio_gate_and_checks(fresh_vault: Vault) -> None:
+    """The recorded live ingest of the portfolio page: a part that is only the tutorial is
+    skipped, the team, tool and topic are values, hobbies are not skills (``portfolio_problems``).
+    """
+    paths = sorted(PORTFOLIO_DIR.glob("alex-rivera-portfolio-*.json"))
+    assert paths, "no recorded portfolio ingest: record it with BRAIN_RECORD_FIXTURES=1"
+    fake = FakeLLM.from_fixtures(paths)
+    report = ingest(PORTFOLIO, fresh_vault, fake, today=TODAY)
+    exchanges = [load_exchange(p) for p in paths]
+    sent = [c[1]["messages"] for c in fake.calls if c[0] == "structured"]
+    assert sent == [e.request["messages"] for e in exchanges if e.kind == "structured"]
+    asked = [(c[1]["text"], c[1]["questions"]) for c in fake.calls if c[0] == "decide"]
+    decided = [e.request for e in exchanges if e.kind == "decide"]
+    assert [(d["input"], d["questions"]) for d in decided] == [
+        (r["input"], r["questions"])
+        for r in (request_payload(LLMSettings().chat_model, t, q) for t, q in asked)
+    ]
+    assert portfolio_problems(report, fresh_vault) == []
+    assert all(c.p_about is not None for c in [*report.chunks, *report.skipped])  # all gated
+    assert any(n.startswith("check: ") for n in report.normalised.notes)

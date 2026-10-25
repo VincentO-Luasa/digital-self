@@ -249,9 +249,20 @@ def ingest_cmd(
     kind = "observed" if observed else "stated"
 
     def progress(item: ChunkReport, total: int) -> None:
+        where = f"  chunk {item.chunk.index + 1}/{total} [dim]{escape(item.chunk.heading)}[/]"
+        if item.skipped:
+            console.print(
+                f"{where}: [yellow]skipped[/], nothing about a person "
+                f"(p={item.p_about:.3f}, {item.gate_seconds:.1f}s)"
+            )
+            return
+        decided = ""
+        if item.decide_seconds:
+            gate = f"gate p={item.p_about:.2f}, " if item.p_about is not None else ""
+            changed = f", {item.changed} changed" if item.changed else ""
+            decided = f"; {gate}{item.checks} checks{changed} ({item.decide_seconds:.1f}s)"
         console.print(
-            f"  chunk {item.chunk.index + 1}/{total} [dim]{escape(item.chunk.heading)}[/]: "
-            f"{item.entities} entities, {item.facts} facts ({item.seconds:.1f}s)"
+            f"{where}: {item.entities} entities, {item.facts} facts ({item.seconds:.1f}s{decided})"
         )
 
     def plan(report: PlanReport) -> None:
@@ -319,6 +330,11 @@ def _print_ingest(report: Any) -> None:
     for chunk, reason in report.failed:
         where = escape(chunk.heading or f"chunk {chunk.index}")
         console.print(f"[yellow]skipped part of the document ({where}): {escape(reason)}[/]")
+    for item in report.skipped:
+        where = escape(item.chunk.heading or f"chunk {item.chunk.index}")
+        console.print(
+            f"[yellow]skipped part with nothing about a person ({where}): p={item.p_about:.3f}[/]"
+        )
     result = report.applied
     assert result is not None and report.normalised is not None
     console.print(
@@ -429,3 +445,120 @@ def chat_cmd(
             console.print(f"[dim]transcript: {session.transcript.rel}[/]")
     finally:
         db.close()
+
+
+# --- eval (measure pipelines on the fictional set in tests/eval/) -------------------------------
+
+eval_app = typer.Typer(
+    help="Measure pipelines on the fictional evaluation set (tests/eval/).",
+    no_args_is_help=True,
+)
+app.add_typer(eval_app, name="eval")
+
+
+def _frac(n: int, d: int) -> str:
+    return f"{n / d:.2f} [dim]({n}/{d})[/]" if d else "[dim]–[/]"
+
+
+def _print_eval(scores: list[Any], kinds: Any) -> None:
+    columns = ("doc", "required", "optional", "precision", "dates", "types", "pages")
+    columns += ("lit→page", "queued")
+    table = Table(*columns, "s")
+    rows = [(s.gold.path.name, s.counts(), s.seconds) for s in scores]
+    if len(scores) > 1:
+        total: dict[str, int] = {}
+        for _, c, _ in rows:
+            for k, v in c.items():
+                total[k] = total.get(k, 0) + v
+        rows.append(("[bold]all[/]", total, sum(s.seconds for s in scores)))
+    for name, c, seconds in rows:
+        table.add_row(
+            name,
+            _frac(c["required_matched"], c["required"]),
+            _frac(c["optional_matched"], c["optional"]),
+            _frac(c["extracted_matched"], c["extracted"]),
+            _frac(c["dates_ok"], c["dates_checked"]),
+            _frac(c["entity_types_ok"], c["entities_typed"]),
+            _frac(c["entities_found"], c["entities"]),
+            str(c["literal_pages"]),
+            str(c["queued"]),
+            f"{seconds:.0f}",
+        )
+    console.print(table)
+    for s in scores:
+        if s.error:
+            console.print(f"[red]{escape(s.gold.path.name)}: {escape(s.error)}[/]")
+    if kinds:
+        console.print("most common errors:")
+        for kind, n in kinds.most_common(8):
+            console.print(f"  {n:3d}  {escape(kind)}")
+
+
+@eval_app.command("ingest")
+def eval_ingest_cmd(
+    docs: Annotated[
+        list[str] | None,
+        typer.Option("--docs", help="Only documents whose name contains this (repeatable)."),
+    ] = None,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Re-run the model even for excerpts it already read.")
+    ] = False,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Write every match, miss and extra here.")
+    ] = None,
+    keep: Annotated[
+        bool, typer.Option("--keep", help="Keep the scratch vaults and print where they are.")
+    ] = False,
+) -> None:
+    """Score ingest against gold facts on the fictional documents (never touches your vault).
+
+    Each document goes into a fresh scratch vault; see tests/eval/README.md.
+    """
+    import json
+    import shutil
+    import tempfile
+    from datetime import datetime
+
+    from brain.eval import ingest_eval as ev
+
+    golds = ev.load_gold_set(only=docs or ())
+    if not golds:
+        raise _fail("no evaluation document matches --docs")
+    settings = get_settings()
+    llm = _model(settings)
+    cache = None
+    if not no_cache:
+        from brain.llm.cache import StructuredCache
+
+        llm = cache = StructuredCache(llm, ev.default_cache_dir())
+    workdir = Path(tempfile.mkdtemp(prefix="brain-eval-"))
+    scores = []
+    try:
+        for n, gold in enumerate(golds, 1):
+            console.print(f"[bold]{n}/{len(golds)}[/] {escape(gold.path.name)} …")
+            score = ev.run_doc(gold, llm, workdir)
+            m = ev.metrics(score.counts(), score.seconds)
+            console.print(
+                f"  required {m['required_recall']} · precision {m['precision']} · "
+                f"{score.chunks} chunks · {score.seconds:.0f}s"
+                + (f" · [red]{escape(score.error)}[/]" if score.error else "")
+            )
+            scores.append(score)
+    finally:
+        if keep:
+            console.print(f"scratch vaults: {workdir}")
+        else:
+            shutil.rmtree(workdir, ignore_errors=True)
+    kinds = ev.error_kinds(scores)
+    _print_eval(scores, kinds)
+    if json_out:
+        meta = {
+            "run_at": datetime.now().isoformat(timespec="seconds"),
+            "today": ev.EVAL_TODAY.isoformat(),
+            "model": settings.llm.chat_model,
+            "cache": None if cache is None else str(cache.directory),
+            "cache_hits": None if cache is None else cache.hits,
+        }
+        data = ev.report_json(scores, meta)
+        json_out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        console.print(f"details: {json_out}")

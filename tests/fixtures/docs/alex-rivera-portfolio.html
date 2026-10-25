@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Alex Rivera · notes and projects</title>
+  <meta name="description" content="Fictional portfolio of Alex Rivera, a data engineer in Porto.">
+</head>
+<body>
+  <header class="hero">
+    <h1>Alex Rivera</h1>
+    <p><span>Data engineer</span><span>Porto</span></p>
+  </header>
+
+  <main>
+    <section id="research">
+      <p class="eyebrow"><span class="eyebrow__num">01</span><span class="eyebrow__text">Research</span></p>
+      <h2>What I am reading about</h2>
+      <p>Lately I have been reading a lot about Causal Inference, mostly to understand why our
+        dashboards disagree with each other. I keep a reading group with two colleagues every
+        other Thursday.</p>
+    </section>
+
+    <section id="side-projects">
+      <p class="eyebrow"><span class="eyebrow__num">02</span><span class="eyebrow__text">Side projects</span></p>
+      <h2>Side projects</h2>
+
+      <h3>Tidepool</h3>
+      <p>Tidepool is a small open-source library for data quality checks that I started in 2022.
+        I maintain it together with my friend Sam Okafor. It now has a few hundred users, mostly
+        analytics teams that run nightly checks on their warehouse tables.</p>
+
+      <h3>A reading-list bot for the Porto library club</h3>
+      <p>In 2025 I built a small chat bot that suggests the next book for the Porto library club
+        I joined that year. It reads the club's past votes and proposes three titles each month.
+        I wrote it in Python over a few weekends and handed it over to the club in 2026.</p>
+    </section>
+
+    <section id="career">
+      <p class="eyebrow"><span class="eyebrow__num">03</span><span class="eyebrow__text">Career</span></p>
+      <h2>Career path</h2>
+
+      <h3>Senior Data Engineer at Northwind Labs</h3>
+      <p>Since March 2025 I have been a senior data engineer at Northwind Labs in Porto. I am part
+        of Data Platform, the group that owns the company warehouse, and I lead the Atlas
+        Migration, which moves our nightly batch jobs to Lakehouse Cloud. My manager is Priya
+        Raman.</p>
+
+      <h3>Data Analyst at Fabrikam Retail</h3>
+      <p>From September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon,
+        where I owned the weekly sales reporting.</p>
+    </section>
+
+    <section id="toolkit">
+      <p class="eyebrow"><span class="eyebrow__num">04</span><span class="eyebrow__text">Education</span></p>
+      <h2>Education &amp; toolkit</h2>
+      <p>MSc in Data Science, Westbridge University, 2018–2019.</p>
+      <ul>
+        <li>Python, SQL and Apache Spark</li>
+        <li>Data modelling and public speaking</li>
+        <li>Bouldering (V5) and sourdough baking</li>
+        <li>Chess, mostly online</li>
+      </ul>
+    </section>
+
+    <section id="notes">
+      <p class="eyebrow"><span class="eyebrow__num">05</span><span class="eyebrow__text">Notes</span></p>
+      <h2>Quick guide: partitioning warehouse tables</h2>
+      <p>Partitioning splits a large table into smaller pieces by a key such as the event date.
+        Queries that filter on the key read only the matching partitions, which cuts scan time and
+        cost. Choose a key with a few hundred to a few thousand distinct values: too many tiny
+        partitions slow the query planner down, and too few leave each partition huge.</p>
+      <p>Cluster each partition on the columns you filter by most often, and re-cluster after
+        large backfills. Avoid partitioning on a column that changes after the row is written,
+        because an update then moves the row between partitions. Finally, set an expiry on old
+        partitions so storage does not grow forever, and document the key in the table's
+        description so the next engineer understands why it was chosen.</p>
+      <p>When a table is small, under a few gigabytes, partitioning rarely helps: the planner
+        reads it quickly anyway, and the extra metadata only adds overhead. Measure the scan size
+        of your slowest queries before and after the change, and keep the partitioning only if
+        it pays for itself.</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Privacy on this site</h2>
+      <p>This site stores a small file in your browser to remember whether you prefer the dark
+        theme. Anonymous page counts are collected without any personal data and kept for
+        thirteen months. Nothing is sold or shared with third parties. You can clear the stored
+        preference at any time in your browser settings; the site works the same without it.
+        Questions about this notice can be sent through the form below.</p>
+    </section>
+
+    <section id="contact">
+      <h2>Get in touch</h2>
+      <p>The best way to reach me is by email at alex@example.com. Press and speaking requests are
+        welcome.</p>
+    </section>
+  </main>
+</body>
+</html>

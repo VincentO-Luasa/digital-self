@@ -105,7 +105,7 @@ def test_valid_plan_becomes_chunks() -> None:
     assert "Northwind second" in northwind.text and "Fabrikam" not in northwind.text
     fabrikam = next(c for c in report.chunks if "Fabrikam first" in c.text)
     assert fabrikam.text.startswith("## Fabrikam Retail") and "Fabrikam second" in fabrikam.text
-    assert fabrikam.heading == "Alex Rivera > Job at Fabrikam"
+    assert fabrikam.heading == "Alex Rivera > Fabrikam Retail > Job at Fabrikam"
     # the request: a pinned system prompt and an outline (not the text) in the user message
     messages = llm.calls[0][1]["messages"]
     assert messages[0]["content"].startswith("You split a long document")
@@ -243,3 +243,63 @@ def test_the_cache_covers_the_plan_call(tmp_path: Path) -> None:
 def test_schema_puts_reasoning_first() -> None:
     assert list(SplitPlan.model_json_schema()["properties"]) == ["reasoning", "parts"]
     assert estimate_tokens(DOC) > CAP
+
+
+# A "Side projects" section whose last subsection is followed by a "Career path" section that
+# starts with a kicker line ("Career", above its heading): the shape of a real homepage.
+SIDE_THEN_CAREER = "\n\n".join(
+    [
+        "# Alex Rivera",
+        "## Side projects",
+        "### Tidepool",
+        para("Tidepool library"),
+        "### A voice companion for the elderly",
+        para("Voice companion"),
+        "Career",
+        "## Career path",
+        "### Data Engineer at Northwind Labs",
+        para("Northwind job"),
+        "Education",
+        "## Education & toolkit",
+        para("Westbridge degree"),
+    ]
+)
+
+
+def test_part_label_comes_from_its_own_headings_not_the_previous_section() -> None:
+    blocks = split_blocks(SIDE_THEN_CAREER, CAP)
+    kicker = next(b.index for b in blocks if b.text == "Career")
+    education = next(b.index for b in blocks if b.text == "Education")
+    assert blocks[kicker].trail == (
+        "Alex Rivera",
+        "Side projects",
+        "A voice companion for the elderly",
+    )
+    report, _ = run(
+        plan(
+            (0, "Side projects"),
+            (kicker, "Data Engineer at Northwind Labs"),
+            (education, "Education and certifications"),
+        ),
+        text=SIDE_THEN_CAREER,
+    )
+    labels = [c.heading for c in report.chunks]
+    assert labels == [
+        "Alex Rivera > Side projects",
+        "Alex Rivera > Career path > Data Engineer at Northwind Labs",
+        "Alex Rivera > Education & toolkit > Education and certifications",
+    ]
+    assert report.chunks[1].text.startswith("Career\n\n## Career path")
+
+
+def test_part_label_of_a_continuation_and_of_a_part_spanning_two_sections() -> None:
+    blocks = split_blocks(SIDE_THEN_CAREER, CAP)
+    voice = next(b.index for b in blocks if b.text.startswith("Voice companion"))
+    # a part with no heading of its own continues its section
+    assert planning.section_trail(blocks[voice : voice + 1]) == (
+        "Alex Rivera",
+        "Side projects",
+        "A voice companion for the elderly",
+    )
+    # real text of the side project, then the career heading: only what both share
+    assert planning.section_trail(blocks[voice : voice + 5]) == ("Alex Rivera",)

@@ -1,0 +1,77 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### A reading-list bot for the Porto library club\nI wrote it in Python over a few weekends and handed it over to the club in 2026.\n## Education & toolkit\n- Python, SQL and Apache Spark\n- Data modelling and public speaking",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these is a hobby, a leisure activity or a subject of interest rather than a professional skill or tool?",
+        "choices": [
+          {
+            "value": "Python"
+          },
+          {
+            "value": "SQL"
+          },
+          {
+            "value": "Apache Spark"
+          },
+          {
+            "value": "Data modelling"
+          },
+          {
+            "value": "public speaking"
+          },
+          {
+            "value": "none of them",
+            "description": "all of them are professional skills or tools"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Python",
+            "probability": 0.0204
+          },
+          {
+            "value": "SQL",
+            "probability": 0.0123
+          },
+          {
+            "value": "Apache Spark",
+            "probability": 0.0035
+          },
+          {
+            "value": "Data modelling",
+            "probability": 0.0296
+          },
+          {
+            "value": "public speaking",
+            "probability": 0.409
+          },
+          {
+            "value": "none of them",
+            "probability": 0.5251
+          }
+        ],
+        "confidence": 0.4302
+      }
+    ],
+    "usage": {
+      "input_tokens": 146,
+      "output_tokens": 0
+    }
+  }
+}

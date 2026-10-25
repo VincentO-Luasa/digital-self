@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## Projects\n### Atlas Migration\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly batch pipelines from a legacy Hadoop cluster to …\n### Tidepool\nTidepool is a small open-source library for data quality checks that I started in 2022. I maintain it together with my friend Sam Okafor. …\n## Skills\n- Python and SQL - Apache Spark - Airflow and dbt - Data modelling\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.\n## Education\nMSc in Data Science, Westbridge University, 2018–2019.\nBSc in Computer Science, Calder College, 2014–2018.",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "instructions": "Does this excerpt say anything about its author or the person it describes (work, education, projects, people, places, interests, values or habits)?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "about_a_person",
+        "probability": 0.9964
+      }
+    ],
+    "usage": {
+      "input_tokens": 257,
+      "output_tokens": 0
+    }
+  }
+}

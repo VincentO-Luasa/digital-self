@@ -22,13 +22,14 @@ FIXTURE = sorted(
 runner = CliRunner()
 
 
-def recorded_extractions() -> list[str]:
-    """The recorded split plan and extraction of each part of the fictional homepage, in order."""
-    contents = []
-    for path in FIXTURE:
-        data = json.loads(path.read_text())
-        contents.append(data["response"]["choices"][0]["message"]["content"])
-    return contents
+def recorded(**kwargs) -> FakeLLM:
+    """A fake replaying the recorded ingest of the fictional homepage: the split plan, then per
+    part the gate, the extraction and the checks."""
+    return FakeLLM.from_fixtures(FIXTURE, **kwargs)
+
+
+def recorded_parts() -> int:
+    return sum(json.loads(p.read_text())["kind"] == "structured" for p in FIXTURE) - 1
 
 
 @pytest.fixture
@@ -81,13 +82,15 @@ def test_model_server_down(env) -> None:
 def test_ingest_review_and_chat(env) -> None:
     settings, state = env
     invoke("init-vault")
-    state["llm"] = FakeLLM(
-        structured_responses=recorded_extractions(), chat_responses=["You work at Northwind Labs."]
-    )
+    state["llm"] = recorded(chat_responses=["You work at Northwind Labs."])
     out = invoke("ingest", str(DOCS / "alex-rivera.html")).output
-    parts = len(FIXTURE) - 1  # the first exchange is the split plan
+    parts = recorded_parts()
     assert f"split into {parts} parts, planned by the model" in out
-    assert "1. Profile and Introduction" in out
+    plan = json.loads(
+        json.loads(FIXTURE[0].read_text())["response"]["choices"][0]["message"]["content"]
+    )
+    assert f"1. {plan['parts'][0]['title']}" in out
+    assert "gate p=" in out and "checks" in out  # decisions per chunk
     assert f"chunk 1/{parts}" in out and f"chunk {parts}/{parts}" in out
     assert "raw copy: raw/docs/" in out and "review: r-" in out
     vault = Vault(settings.vault)
@@ -125,7 +128,8 @@ def test_ingest_url_and_bad_sources(env, monkeypatch: pytest.MonkeyPatch) -> Non
     transport = httpx.MockTransport(handler)
     monkeypatch.setattr(cli, "make_http", lambda: httpx.Client(transport=transport))
     empty = {"reasoning": "r", "owner_names": [], "entities": [], "facts": []}
-    state["llm"] = FakeLLM(structured_responses=[empty, *recorded_extractions()])
+    state["llm"] = recorded()
+    state["llm"].structured_queue.appendleft(empty)  # the index page: one part, no decisions
     out = invoke("ingest", "https://alex.example/", "--follow", "2").output
     assert "page 1/3 https://alex.example/" in out and "page 2/3 https://alex.example/cv" in out
     assert "raw copy: raw/docs/2026" in out and "alex-example-cv.html" in out
@@ -145,7 +149,7 @@ def test_ingest_url_and_bad_sources(env, monkeypatch: pytest.MonkeyPatch) -> Non
 def test_review_reject_and_skip(env) -> None:
     settings, state = env
     invoke("init-vault")
-    state["llm"] = FakeLLM(structured_responses=recorded_extractions())
+    state["llm"] = recorded()
     invoke("ingest", str(DOCS / "alex-rivera.html"))
     vault = Vault(settings.vault)
     invoke("review", input="s\n")
@@ -165,3 +169,38 @@ def test_chat_repl_reads_until_quit(env) -> None:
     assert "Phase 3" in out
     assert "Memory notes" in out
     assert "transcript:" in out
+
+
+def test_ingest_prints_skipped_parts(env, tmp_path: Path) -> None:
+    from brain.llm.decide import Decision
+
+    invoke("init-vault")
+    _, state = env
+    doc = tmp_path / "page.md"
+    tutorial = " ".join(f"Partitioning step {i} splits a table by a key." for i in range(26))
+    doc.write_text(
+        "# Alex Rivera\n\n## Career\n\n"
+        + "I am a data engineer at Northwind Labs in Porto. " * 20
+        + "\n\n## Quick guide\n\n"
+        + tutorial
+        + "\n"
+    )
+    plan = {
+        "reasoning": "r",
+        "parts": [{"first_block": 0, "title": "Career"}, {"first_block": 3, "title": "Guide"}],
+    }
+    empty = {"reasoning": "r", "owner_names": [], "entities": [], "facts": []}
+
+    def gate(text, questions):
+        p = 0.02 if "Partitioning" in text else 0.99
+        return [
+            Decision(
+                name=q.name, type="predicate", choice="yes", probabilities={"yes": p, "no": 1 - p}
+            )
+            for q in questions
+        ]
+
+    state["llm"] = FakeLLM(structured_responses=[plan, empty], decider=gate)
+    out = " ".join(invoke("ingest", str(doc)).output.split())  # rich wraps long lines
+    assert "skipped, nothing about a person (p=0.020" in out
+    assert "skipped part with nothing about a person" in out and "gate: skipped" in out

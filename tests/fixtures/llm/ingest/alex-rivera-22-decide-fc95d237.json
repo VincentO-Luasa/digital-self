@@ -1,0 +1,77 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Atlas Migration\nIt uses Airflow for orchestration and dbt for transformations.\n## Skills\n- Python and SQL\n- Apache Spark\n- Airflow and dbt",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these is a hobby, a leisure activity or a subject of interest rather than a professional skill or tool?",
+        "choices": [
+          {
+            "value": "Python"
+          },
+          {
+            "value": "SQL"
+          },
+          {
+            "value": "Apache Spark"
+          },
+          {
+            "value": "Airflow"
+          },
+          {
+            "value": "dbt"
+          },
+          {
+            "value": "none of them",
+            "description": "all of them are professional skills or tools"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Python",
+            "probability": 0.0033
+          },
+          {
+            "value": "SQL",
+            "probability": 0.001
+          },
+          {
+            "value": "Apache Spark",
+            "probability": 0.0002
+          },
+          {
+            "value": "Airflow",
+            "probability": 0.0008
+          },
+          {
+            "value": "dbt",
+            "probability": 0.0109
+          },
+          {
+            "value": "none of them",
+            "probability": 0.9837
+          }
+        ],
+        "confidence": 0.9804
+      }
+    ],
+    "usage": {
+      "input_tokens": 128,
+      "output_tokens": 0
+    }
+  }
+}

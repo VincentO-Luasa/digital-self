@@ -10,7 +10,7 @@ import httpx
 import pytest
 from conftest import (  # type: ignore[import-not-found]
     DOCS,
-    homepage_extraction,
+    homepage_extractions,
     homepage_plan,
 )
 
@@ -44,9 +44,8 @@ def empty_extraction() -> dict:
 
 
 def homepage_responses() -> list:
-    """The scripted split plan, the extraction for the first chunk, nothing for the others."""
-    empty = [empty_extraction() for _ in range(N_CHUNKS - 1)]
-    return [homepage_plan(), homepage_extraction(), *empty]
+    """The scripted split plan, then the extraction of each of the two parts."""
+    return [homepage_plan(), *homepage_extractions()]
 
 
 def run(vault: Vault, llm: FakeLLM):
@@ -70,11 +69,13 @@ def test_ingest_homepage(fresh_vault: Vault) -> None:
     ]
     # the plan sees an outline; each extraction prompt carries its part's title and text and
     # the known entities
-    plan_user = llm.calls[0][1]["messages"][1]["content"]
+    structured = [c[1] for c in llm.calls if c[0] == "structured"]
+    plan_user = structured[0]["messages"][1]["content"]
     assert "] ## Experience" in plan_user and "moved it from spreadsheets" not in plan_user
-    first, second = (llm.calls[i][1]["messages"][1]["content"] for i in (1, 2))
+    first, second = (structured[i]["messages"][1]["content"] for i in (1, 2))
     assert "Section: Profile and about me" in first and "I grew up in Valencia" in first
-    assert "Section: Alex Rivera > Career, projects and education" in second
+    # labelled by its first heading and the title (never an earlier section's trail)
+    assert "Section: Alex Rivera > Experience > Career, projects and education" in second
     assert "Fabrikam Retail" in second and "Fabrikam Retail" not in first
     assert "- self: the owner (name unknown)" in first
 
@@ -118,15 +119,15 @@ def test_reingest_is_idempotent(fresh_vault: Vault) -> None:
 
 
 def test_truncated_chunk_is_split_and_retried(fresh_vault: Vault) -> None:
-    halves = halve(homepage_chunks()[0])
+    halves = halve(homepage_chunks()[1])
     assert len(halves) >= 2
+    profile, career = homepage_extractions()
     llm = FakeLLM(
         structured_responses=[
             homepage_plan(),
+            profile,
             OutputTruncated("cut off", '{"reasoning"'),
-            homepage_extraction(),
-            *[empty_extraction() for _ in halves[1:]],
-            *[empty_extraction() for _ in range(N_CHUNKS - 1)],
+            *[career for _ in halves],  # each half keeps the facts its own text names
         ]
     )
     report, _ = run(fresh_vault, llm)

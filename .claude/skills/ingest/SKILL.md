@@ -32,18 +32,54 @@ description: How `brain ingest` turns a file or web page into vault facts — re
      call); a part under a quarter of the cap joins a neighbour when both fit.
    - A failed or unusable plan falls back to `chunk_markdown` (heading-bounded packing), or,
      for one window of several, to heading packing of that window.
-   - Each part becomes a `Chunk` whose heading is the headings enclosing it plus the model's
-     title (the extraction prompt's "Section:" line). `IngestReport.plan` (`PlanReport`) keeps
+   - Each part becomes a `Chunk` whose heading is its section trail plus the model's title (the
+     extraction prompt's "Section:" line). The trail is that of the part's **first heading**
+     (`planning.section_trail`): a part often starts with a kicker line ("Career" above
+     "## Career path") whose trail is still the previous section's, and that label once made a
+     job read as part of the side project above it. A part without a heading continues its
+     section; one that starts with real text of an earlier section keeps the shared trail only. `IngestReport.plan` (`PlanReport`) keeps
      the parts, notes, calls and seconds; the CLI prints it before extraction (`on_plan`).
    A chunk whose reply is truncated is still halved (twice at most).
-3. **Extract**: `extract.extract_chunk`, one structured call per chunk. System prompt
+3. **Gate** (`decisions.gate`, only when there are 2+ parts; a document's only part is never
+   skipped): one yes/no decision on a compact view of the part (headings + first 24 words of each
+   block): "does it say anything about its author or the person it describes?". Under
+   `SKIP_BELOW` (0.15) the part is skipped (`IngestReport.skipped`, CLI line, a note with p).
+   Measured: CV/hobbies/opinion ≥ 0.99, contact block ~0.6, cookie notice / tutorial / footer
+   0.03–0.12; ~0.6–0.9 s per part against ~40 s of extraction.
+4. **Extract**: `extract.extract_chunk`, one structured call per chunk. System prompt
    `prompts/ingest_extract.md` (byte-stable, cached), then the user message with the date,
    document title, section, known entities named in the chunk (cap 40) and the excerpt. Flat
    schema `Extraction`: names, not ids; predicates are an enum (`INGEST_PREDICATES`).
-4. **Normalise**: `normalise.build_changeset` resolves names to ids, normalises dates, merges
+5. **Check** (`decisions.check_part`, after each part's extraction):
+   - **Grounding** (code): a fact whose subject (unless the owner) or page-type object
+     (`OBJECT_TYPES` predicates) the part never names (name, alias or a capitalised 4+ letter
+     word of it, line breaks ignored) is dropped. A weak part (tutorial + contact block) once
+     restated every KNOWN ENTITY as works_at / worked_on / friend_of.
+   - Then typed decisions on what code cannot verify, shown the evidence (the sentences / list
+     lines naming the items, under their heading), never the extractor's answer. Each set is
+     **screened** ("which of these is a team, tool, topic or activity rather than a person, org,
+     project, place or event? / none of them") in groups of ≤ `SCREEN_GROUP` (6); items at
+     ≥ `SCREEN_FLAG` (0.15), items the part never names, and sets of ≤ `DIRECT_UP_TO` (2) get
+     their own question:
+     - new entities → kind (person / org / team / project / place / event / tool / topic /
+       activity); team, tool, topic, activity → a literal value (`entity_kinds` → normaliser
+       literals); another page kind → the entity type.
+     - works_at organisations → relation (employer / school / member / other): studied_at,
+       member_of, or dropped.
+     - has_skill values (screened for hobbies/interests) and interest/habit/likes values
+       (screened for work skills) → "a skill, a hobby, a subject of interest, or none of these?";
+       skill → has_skill, hobby/interest listed as a skill → interest, other → kept.
+     - `speaks` values outside `LANGUAGES` → "is X a language?"; a confident no drops the fact.
+   A change needs `confidence ≥ ACT_ABOVE` (0.8); otherwise the extractor's choice stays and a
+   note says so. Every screen and answer is a `check:` note (first in `Normalised.notes`).
+   Why screens: the runtime answers questions one at a time and re-reads the input for each
+   (~0.35 s + ~1.6 ms/token; a shared input is not reused on this hybrid model), so a question
+   per item cost 8–14 s per CV part; screens bring it to ~2–6 s.
+   `context=` on `gate`/`check_part` prepends shared context (for a future document brief).
+6. **Normalise**: `normalise.build_changeset` resolves names to ids, normalises dates, merges
    duplicates, applies the guards below, renders fact text and builds one
    `ChangeSet(origin="ingest")`. Everything it changed or dropped goes to `Normalised.notes`.
-5. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
+7. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
    `refresh_generated` (index.md, core.md) and `reindex`.
 
 ## Adding a reader
@@ -53,7 +89,13 @@ description: How `brain ingest` turns a file or web page into vault facts — re
 - Register its suffixes in `readers.SUFFIXES`, dispatch in `readers.read_bytes`; for the web,
   map its content type in `web.CONTENT_TYPES`.
 - Drop boilerplate in the reader, not in the prompt (navigation, cookie banners, contact
-  details): every input token costs prefill and invites junk facts.
+  details): every input token costs prefill and invites junk facts. What the reader cannot
+  recognise structurally is left to the gate.
+- Keep fixes structural, never per site: the HTML reader puts a space between adjacent inline
+  elements whose texts would touch (`<span>02</span><span>Lab</span>` read "02Lab", which the
+  model took for a name) and drops decorative ordinals (a bare 1–2 digit element right before a
+  heading, first in a heading, or first in a short line followed by another element when
+  zero-padded or above a heading). Counters (`data-target`) and counts in sentences stay.
 - Test it on a fictional fixture in `tests/fixtures/docs/` (Alex Rivera persona only), no network
   (`httpx.MockTransport` for web code).
 
@@ -68,8 +110,13 @@ description: How `brain ingest` turns a file or web page into vault facts — re
   example last. Its fixture is `tests/fixtures/llm/ingest/split/` (the long fictional page
   `tests/fixtures/docs/alex-rivera-long.md`), recorded by `tests/ingest/test_ingest_split_live.py`.
   The homepage (654 tokens) is over one chunk, so its fixtures start with a plan call too.
-- After any prompt, schema, outline or reader change, re-record and re-run:
-  `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/ingest/test_ingest_live.py tests/ingest/test_ingest_split_live.py -s`, then
+- Recorded fixtures (`tests/fixtures/llm/ingest/`): the homepage as numbered exchanges in call
+  order (the plan, then per part the gate, the extraction and the check decisions);
+  `portfolio/` the same for `alex-rivera-portfolio.html`; `gate/` the gate on the fictional
+  parts in `conftest.GATE_PARTS`; `split/` the long page's plan. `FakeLLM.from_fixtures`
+  replays structured and decide exchanges in order; the replay tests compare the requests.
+- After any prompt, schema, outline, reader or decision-question change, re-record and re-run:
+  `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/ingest/test_ingest_live.py tests/ingest/test_ingest_split_live.py tests/ingest/test_ingest_gate_live.py -s`, then
   `uv run pytest tests/ingest tests/cli`. The replay test fails while the pinned request differs.
   Check the recorded JSON contains only fictional data before committing.
 
@@ -92,10 +139,16 @@ The model is ~3B active and will slip; code repairs or drops, and notes every re
 
 - [ ] `uv run pytest -q` and `uv run pytest -m llm` green; `uv run ruff check . && uv run ruff format --check .`
 - [ ] Live test output: seconds and output tokens per chunk no worse than before; read every note.
+- [ ] Run `brain eval ingest` before and after any ingest change; keep the JSON of both runs
+      (`--json before.json` / `after.json`) and diff misses and extras (tests/eval/README.md).
 - [ ] Split plan: each job/project stays in one part, long heading-free stretches are split by
       the model (no "split into" note), no part ends with a heading, every block is covered.
 - [ ] Smoke run on a scratch vault, never the real one:
       `BRAIN_VAULT=<tmp> uv run brain init-vault && uv run brain ingest tests/fixtures/docs/alex-rivera.html && uv run brain review --list`
+      and the same with `alex-rivera-portfolio.html` (gate skips the tutorial; checks turn the
+      team and topic into values; `portfolio_problems` in tests/ingest/conftest.py).
+- [ ] Gate and checks: read every `gate:`/`check:` note; decision seconds per part (CLI chunk
+      line) stay a small share of the extraction time.
 - [ ] No pages for tools, products, ids or teams; works_at points at orgs only.
 - [ ] Duties are `responsibility` facts, not merged into the employer fact.
 - [ ] Self fact text has no pronoun or owner name; numbers are real values, never 0 placeholders.

@@ -5,7 +5,7 @@ Use only with fictional or generic inputs: fixtures end up in the public repo
 
     {"kind": "structured", "request": {...}, "response": {...}}
 
-``FakeLLM.from_fixtures`` replays the recorded chat/structured outputs.
+``FakeLLM.from_fixtures`` replays the recorded chat/structured outputs and decide answers.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Exchange:
-    kind: str  # chat | structured | rerank
+    kind: str  # chat | structured | rerank | decide
     request: dict[str, Any]
     response: dict[str, Any]
 
