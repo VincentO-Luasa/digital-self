@@ -194,8 +194,8 @@ def test_guards_repair_or_drop_what_breaks_the_schema(fresh_vault: Vault) -> Non
 
     notes = "\n".join(out.notes)
     for expected in (
-        "works_at → responsibility (describes the work): Works on pipelines",
-        "works_at → responsibility (describes the work): Experiments with",
+        "works_at + responsibility (describes the work): Works on pipelines",
+        "works_at + responsibility (describes the work): Experiments with",
         "works_at → team ('Data Platform team' is a team)",
         "works_at → worked_on ('Atlas Migration' is a project)",
         "dropped works_at fact: 'Madrid' is a place",
@@ -271,6 +271,23 @@ def test_vague_duplicates_and_mentions_dont_become_contradictions(fresh_vault: V
     assert ("speaks", "Spanish") in facts and ("has_skill", "Python") in facts
     creates = {op.id for op in out.changeset.ops if isinstance(op, CreateEntity)}
     assert "orgs/data-platform" not in creates and "places/porto" in creates
+
+
+def test_a_duty_filed_under_its_only_employer_keeps_the_employer(fresh_vault: Vault) -> None:
+    extraction = {
+        "reasoning": "A past internship, written as what the work was.",
+        "owner_names": ["Alex Rivera"],
+        "entities": [entity("Fabrikam", "org")],
+        "facts": [
+            fact("self", "works_at", "Fabrikam", "Did demand forecasting", "2021-02", "2021-08")
+        ],
+    }
+    out = build(fresh_vault, extraction)
+    facts = {(f.p, f.o): f for f in facts_of(out.changeset.ops)}
+    works = facts[("works_at", "[[orgs/fabrikam]]")]
+    assert (works.valid_from, works.valid_to) == ("2021-02", "2021-08")
+    assert ("responsibility", "Did demand forecasting") in facts
+    assert "orgs/fabrikam" in {op.id for op in out.changeset.ops if isinstance(op, CreateEntity)}
 
 
 def test_starts_dated_to_the_ingest_day_are_dropped(fresh_vault: Vault) -> None:

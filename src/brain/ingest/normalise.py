@@ -740,6 +740,7 @@ def _subject_ok(p: str, kind: str) -> bool:
 
 def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> list[_Fact]:
     p, text, value = raw.predicate, clean(raw.text), clean(raw.object)
+    duty = ""  # a works_at naming a known employer but describing the work: keep both
     about = text or f"{p} {value}"
     subject = res.lookup(raw.subject)
     if subject is None:
@@ -776,11 +777,10 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> list[
     else:
         if target == SELF_ID and p not in TOWARDS_OWNER | {"manager", "mentor_of"}:
             target = None  # e.g. the owner's name is a value, not a link to the owner
-        if (
-            p == "works_at"
-            and (target is None or res.kind(target) == "org")
-            and is_duty(text, value)
-        ):
+        if p == "works_at" and target and res.kind(target) == "org" and is_duty(text, value):
+            notes.append(f"works_at + responsibility (describes the work): {about}")
+            duty = _sentence(text)
+        elif p == "works_at" and target is None and is_duty(text, value):
             notes.append(f"works_at → responsibility (describes the work): {about}")
             p, target, value = "responsibility", None, _sentence(text or value)
         elif target is None and (why := res.literal(value)) and p in OBJECT_TYPES:
@@ -822,7 +822,8 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> list[
     if start and end and end < start:
         notes.append(f"dropped end {end} before start {start}: {about}")
         end = None
-    return [_Fact(subject, p, o, text, start, end)]
+    fact = _Fact(subject, p, o, text, start, end)
+    return [fact, _Fact(subject, "responsibility", duty, duty, start, end)] if duty else [fact]
 
 
 def build_changeset(

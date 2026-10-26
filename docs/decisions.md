@@ -375,3 +375,12 @@ none. Known gaps: one line per row hides a row heading from the outline (rows ar
 the story check sees paraphrased statements, so its evidence is the whole part when the value
 is not named.
 
+## 2026-10-26 — A duty filed under a known employer keeps the employer
+The "works_at that describes the work" guard turned `works_at Fabrikam: "Did demand forecasting"`
+into a responsibility, dropping the employer link; when that was the employer's only fact, its
+page was dropped too (an internship lost on the timeline eval homepage, after the typed check had
+confirmed the employer). Now a `works_at` whose object is an organisation page keeps the link,
+with its dates, and the duty is added as a separate responsibility; only a `works_at` with no
+page behind it becomes a responsibility. Paired re-score on both cached samples: the six older
+documents are unchanged; the timeline homepage keeps the internship (precision +2 points on both
+samples, dates 0.92 → 1.00 on one).
