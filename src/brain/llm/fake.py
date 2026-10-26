@@ -44,6 +44,10 @@ def _bucket(token: str, dim: int) -> tuple[int, float]:
 
 
 def hash_embedding(text: str, dim: int) -> np.ndarray:
+    """Hashed bag of words. Of an instructed text ("Instruct: …\nQuery: …") only the query part
+    is embedded: an instruction shared by every text would otherwise dominate the bag."""
+    if text.startswith("Instruct:") and "\nQuery: " in text:
+        text = text.split("\nQuery: ", 1)[1]
     vec = np.zeros(dim, dtype=np.float32)
     for token in words(text) or [text or "<empty>"]:
         index, sign = _bucket(token, dim)

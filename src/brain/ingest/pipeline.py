@@ -31,6 +31,7 @@ from brain.ingest.decisions import (
     check_part,
     gate,
 )
+from brain.ingest.dedup import DedupReport, merge_paraphrases
 from brain.ingest.extract import (
     Extraction,
     KnownEntity,
@@ -60,6 +61,10 @@ MAX_SPLITS = 2  # a truncated chunk is halved at most twice (quarters)
 # block of every part's prompt: fewer required facts, lower precision, slower) and "checks" (its
 # header line as context of the typed checks: no change). See docs/decisions.md.
 BRIEF_USES = frozenset({"normalise"})
+# Merge paraphrased duties, skills, interests… (``dedup``): embeddings, then a typed decision for
+# borderline pairs. "ask" off keeps the embedding step only.
+DEDUP = True
+DEDUP_ASK = True
 
 
 class IngestModel(StructuredModel, DecisionModel, RetrievalModel, Protocol):
@@ -98,6 +103,7 @@ class IngestReport:
     decision_notes: list[str] = field(default_factory=list)  # every gate/check decision
     extractions: list[Extraction] = field(default_factory=list)
     normalised: Normalised | None = None
+    dedup: DedupReport | None = None  # paraphrases merged after normalisation
     applied: ApplyResult | None = None
     generated: list[Path] = field(default_factory=list)
     reindexed: ReindexStats | None = None
@@ -331,8 +337,13 @@ def _ingest_document(
         today=today,
         entity_kinds=entity_kinds,
         brief=brief if "normalise" in BRIEF_USES else None,
+        texts=[item.chunk.text for item in report.chunks],
     )
     report.normalised.notes[:0] = report.decision_notes
+    if DEDUP:
+        cs, report.dedup = merge_paraphrases(report.normalised.changeset, vault, llm, ask=DEDUP_ASK)
+        report.normalised.changeset = cs
+        report.normalised.notes += report.dedup.notes
     report.applied = apply(report.normalised.changeset, vault)
     report.generated = refresh_generated(vault, max_tokens=core_max_tokens, today=today)
     if db is not None:

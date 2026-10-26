@@ -45,8 +45,8 @@ required:
 
 optional:
   - {s: self, p: nationality, o: Swedish}
-  - {s: self, p: degree, o: [bachelor's in graphic and interaction design, graphic and interaction design]}
-  - {s: self, p: degree, o: [master's in human-computer interaction, human-computer interaction]}
+  - {s: self, p: degree, o: [bachelor's in graphic and interaction design, graphic and interaction design], at: Hallström School of Design}
+  - {s: self, p: degree, o: [master's in human-computer interaction, human-computer interaction], at: Kungsholm Institute of Technology}
   - {s: Linnea, p: family_of, o: self}
   - {s: Linnea, p: lives_in, o: Norrvik}
   - {s: Jonas Berg, p: friend_of, o: self, from: 2010}

@@ -253,8 +253,8 @@ SIDE_THEN_CAREER = "\n\n".join(
         "## Side projects",
         "### Tidepool",
         para("Tidepool library"),
-        "### A voice companion for the elderly",
-        para("Voice companion"),
+        "### A reading tutor for children",
+        para("Reading tutor"),
         "Career",
         "## Career path",
         "### Data Engineer at Northwind Labs",
@@ -273,7 +273,7 @@ def test_part_label_comes_from_its_own_headings_not_the_previous_section() -> No
     assert blocks[kicker].trail == (
         "Alex Rivera",
         "Side projects",
-        "A voice companion for the elderly",
+        "A reading tutor for children",
     )
     report, _ = run(
         plan(
@@ -294,12 +294,12 @@ def test_part_label_comes_from_its_own_headings_not_the_previous_section() -> No
 
 def test_part_label_of_a_continuation_and_of_a_part_spanning_two_sections() -> None:
     blocks = split_blocks(SIDE_THEN_CAREER, CAP)
-    voice = next(b.index for b in blocks if b.text.startswith("Voice companion"))
+    voice = next(b.index for b in blocks if b.text.startswith("Reading tutor"))
     # a part with no heading of its own continues its section
     assert planning.section_trail(blocks[voice : voice + 1]) == (
         "Alex Rivera",
         "Side projects",
-        "A voice companion for the elderly",
+        "A reading tutor for children",
     )
     # real text of the side project, then the career heading: only what both share
     assert planning.section_trail(blocks[voice : voice + 5]) == ("Alex Rivera",)

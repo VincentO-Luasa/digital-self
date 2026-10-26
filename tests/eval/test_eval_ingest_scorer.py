@@ -195,6 +195,40 @@ def test_entities_literals_and_unexpected_pages() -> None:
     assert kinds["unverified lives_in"] == 1
 
 
+def test_degree_school_link_is_checked_apart_from_matching() -> None:
+    gold = gold_doc(
+        optional=[
+            {"s": "self", "p": "degree", "o": "MSc Data Science", "at": "Westbridge University"},
+            {"s": "self", "p": "degree", "o": "BSc Mathematics", "at": "Westbridge University"},
+            {"s": "self", "p": "degree", "o": "Preparatory classes", "at": "Calder College"},
+        ],
+        entities=[
+            ("Westbridge University", "org", ["Westbridge"]),
+            ("Calder College", "org", []),
+        ],
+    )
+    x = Extracted(
+        entities=[
+            GotEntity("orgs/westbridge", "org", ("Westbridge",)),
+            GotEntity("orgs/calder", "org", ("Calder College",)),
+        ],
+        facts=[
+            GotFact("self", "degree", "MSc Data Science", at="[[orgs/westbridge]]"),
+            GotFact("self", "degree", "BSc Mathematics", at="[[orgs/calder]]"),
+            GotFact("self", "degree", "Preparatory classes"),
+        ],
+    )
+    score = score_doc(gold, x)
+    assert [m.link_problem for m in score.matches] == [
+        "",
+        "wrong school (expected Westbridge University, got Calder College)",
+        "no school (expected Calder College)",
+    ]
+    assert score.counts()["optional_matched"] == 3  # matching ignores the link
+    assert (score.counts()["links_checked"], score.counts()["links_ok"]) == (3, 1)
+    assert error_kinds([score])["degree: wrong school"] == 1
+
+
 def test_report_json_is_serialisable() -> None:
     data = report_json([scored()], {"model": "test"})
     text = json.dumps(data)

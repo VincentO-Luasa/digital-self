@@ -131,6 +131,7 @@ class GoldFact:
     current: bool = False
     alts: tuple[Form, ...] = ()  # other acceptable forms (e.g. the relation the other way)
     why: str = ""
+    at: tuple[str, ...] = ()  # a degree's school (the fact's ``at::`` link)
 
     @property
     def forms(self) -> tuple[Form, ...]:
@@ -219,6 +220,7 @@ def parse_fact(raw: dict[str, Any], level: Level) -> GoldFact:
         current=bool(raw.get("current", False)),
         alts=alts,
         why=str(raw.get("why", "")),
+        at=_tuple(raw.get("at") or []),
     )
 
 
@@ -272,6 +274,9 @@ def gold_problems(gold: GoldDoc) -> list[str]:
                     problems.append(f"unknown predicate {p!r}: {fact.show()}")
             if form.s != SELF_ID and form.s.casefold() not in known:
                 problems.append(f"subject {form.s!r} is not a declared entity: {fact.show()}")
+        for school in fact.at:
+            if school.casefold() not in known:
+                problems.append(f"at {school!r} is not a declared entity: {fact.show()}")
         for value in (fact.start, fact.end):
             if value and not re.fullmatch(r"\d{4}(-\d{2}(-\d{2})?)?", value):
                 problems.append(f"bad date {value!r}: {fact.show()}")
@@ -301,6 +306,7 @@ class GotFact:
     text: str = ""
     history: bool = False
     queued: bool = False  # waiting in a review, not in the wiki yet
+    at: str | None = None  # a degree's ``at::`` qualifier (the school)
 
     @property
     def target(self) -> str | None:
@@ -345,14 +351,32 @@ def collect(vault: Vault, queued: Iterable[tuple[Any, str]] = ()) -> Extracted:
         for facts, history in ((page.facts, False), (page.history, True)):
             for f in facts:
                 out.facts.append(
-                    GotFact(page.subject, f.p, f.o, f.valid_from, f.valid_to, f.text, history)
+                    GotFact(
+                        page.subject,
+                        f.p,
+                        f.o,
+                        f.valid_from,
+                        f.valid_to,
+                        f.text,
+                        history,
+                        at=f.extra.get("at"),
+                    )
                 )
     for op, _ in queued:
         if isinstance(op, CreateEntity):
             out.entities.append(GotEntity(op.id, op.type, (op.title, *op.aliases), queued=True))
         elif isinstance(op, AddFact):
             out.facts.append(
-                GotFact(op.subject, op.p, op.o, op.valid_from, op.valid_to, op.text, queued=True)
+                GotFact(
+                    op.subject,
+                    op.p,
+                    op.o,
+                    op.valid_from,
+                    op.valid_to,
+                    op.text,
+                    queued=True,
+                    at=op.extra.get("at"),
+                )
             )
     return out
 
@@ -366,6 +390,7 @@ class Match:
     got: GotFact
     score: float
     date_problems: list[str]
+    link_problem: str = ""  # the gold names the school (``at``) and the fact links another
 
 
 @dataclass
@@ -419,6 +444,8 @@ class DocScore:
             "unverified": len(self.unverified),
             "dates_checked": len(dated),
             "dates_ok": sum(not m.date_problems for m in dated),
+            "links_checked": len(linked := [m for m in self.matches if m.gold.at]),
+            "links_ok": sum(not m.link_problem for m in linked),
             "entities": len(expected),
             "entities_found": sum(e.found is not None for e in expected),
             "entities_typed": len(found),
@@ -438,6 +465,7 @@ def metrics(c: dict[str, int], seconds: float) -> dict[str, float | int | None]:
         "optional_recall": _ratio(c["optional_matched"], c["optional"]),
         "precision": _ratio(c["extracted_matched"], c["extracted"]),
         "date_accuracy": _ratio(c["dates_ok"], c["dates_checked"]),
+        "link_accuracy": _ratio(c.get("links_ok", 0), c.get("links_checked", 0)),
         "entity_recall": _ratio(c["entities_found"], c["entities"]),
         "entity_type_accuracy": _ratio(c["entity_types_ok"], c["entities_typed"]),
         "literal_pages": c["literal_pages"],
@@ -462,6 +490,20 @@ def date_problems(gold: GoldFact, got: GotFact) -> list[str]:
     if gold.current and got.end:
         problems.append(f"ended but current (got end {got.end})")
     return problems
+
+
+def link_problem(gold: GoldFact, got: GotFact, extracted: Extracted, doc: GoldDoc) -> str:
+    """How the fact's ``at::`` school disagrees with the gold's ("" if it agrees or the gold
+    names none)."""
+    if not gold.at:
+        return ""
+    if not got.at:
+        return f"no school (expected {gold.at[0]})"
+    target = link_target(got.at)
+    names = extracted.names(target) if target else (got.at,)
+    if best_similarity([n for school in gold.at for n in doc.entity_names(school)], names):
+        return ""
+    return f"wrong school (expected {gold.at[0]}, got {names[0]})"
 
 
 class _Matcher:
@@ -539,7 +581,10 @@ def score_doc(gold: GoldDoc, extracted: Extracted, *, seconds: float = 0.0) -> D
         used_gold.add(gi)
         used_got.add(fi)
         g, f = gold.facts[gi], extracted.facts[fi]
-        result.matches.append(Match(g, f, round(score, 3), date_problems(g, f)))
+        match = Match(
+            g, f, round(score, 3), date_problems(g, f), link_problem(g, f, extracted, gold)
+        )
+        result.matches.append(match)
     result.matches.sort(key=lambda x: gold.facts.index(x.gold))
     result.misses = [
         m.diagnose(g)
@@ -578,6 +623,8 @@ def error_kinds(scores: Iterable[DocScore]) -> Counter[str]:
         for match in s.matches:
             for problem in match.date_problems:
                 kinds[f"date: {problem.split(' (')[0]}"] += 1
+            if match.link_problem:
+                kinds[f"degree: {match.link_problem.split(' (')[0]}"] += 1
         for e in s.entities:
             if e.found is None and e.expected:
                 kinds["entity missing"] += 1
@@ -651,6 +698,7 @@ def doc_json(s: DocScore) -> dict[str, Any]:
                 "got": x.show(m.got),
                 "text": m.got.text,
                 "date_problems": m.date_problems,
+                "link_problem": m.link_problem,
             }
             for m in s.matches
         ],

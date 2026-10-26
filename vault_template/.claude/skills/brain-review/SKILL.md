@@ -25,7 +25,7 @@ Use `brain_search` and `brain_get_page` (non-private only) to see the memory it 
 the checklist for its type:
 
 **add_fact**
-- Is the predicate the right one from the v0.2 vocabulary (see `AGENTS.md`)? `note` is a last resort.
+- Is the predicate the right one from the v0.3 vocabulary (see `AGENTS.md`)? `note` is a last resort.
 - Does `o` link to an existing entity rather than create a near-duplicate? (`[[orgs/northwind-labs]]`
   rather than the literal "Northwind").
 - Does `src` support it? Is `kind` honest? Something the owner said is `stated`. Something you or

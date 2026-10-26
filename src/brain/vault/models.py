@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "0.1"
+SCHEMA_VERSION = "0.3"
 
 Kind = Literal["stated", "observed", "inferred"]
 Privacy = Literal["normal", "private"]
@@ -86,7 +86,7 @@ class Fact(BaseModel):
     kind: Kind
     evidence: list[str] = []
     by: str | None = None  # history only: id of the superseding fact
-    extra: dict[str, str] = {}  # optional qualifiers such as rel::, level::
+    extra: dict[str, str] = {}  # optional qualifiers such as rel::, level::, at::
 
     _check_dates = field_validator("valid_from", "valid_to")(check_partial_date)
 

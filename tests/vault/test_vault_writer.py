@@ -1019,3 +1019,26 @@ def test_failed_commit_leaves_vault_unchanged(
         reject(rid, "no", tmp_vault, now=NOW)
     assert snapshot(tmp_vault.root) == before
     assert git(tmp_vault, "status", "--porcelain") == ""
+
+
+def test_merge_repoints_degree_school_links(tmp_vault: Vault) -> None:
+    """``at::`` (schema v0.3) is a link like ``o::``: a merge repoints it, round trip intact."""
+    run(
+        tmp_vault,
+        CreateEntity(id="orgs/westbridge", type="org", title="Westbridge University"),
+        CreateEntity(id="orgs/westbridge-uni", type="org", title="Westbridge Uni"),
+        fact("self", "studied_at", "[[orgs/westbridge]]", valid_from="2018", valid_to="2020"),
+        fact(
+            "self",
+            "degree",
+            "MSc Data Science",
+            "Holds the degree MSc Data Science from Westbridge Uni",
+            extra={"at": "[[orgs/westbridge-uni]]"},
+        ),
+        review=False,
+    )
+    op = MergeEntities(keep="orgs/westbridge", merge="orgs/westbridge-uni")
+    run(tmp_vault, op, review=False)
+    degree = next(f for f in page(tmp_vault, "self/profile").facts if f.o == "MSc Data Science")
+    assert degree.extra == {"at": "[[orgs/westbridge]]"}
+    assert_clean(tmp_vault)

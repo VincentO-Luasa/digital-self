@@ -39,6 +39,7 @@ required:
   - s: self
     p: degree
     o: [master's degree in human-computer interaction, MSc Human-Computer Interaction, human-computer interaction]
+    at: Kungsholm Institute of Technology
 
 optional:
   - {s: self, p: team, o: Design Systems team, current: true}

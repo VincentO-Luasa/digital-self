@@ -39,8 +39,8 @@ required:
 
 optional:
   - {s: self, p: role, o: [Data Science Intern, data science intern], from: 2021-02, to: 2021-08}
-  - {s: self, p: degree, o: [MSc in Machine Learning, machine learning], from: 2019, to: 2020}
-  - {s: self, p: degree, o: [engineering degree in applied mathematics, applied mathematics], from: 2016, to: 2019}
+  - {s: self, p: degree, o: [MSc in Machine Learning, machine learning], from: 2019, to: 2020, at: Université de Valmont}
+  - {s: self, p: degree, o: [engineering degree in applied mathematics, applied mathematics], from: 2016, to: 2019, at: Halvorsen Institute of Technology}
   - {s: self, p: worked_on, o: Tessera, from: 2022, alt: [{s: Tessera, p: owner, o: self}]}
   - {s: Tessera, p: part_of, o: Corvane Bio}
   - {s: Kitebird, p: owner, o: self, from: 2020, alt: [{s: self, p: worked_on, o: Kitebird}]}

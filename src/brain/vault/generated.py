@@ -140,6 +140,7 @@ PERSON_LABEL = {
 MAX_PEOPLE = 6
 MAX_PROJECTS = 3
 MAX_PERIODS = 6
+YEAR_DAYS = 366  # an overlap up to this long may be one shared boundary year
 
 
 # --- helpers -----------------------------------------------------------------------------------
@@ -669,17 +670,24 @@ class _Card:
             org = self.name(job.o)
             add(job.valid_from, job.valid_to, f"{title}, {org}" if title else org, job)
         schools = self._merged("studied_at")
+        school_of = {d.id: self._degree_school(d, schools) for d in degrees}
         for school in schools:
-            mine = [d for d in degrees if _overlaps(d, school)]
-            if not mine and len(schools) == 1:
-                mine = [d for d in degrees if not (d.valid_from or d.valid_to)]
+            mine = [d for d in degrees if school_of[d.id] is school]
             attached.update(d.id for d in mine)
             names = list(dict.fromkeys(_cap(self.name(d.o)) for d in mine))
             what = ", ".join([*names, self.name(school.o)])
-            add(school.valid_from, school.valid_to, what if names else f"Studied at {what}", school)
+            start, end = school.valid_from, school.valid_to
+            if not (start or end):  # an undated school takes its degrees' period
+                starts = [d.valid_from for d in mine if d.valid_from]
+                ends = [d.valid_to for d in mine if d.valid_to]
+                start, end = min(starts, default=None), max(ends, default=None)
+            add(start, end, what if names else f"Studied at {what}", school)
         for fact in sorted(roles + degrees, key=lambda f: f.id):
             if fact.id not in attached and fact.id not in self.current_ids:
-                add(fact.valid_from, fact.valid_to, _cap(self.name(fact.o)), fact)
+                what = _cap(self.name(fact.o))
+                if fact.p == "degree" and (at := fact.extra.get("at")):
+                    what = f"{what}, {self.name(at)}"
+                add(fact.valid_from, fact.valid_to, what, fact)
         for city in sorted(cities, key=lambda f: f.id):
             if city.id not in attached and city.id not in self.current_ids:
                 add(city.valid_from, city.valid_to, f"Lived in {self.name(city.o)}", city)
@@ -711,6 +719,37 @@ class _Card:
             if days > best_days:
                 best, best_days = job, days
         return best
+
+    def _degree_school(self, degree: Fact, schools: list[Fact]) -> Fact | None:
+        """The school a degree is from: the one its ``at::`` links to. A degree without the link
+        (written before it existed, or by hand) goes with the one school whose study period is the
+        same as the degree's, else the one where it began whose period contains its date (a degree
+        dated by one year, or by a start only, is the year it was awarded) or overlaps its period
+        by more than a year.
+        A tie, or a shared boundary year between back-to-back schools (preparatory classes ending
+        the year the degree starts), is no evidence: the degree is listed on its own. An undated
+        degree goes with the only school."""
+        if at := degree.extra.get("at"):
+            target = link_target(at) or at
+            linked = [s for s in schools if (link_target(s.o) or s.o) == target]
+            return linked[0] if linked else None
+        start, end = degree.valid_from, degree.valid_to
+        if not (start or end):
+            return schools[0] if len(schools) == 1 else None
+        same = [s for s in schools if _span(s.valid_from, s.valid_to) == _span(start, end)]
+        if len(same) == 1:
+            return same[0]
+        point = not (start and end) or start[:4] == end[:4]
+        first = degree.model_copy(update={"valid_from": start or end, "valid_to": start or end})
+        days = sorted(
+            (_overlap_days(first if point else degree, s), i)
+            for i, s in enumerate(schools)
+            if _overlaps(first, s)  # it began there
+        )[::-1]
+        enough = days and days[0][0] > (0 if point else YEAR_DAYS)
+        if not enough or (len(days) > 1 and days[1][0] == days[0][0]):
+            return None
+        return schools[days[0][1]]
 
     def _is_project(self, fact: Fact) -> bool:
         target = link_target(fact.o)

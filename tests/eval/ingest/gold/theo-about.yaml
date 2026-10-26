@@ -1,0 +1,57 @@
+# Gold facts for docs/theo-about.md (fictional persona; format: tests/eval/README.md).
+# A first-person "about" page that restates the same duties, skills and hobbies in other words
+# (intro, job list, "Now"): each is one fact, so a restatement kept as a second fact is an
+# unverified extra. Education is prose: each degree sentence names its school (and the double
+# degree names a second one).
+doc: theo-about.md
+kind: stated
+owner: [Theo Marchetti, Theo]
+
+entities:
+  - {name: Corvane Bio, type: org, aliases: [Corvane]}
+  - {name: Mirelle Analytics, type: org, aliases: [Mirelle]}
+  - {name: Université de Valmont, type: org, aliases: [Valmont]}
+  - {name: Halvorsen Institute of Technology, type: org, aliases: [Halvorsen Institute, Halvorsen]}
+  - {name: Lycée Arbelet, type: org, aliases: [Arbelet]}
+  - {name: Tessera, type: project}
+  - {name: Kitebird, type: project}
+  - {name: Lyon, type: place}
+
+literals: [Python, PyTorch, medicinal chemistry team]
+
+required:
+  - {s: self, p: name, o: Theo Marchetti}
+  - {s: self, p: works_at, o: Corvane Bio, from: 2021-09, current: true}
+  - {s: self, p: role, o: Senior Machine Learning Engineer, from: 2023-03, current: true}
+  - {s: self, p: role, o: Machine Learning Engineer, from: 2021-09, to: 2023-02}
+  - {s: self, p: works_at, o: Mirelle Analytics, from: 2021-02, to: 2021-08}
+  - {s: self, p: studied_at, o: Halvorsen Institute of Technology, from: 2016, to: 2019}
+  - {s: self, p: studied_at, o: Université de Valmont, from: 2019, to: 2020}
+  - {s: self, p: studied_at, o: Lycée Arbelet, from: 2014, to: 2016}
+  - {s: self, p: lives_in, o: Lyon, current: true}
+
+optional:
+  - {s: self, p: role, o: [Data Science Intern, data science intern], from: 2021-02, to: 2021-08}
+  - {s: self, p: degree, o: [MSc in Machine Learning, machine learning], from: 2019, to: 2020, at: Université de Valmont}
+  - {s: self, p: degree, o: [engineering degree, engineering degree in applied mathematics, applied mathematics], from: 2016, to: 2019, at: Halvorsen Institute of Technology}
+  - {s: self, p: responsibility, o: [fine-tunes graph neural networks, fine-tuning graph neural networks, graph neural networks, solubility, solubility prediction]}
+  - {s: self, p: responsibility, o: [model review, weekly model review]}
+  - {s: self, p: responsibility, o: [evaluation sets]}
+  - {s: self, p: worked_on, o: Tessera, alt: [{s: self, p: responsibility, o: [Tessera, maintains Tessera]}, {s: Tessera, p: owner, o: self}]}
+  - {s: Tessera, p: part_of, o: Corvane Bio}
+  - {s: Kitebird, p: owner, o: self, from: 2020, alt: [{s: self, p: worked_on, o: Kitebird}]}
+  - {s: self, p: [habit, interest, likes], o: [bouldering, climbing, boulder, boulders]}
+  - {s: self, p: [habit, interest, likes], o: [baking, focaccia, baking focaccia]}
+  - {s: self, p: has_skill, o: Python}
+  - {s: self, p: has_skill, o: PyTorch}
+  - {s: self, p: has_skill, o: [deep learning, deep-learning]}
+  - {s: self, p: has_skill, o: [active learning]}
+
+acceptable:
+  - {s: self, p: responsibility, o: [demand forecasting, checks, trusted models, medicinal chemists]}
+  - {s: self, p: has_skill, o: [molecular graph models, machine learning]}
+  - {s: self, p: interest, o: [machine learning, active learning]}
+  - {s: self, p: degree, o: [preparatory classes in mathematics and physics, mathematics and physics]}
+  - {s: Tessera, p: [uses, goal], o: [active learning, assay planning]}
+  - {s: Kitebird, p: [uses, goal, status], o: [Python, active learning, open source, active-learning experiments, sampling strategies]}
+  - {s: Tessera, p: stakeholder, o: [assay teams]}

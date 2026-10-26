@@ -38,9 +38,9 @@ required:
   - {s: self, p: works_at, o: Brightwater Studio, from: 2015-09, to: 2017-06}
   - {s: self, p: role, o: Junior UX Designer, from: 2015-09, to: 2017-06}
   - {s: self, p: studied_at, o: Kungsholm Institute of Technology, from: 2013, to: 2015}
-  - {s: self, p: degree, o: [MSc Human-Computer Interaction, Master of Science in Human-Computer Interaction]}
+  - {s: self, p: degree, o: [MSc Human-Computer Interaction, Master of Science in Human-Computer Interaction], at: Kungsholm Institute of Technology}
   - {s: self, p: studied_at, o: Hallström School of Design, from: 2010, to: 2013}
-  - {s: self, p: degree, o: [BA Graphic and Interaction Design, Bachelor of Arts in Graphic and Interaction Design]}
+  - {s: self, p: degree, o: [BA Graphic and Interaction Design, Bachelor of Arts in Graphic and Interaction Design], at: Hallström School of Design}
   - {s: self, p: speaks, o: Swedish}
   - {s: self, p: speaks, o: English}
   - {s: self, p: speaks, o: Dutch}

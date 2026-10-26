@@ -15,12 +15,15 @@ February in another), and include traps: a project inside a job, a side project,
 org, a tool (Wayfinder SDK) next to a project (Waypoint), past cities vs the current one, a holiday
 city, a friend's city, a hobby that sounds like a skill, other people's facts on the same page.
 
-Two more documents use a second fictional persona, **Theo Marchetti** (a machine learning
+Three more documents use a second fictional persona, **Theo Marchetti** (a machine learning
 engineer), for layouts and genres the Maya set lacks: a homepage whose experience and education
 timelines are CSS-grid rows (the date cell before the organisation's heading, CV-style dates such
 as "Sep 21 — Feb 23", two rows at one employer, project cards with a label above the heading),
-and a first-person write-up of an experiment where a few lasting facts sit inside a long story
-of events, results, lessons and plans (strict gold: story details are not facts).
+a first-person write-up of an experiment where a few lasting facts sit inside a long story
+of events, results, lessons and plans (strict gold: story details are not facts), and an "about"
+page that restates the same duties, skills and hobbies in other words in its intro, job list and
+"Now" section (one gold fact each: a restatement kept as a second fact is an extra), with
+degrees in prose that name their school and a double degree's second school.
 
 `ingest/gold/<doc stem>.yaml` lists what a careful human would extract from each document.
 
@@ -36,6 +39,7 @@ operations queued for review are compared with the gold:
 | optional | recall of `optional` gold facts (projects, teams, hobbies, people, skills) |
 | precision | extracted facts that match a gold fact (any level, `acceptable` included) / all extracted facts. The others are **unverified**, listed in the JSON for a human to read |
 | dates | matched facts with dates in the gold whose dates agree at the gold's precision |
+| links | matched degree facts whose `at::` school is the gold's `at` (JSON `link_accuracy` only) |
 | types | gold entities whose page has the expected type, of those found (and how many exist) |
 | lit→page | gold `literals` (tools, teams, ids, topics) that became pages |
 | queued | extracted facts waiting in a review instead of the wiki |
@@ -91,6 +95,8 @@ acceptable:                   # fine if extracted, not expected: count as precis
 ```
 
    `from`/`to` are `YYYY`, `YYYY-MM` or `YYYY-MM-DD` and are checked at that precision;
-   `current: true` means the fact must have no end; `why` is a free comment.
+   `current: true` means the fact must have no end; `at` (degrees) names the school the degree
+   is from, checked against the fact's `at::` link (`link_accuracy`, not part of matching);
+   `why` is a free comment.
 3. `uv run pytest tests/eval` checks the gold parses, uses only vocabulary predicates and
    declared subjects, and that the document reads at a useful size.

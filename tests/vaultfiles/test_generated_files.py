@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -15,6 +16,7 @@ from brain.vault.generated import (
     first_sentence,
     refresh_generated,
 )
+from brain.vault.init import init_vault
 from brain.vault.ops import AddFact
 from brain.vault.store import Vault
 
@@ -254,6 +256,96 @@ def test_core_life_story_merges_duplicates_and_groups_undated(tmp_vault: Vault) 
     assert sum("Fabrikam Analytics" in line for line in story) == 1  # duplicate span merged
     assert "- 2019–2023 · Analytics engineer, Fabrikam Analytics (Lisbon)" in story
     assert story[-2:] == ["- Undated: Contoso Startup", "- Other projects: Budgeting app"]
+
+
+def _education(vault: Vault, *degrees: str) -> list[str]:
+    write_page(
+        vault,
+        "self/education",
+        "Education",
+        [
+            fact(
+                "Studied at Calder",
+                "studied_at",
+                "[[orgs/calder]]",
+                "from:: 2017",
+                "to:: 2019",
+                n=1,
+            ),
+            fact("Studied at Ostervale", "studied_at", "[[orgs/ostervale]]", n=2),
+            fact(
+                "Studied at Westbridge",
+                "studied_at",
+                "[[orgs/westbridge]]",
+                "from:: 2021",
+                "to:: 2022",
+                n=3,
+            ),
+            *degrees,
+        ],
+        regions=("education",),
+    )
+    for org, title in (
+        ("calder", "Calder College"),
+        ("ostervale", "Ostervale Institute of Technology"),
+        ("westbridge", "Westbridge University"),
+    ):
+        write_page(vault, f"orgs/{org}", title, [], type_="org", regions=("education",))
+    return section(build_core(Vault(vault.root), today=TODAY), "Life story")
+
+
+@pytest.fixture
+def blank_vault(tmp_path: Path, git_env: None) -> Vault:
+    return Vault(init_vault(tmp_path / "blank").root)
+
+
+def test_core_pairs_a_degree_with_its_linked_school(blank_vault: Vault) -> None:
+    """``at::`` decides; overlapping dates do not (the prep school shares 2019 with the degree,
+    the double degree's school overlaps the master's)."""
+    story = _education(
+        blank_vault,
+        fact(
+            "Holds the degree General engineering degree",
+            "degree",
+            "General engineering degree",
+            "at:: [[orgs/ostervale]]",
+            "from:: 2019",
+            "to:: 2022",
+            n=4,
+        ),
+        fact(
+            "Holds the degree MSc Data Science",
+            "degree",
+            "MSc Data Science",
+            "at:: [[orgs/westbridge]]",
+            "from:: 2021",
+            "to:: 2022",
+            n=5,
+        ),
+    )
+    assert "- 2021–2022 · MSc Data Science, Westbridge University" in story
+    assert "- 2017–2019 · Studied at Calder College" in story
+    # the linked school has no dates: the degree keeps its own line, with the school's name
+    assert "- 2019–2022 · General engineering degree, Ostervale Institute of Technology" in story
+    assert not any("Calder" in line and "degree" in line for line in story)
+
+
+def test_core_unlinked_degree_needs_more_than_a_boundary_year(blank_vault: Vault) -> None:
+    story = _education(
+        blank_vault,
+        fact(
+            "Holds a degree",
+            "degree",
+            "General engineering degree",
+            "from:: 2019",
+            "to:: 2022",
+            n=4,
+        ),
+        fact("Holds an MSc", "degree", "MSc Data Science", "from:: 2021", "to:: 2022", n=5),
+    )
+    assert "- 2017–2019 · Studied at Calder College" in story  # 2019 alone is no evidence
+    assert "- 2019–2022 · General engineering degree" in story
+    assert "- 2021–2022 · MSc Data Science, Westbridge University" in story  # same period
 
 
 def test_core_who_they_are_dedupe_and_people(rich_vault: Vault) -> None:

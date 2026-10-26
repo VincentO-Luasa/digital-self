@@ -113,7 +113,27 @@ description: How `brain ingest` turns a file or web page into vault facts — re
 7. **Normalise**: `normalise.build_changeset` resolves names to ids, normalises dates, merges
    duplicates, applies the guards below, renders fact text and builds one
    `ChangeSet(origin="ingest")`. Everything it changed or dropped goes to `Normalised.notes`.
-8. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
+   With `texts=` (each part's text; the pipeline passes them) a `degree` gets `at::` the school
+   its part names with it (`education.degree_school`: the unit naming most of the degree's
+   words, else the short line above; of several schools the one whose `studied_at` has the same
+   dates, else the nearest before the degree in a record/row, after it in prose), and the
+   degree and that school's `studied_at` from the same part share dates when one has none. The
+   card (`vault.generated`) pairs degrees and schools by this link, never by overlapping dates.
+8. **Dedup** (`dedup.merge_paraphrases`, `pipeline.DEDUP`): new facts of multi-valued literal
+   predicates (`dedup.PREDICATES`: responsibility, has_skill, interest, habit, likes, goal…)
+   that restate another of the same subject + predicate, in the change set or current in the
+   vault, merge: equal words after folding (no model) → same; else embeddings with an
+   instruction on both sides (`INSTRUCT`), cosine ≥ `MERGE_ABOVE` (0.90) → same; 0.75–0.90 → a
+   typed decision ("same thing in other words / different things"), p(same) ≥ 0.8 → same. Kept:
+   the more specific statement (more words, then earlier start) with both periods; two dated
+   facts with a gap between them never merge; a restatement of a vault fact takes its object and
+   text (the writer then skips it or queues new dates). Calibrated on
+   `tests/fixtures/dedup/pairs.yaml` (re-record `tests/fixtures/llm/dedup/pair-scores.json` with
+   `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/ingest/test_ingest_dedup_calibration.py`
+   after changing the pairs, instruction or question; it must merge no pair labelled different).
+   Embeddings down → only equal words merge, and a `dedup:` note says so. Replay tests switch it
+   off (their fixtures hold no embeddings).
+9. **Apply**: `vault.writer.apply` (policy decides what is queued for review), then
    `refresh_generated` (index.md, core.md) and `reindex`.
 
 ## Adding a reader
@@ -212,6 +232,7 @@ The model is ~3B active and will slip; code repairs or drops, and notes every re
       team and topic into values; `portfolio_problems` in tests/ingest/conftest.py).
 - [ ] Brief: read every `brief:` note (dropped dates and homes, merged names, added structure);
       the facts it adds name only entities the parts use, memberships and homes it states.
+- [ ] Dedup: read every `dedup:` note; a merge of two different duties is a lost fact.
 - [ ] Gate and checks: read every `gate:`/`check:` note; decision seconds per part (CLI chunk
       line) stay a small share of the extraction time.
 - [ ] No pages for tools, products, ids or teams; works_at points at orgs only.

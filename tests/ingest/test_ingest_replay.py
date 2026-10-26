@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
 from conftest import (  # type: ignore[import-not-found]
     DOCS,
     PORTFOLIO,
@@ -18,7 +19,7 @@ from conftest import (  # type: ignore[import-not-found]
 )
 
 from brain.config import LLMSettings
-from brain.ingest import ingest
+from brain.ingest import ingest, pipeline
 from brain.ingest.brief import Brief
 from brain.ingest.extract import Extraction
 from brain.ingest.planning import SplitPlan
@@ -30,6 +31,13 @@ from brain.vault.store import Vault
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "llm" / "ingest"
 TODAY = date(2026, 10, 25)
+
+
+@pytest.fixture(autouse=True)
+def no_dedup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fixtures hold no embeddings, and the fake's hashed bag-of-words vectors are not the
+    embedding model's: paraphrase merging (``dedup``, tested on its own) is left out here."""
+    monkeypatch.setattr(pipeline, "DEDUP", False)
 
 
 def fixtures() -> list[Path]:

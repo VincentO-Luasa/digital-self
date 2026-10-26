@@ -260,10 +260,10 @@ the reranker as a classifier (judges relatedness, not kind); more regexes for te
 ## 2026-10-25 — Section labels from the part's own headings; inline HTML kept apart
 A part's "Section:" label is its first heading's trail plus the model's title. A part that
 started with a kicker line ("Career" above "## Career path") took that line's trail, which is the
-previous section's ("Side projects > A voice companion > Research Engineer at …"), and the
+previous section's ("Side projects > A reading tutor > Research Engineer at …"), and the
 extraction attributed the side project to the job. A part with no heading continues its
 section; one starting with real text of another section keeps only the shared trail. The HTML
-reader puts a space between adjacent inline elements whose texts would touch ("02Claude lab")
+reader puts a space between adjacent inline elements whose texts would touch ("02Data lab")
 and drops decorative ordinals by structure (a bare 1–2 digit element before a heading, first in a
 heading, or first in a short line followed by another element when zero-padded or above a
 heading), not by class names: the fix must hold for any site. Counters and counts in sentences
@@ -384,3 +384,79 @@ with its dates, and the duty is added as a separate responsibility; only a `work
 page behind it becomes a responsibility. Paired re-score on both cached samples: the six older
 documents are unchanged; the timeline homepage keeps the internship (precision +2 points on both
 samples, dates 0.92 → 1.00 on one).
+
+## 2026-10-26 — Degrees linked to their school (`at::`, schema v0.3); paraphrased facts merged
+Two generic failures seen on a real homepage.
+1. **A degree shown next to the wrong school.** Extraction gives `degree` facts and separate
+   `studied_at` facts; the card paired them by overlapping dates, so a timeline's preparatory
+   school (2017–2019) took the engineering degree that started in 2019, and a double degree's
+   school took both degrees. Options weighed: (a) link the degree to its school when one row or
+   sentence states both, (b) pair on a shared source part/line at card time, (c) copy dates
+   between a degree and its row's `studied_at`. (b) is not possible from markdown: facts keep the
+   document, not the line, as source. Chosen: (a) + (c). Normalisation (`_link_degrees`,
+   `education.degree_school`, given each part's text) finds the unit naming most of the
+   degree's words, takes the document's schools named there (or in the short line above it: a
+   heading or "Org, City"), and of several the one whose `studied_at` has the degree's dates,
+   else the nearest before the degree in a record/timeline row ("2019 — 2020 · School B · MSc X,
+   double degree with School A") and the nearest after it in prose ("a master's in X at School
+   B"). The link is a fact qualifier `(at:: [[orgs/…]])` like `level::`/`rel::` (schema v0.3; a
+   merge repoints it; `brain reindex` reads it from markdown). When the school's `studied_at` in
+   that part is undated and the degree is dated (or the reverse), the undated one takes the
+   other's dates. The card pairs by the link; an undated school takes its degrees' period; an
+   unlinked degree (older vaults, hand edits) goes with the one school whose period equals its
+   own, else the one where it began that overlaps it by more than a year (a start-only or
+   one-year degree: the school whose period contains it); a tie or a shared boundary year is no
+   evidence and the degree gets its own line.
+2. **The same duty in other words** ("Fine-tunes graph neural networks for solubility
+   prediction" / "Responsible for fine-tuning graph neural networks to predict solubility"),
+   also skills and interests ("deep-learning" / "Deep learning"). `dedup` runs after
+   normalisation on new facts of multi-valued literal predicates with the same subject and
+   predicate, within the change set and against current vault facts: equal words after folding
+   → same (no model); else Qwen3-Embedding cosine with an instruction on both sides ≥ 0.90 →
+   same; 0.75–0.90 → a typed decision ("same thing in other words, or one is a more detailed
+   version / different things, even if related"), p(same) ≥ 0.8 → same. Two dated facts with a
+   gap are never merged (one duty at two jobs). The more specific statement (more words, then
+   earlier start) is kept with both periods; a restatement of a vault fact takes that fact's
+   value, so the writer's restatement rule applies. Embeddings down → only equal words merge
+   (a note). Calibration on 85 labelled fictional pairs (`tests/fixtures/dedup/pairs.yaml`:
+   40 paraphrases, 45 related-but-different duties/skills/interests/habits/goals; scores
+   recorded in `tests/fixtures/llm/dedup/pair-scores.json`):
+
+| representation (closest different pair) | paraphrases above it |
+|---|---|
+| rendered fact text (0.896) | 0.50 |
+| value only (0.875) | 0.57 |
+| own text, else value (0.875) | 0.60 |
+| own text, else value, instructed both sides (0.850) — kept | 0.72 |
+
+   Decision wordings on all 85 pairs: a yes/no "same thing, one can be dropped?" merged 12/40
+   at p ≥ 0.8 (0 wrong), the two-option choice 28/40 (0 wrong; different pairs ≤ 0.62, ≤ 0.11 in
+   the asked band). Kept rule: 29/40 paraphrases merged, 0 of 45 different pairs (in-sample;
+   margins 0.05 on the cosine, ≥ 0.69 on p in the asked band). Prefer missing a duplicate: a
+   wrong merge loses a fact.
+
+Measured with `brain eval ingest`, now 9 documents: a Theo "about" page was added whose intro,
+job list and "Now" restate the same duties, skills and hobbies, with degrees in prose (one gold
+fact each). The scorer gained `at` on gold degrees and `link_accuracy` (JSON only; matching is
+unchanged). Paired on cached extractions (two samples, separate caches), HEAD vs each fix:
+
+| variant (sample 1 / sample 2) | required | optional | precision | dates | pages | links | queued |
+|---|---|---|---|---|---|---|---|
+| HEAD 4d891c5 | 1.000 / 0.990 | 0.801 / 0.809 | 0.791 / 0.748 | 0.916 / 0.904 | 0.878 / 0.898 | 0 / 0 (of 9) | 21 / 20 |
+| degree links | same | same | same | same | same | 1.000 / 1.000 | same |
+| dedup | same | same | 0.799 / 0.759 | same | same | 0 / 0 | same |
+| both (kept) | 1.000 / 0.990 | 0.801 / 0.809 | 0.799 / 0.759 | 0.916 / 0.904 | 0.878 / 0.898 | 1.000 / 1.000 | 21 / 20 |
+
+Per document: the "about" page's precision 0.833 → 0.926 and 0.788 → 0.867 (3 merges each);
+the timeline homepage 0.750 → 0.794 on sample 2 (two restated duties); the CV 0.870 → 0.867 on
+sample 2 ("accessibility" merged into "Accessibility (WCAG)": both had matched a gold line);
+others unchanged. All 9 merges across both samples are right; no gold fact lost. The timeline
+homepage's card at HEAD read "2016–2019 · MSc in Machine Learning, Engineering degree in applied
+mathematics, Halvorsen …" and "2014–2016 · Engineering degree …, Lycée Arbelet"; with the links
+each degree sits with its own school. No date was copied on the eval (the model dated every
+school), so dates are unchanged. Cost: degree links none; dedup one embedding call per document
+plus ~0.8 s per asked pair (+0.2–0.3 s per document with cached decisions, ~2.6 s on the about
+page uncached), against ~60–130 s of extraction. Known gaps: "Manages DS team" / "Manages team
+at Fernhill" (cosine 0.65) and "Boulders twice a week" / "Climbs at the bouldering gym" stay
+apart; a degree whose line names no school (a markdown CV with the school as a heading two
+lines up) gets no link; `at::` is not a retrieval graph edge yet.

@@ -30,8 +30,15 @@ from datetime import date
 
 from brain.ingest.brief import PAGE_TYPES, Brief, BriefName, homes, lookup, name_index
 from brain.ingest.dates import MONTHS
+from brain.ingest.education import School, degree_school
 from brain.ingest.extract import ExtractedFact, Extraction
-from brain.vault.models import RELATIONSHIP_PREDICATES, SELF_ID, Kind, is_multi_valued
+from brain.vault.models import (
+    RELATIONSHIP_PREDICATES,
+    SELF_ID,
+    Kind,
+    is_multi_valued,
+    link_target,
+)
 from brain.vault.ops import AddAlias, AddFact, ChangeSet, CreateEntity, Operation
 from brain.vault.raw import slugify
 from brain.vault.store import SELF_PAGE, Vault
@@ -316,6 +323,8 @@ class _Fact:
     text: str  # as the model wrote it (cleaned); final text is rendered at the end
     start: str | None
     end: str | None
+    part: int = -1  # index of the extraction (document part) it came from
+    extra: dict[str, str] = field(default_factory=dict)  # qualifiers such as at::
 
     @property
     def target(self) -> str | None:
@@ -375,6 +384,14 @@ class _Resolver:
             return self.planned[entity_id].op.title
         page = self.pages.get(entity_id)
         return page.title if page else entity_id
+
+    def names(self, entity_id: str) -> tuple[str, ...]:
+        """Title and aliases of a planned or existing entity."""
+        if entity_id in self.planned:
+            op = self.planned[entity_id].op
+            return (op.title, *op.aliases)
+        page = self.pages.get(entity_id)
+        return (page.title, *page.aliases) if page else (entity_id,)
 
     def literal(self, name: str) -> str | None:
         return self.literals.get(fold(name)) or literal_reason(name)
@@ -453,10 +470,53 @@ def _merge(
             prev.start = start
             prev.end = None if None in (prev.end, fact.end) else max(prev.end or "", fact.end or "")
             prev.text = prev.text or fact.text
+            prev.extra = {**fact.extra, **prev.extra}
             notes.append(f"merged duplicate {fact.p} fact: {fact.text or fact.o}")
         else:
             out[key] = fact
     return list(out.values())
+
+
+def _link_degrees(
+    facts: list[_Fact], texts: Sequence[str], res: _Resolver, notes: list[str]
+) -> None:
+    """A degree gets ``at::`` the school its part names with it (``education.degree_school``),
+    so the profile card pairs them by that link, never by overlapping dates. When that school's
+    ``studied_at`` from the same part has no dates and the degree has (or the other way round),
+    the undated one takes the other's: one row of a timeline gives both."""
+    schools: dict[str, list[str]] = {}  # subject → the schools it studied at, in order
+    for f in facts:
+        if f.p == "studied_at" and f.target and f.target not in schools.get(f.subject, []):
+            schools.setdefault(f.subject, []).append(f.target)
+    for d in facts:
+        if d.p != "degree" or d.target or "at" in d.extra or not 0 <= d.part < len(texts):
+            continue
+        ids = schools.get(d.subject)
+        if not ids:
+            continue
+        here = {
+            f.target: f
+            for f in facts
+            if f.p == "studied_at" and f.subject == d.subject and f.part == d.part and f.target
+        }
+        options = [
+            School(i, res.names(i), (here[i].start, here[i].end) if i in here else (None, None))
+            for i in ids
+        ]
+        found, how = degree_school(d.o, (d.start, d.end), options, texts[d.part])
+        if not found:
+            continue
+        d.extra["at"] = f"[[{found}]]"
+        notes.append(f"degree {d.o!r} at {res.title(found)} ({how})")
+        study = here.get(found)
+        if study is None:
+            continue
+        if not (study.start or study.end) and (d.start or d.end):
+            study.start, study.end = d.start, d.end
+            notes.append(f"studied_at {res.title(found)}: dates of its degree {d.o!r}")
+        elif not (d.start or d.end) and (study.start or study.end):
+            d.start, d.end = study.start, study.end
+            notes.append(f"degree {d.o!r}: dates of studied_at {res.title(found)}")
 
 
 def _one_current(facts: list[_Fact], notes: list[str]) -> list[_Fact]:
@@ -836,6 +896,7 @@ def build_changeset(
     today: date | None = None,
     entity_kinds: Mapping[str, str] | None = None,
     brief: Brief | None = None,
+    texts: Sequence[str] | None = None,
 ) -> Normalised:
     """``today`` is the ingest date: the model sometimes dates facts to it ("Today is …" is in
     its prompt); a document can't, so such starts are dropped.
@@ -846,7 +907,10 @@ def build_changeset(
     value. (Not the facts' ``kind``, stated/observed/inferred.)
 
     ``brief``: the document brief (``brain.ingest.brief``): its names merge variant names into one
-    entity, its parents and roles add structural facts, its homes date past cities."""
+    entity, its parents and roles add structural facts, its homes date past cities.
+
+    ``texts``: the text of each extraction's part, in the same order: a degree is linked to the
+    school its part names with it (``_link_degrees``)."""
     entity_kinds = entity_kinds or {}
     notes: list[str] = []
     profile = vault.page(SELF_PAGE)
@@ -907,9 +971,10 @@ def build_changeset(
 
     facts: list[_Fact] = []
     cutoff = (today or date.today()).isoformat()
-    for extraction in extractions:
+    for part, extraction in enumerate(extractions):
         for raw in extraction.facts:
             for fact in _convert_fact(raw, res, notes):
+                fact.part = part
                 if fact.start and len(fact.start) == len(cutoff) and fact.start >= cutoff:
                     notes.append(
                         f"dropped start {fact.start} (the ingest day): {fact.text or fact.o}"
@@ -925,6 +990,8 @@ def build_changeset(
             return o
         return owner_display if target == SELF_ID else res.title(target)
 
+    if texts:
+        _link_degrees(facts, texts, res, notes)
     if brief is not None:
         facts = _brief_homes(_brief_structure(facts, brief, res, notes), brief, res, notes)
     stints = _brief_stints(brief, res) if brief is not None else frozenset()
@@ -932,6 +999,7 @@ def build_changeset(
     facts = _order(_one_current(_team_as_employer(facts, name_of, notes), notes))
 
     used = {f.subject for f in facts} | {t for f in facts if (t := f.target)}
+    used |= {t for f in facts for v in f.extra.values() if (t := link_target(v))}
     for entity_id in [i for i in res.planned if i not in used]:
         if entity_id not in from_brief:
             notes.append(f"dropped entity {entity_id}: no fact refers to it")
@@ -960,7 +1028,11 @@ def build_changeset(
             if problem != "empty":
                 notes.append(f"rewrote {f.p} text ({problem}): {text}")
             text = template_text(f.p, o_name, past=f.end is not None)
+            if f.p == "degree" and (school := f.extra.get("at")):
+                text += f" from {name_of(school)}"
         spec = {"from": f.start, "to": f.end}
-        ops.append(AddFact(subject=f.subject, p=f.p, o=f.o, text=text, kind=kind, **spec))
+        ops.append(
+            AddFact(subject=f.subject, p=f.p, o=f.o, text=text, kind=kind, extra=f.extra, **spec)
+        )
     changeset = ChangeSet(ops=ops, origin="ingest", src=[src], rationale=rationale)
     return Normalised(changeset, notes, doc_owner)

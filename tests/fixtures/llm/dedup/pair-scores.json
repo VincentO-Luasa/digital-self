@@ -1,0 +1,706 @@
+[
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Fine-tunes graph neural networks for solubility prediction",
+  "b": "fine-tuning graph neural networks to predict solubility",
+  "cos": 0.9683,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Builds models that help chemists rank new molecules",
+  "b": "Helps chemists pick which molecules to make",
+  "cos": 0.7454,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Leads the property-prediction models used by the medicinal chemistry team",
+  "b": "property-prediction models",
+  "cos": 0.7731,
+  "p_same": 0.867
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Built the first active-learning loop for assay planning",
+  "b": "active-learning loop for assay planning",
+  "cos": 0.8902,
+  "p_same": 0.9047
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Runs the Design Systems team",
+  "b": "Leads the Design Systems team",
+  "cos": 0.9357,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Manages DS team",
+  "b": "Manages the design systems team",
+  "cos": 0.7521,
+  "p_same": 0.133
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Keeps the nightly batch pipelines running",
+  "b": "Maintains the nightly batch pipelines",
+  "cos": 0.9593,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Runs the on-call rotation for the data platform",
+  "b": "data platform on-call rotation",
+  "cos": 0.9167,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Migrates the legacy warehouse to the lakehouse",
+  "b": "Moves the old data warehouse onto the new lakehouse",
+  "cos": 0.8903,
+  "p_same": 0.9526
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Hires designers",
+  "b": "Recruits designers for the team",
+  "cos": 0.8586,
+  "p_same": 0.8176
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Mentors junior designers",
+  "b": "Mentors early-career designers",
+  "cos": 0.9079,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Sets the accessibility baseline for all patient-facing apps",
+  "b": "Sets accessibility standards of every patient-facing app",
+  "cos": 0.8086,
+  "p_same": 0.7058
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Created wireframes and prototypes for agency clients",
+  "b": "Made wireframes and prototypes for clients",
+  "cos": 0.936,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Ran fortnightly usability sessions with riders",
+  "b": "Runs usability tests with riders every two weeks",
+  "cos": 0.831,
+  "p_same": 0.9841
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Reviews pull requests for the ingestion services",
+  "b": "Does code review for the ingestion services",
+  "cos": 0.8725,
+  "p_same": 0.852
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Writes the quarterly data-quality report",
+  "b": "Produces the data quality report every quarter",
+  "cos": 0.9133,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Owns the dbt models for finance reporting",
+  "b": "Maintains the finance reporting dbt models",
+  "cos": 0.9043,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Plans the sprint for the platform team",
+  "b": "Runs sprint planning for the platform team",
+  "cos": 0.9118,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Leads Fjord",
+  "b": "Leads Fjord full time",
+  "cos": 0.8762,
+  "p_same": 0.5312
+ },
+ {
+  "p": "responsibility",
+  "same": true,
+  "a": "Looks after the solubility and permeability models",
+  "b": "Looks after Lodestar",
+  "cos": 0.2998,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Deep learning",
+  "b": "deep-learning",
+  "cos": 0.9777,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Accessibility (WCAG)",
+  "b": "accessibility",
+  "cos": 0.7893,
+  "p_same": 0.9797
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Machine learning",
+  "b": "ML",
+  "cos": 0.6818,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "User research",
+  "b": "User Research",
+  "cos": 0.9798,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "HTML and CSS",
+  "b": "HTML & CSS",
+  "cos": 0.9883,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Prototyping",
+  "b": "Rapid prototyping",
+  "cos": 0.8749,
+  "p_same": 0.7311
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Data modelling",
+  "b": "data modeling",
+  "cos": 0.9488,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": true,
+  "a": "Apache Airflow",
+  "b": "Airflow",
+  "cos": 0.7097,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": true,
+  "a": "Urban sketching",
+  "b": "Draws bridges as an urban sketcher",
+  "cos": 0.8236,
+  "p_same": 0.5927
+ },
+ {
+  "p": "interest",
+  "same": true,
+  "a": "Bouldering",
+  "b": "indoor bouldering",
+  "cos": 0.7753,
+  "p_same": 0.7549
+ },
+ {
+  "p": "interest",
+  "same": true,
+  "a": "baking focaccia",
+  "b": "Bakes far too much focaccia",
+  "cos": 0.8097,
+  "p_same": 0.1645
+ },
+ {
+  "p": "interest",
+  "same": true,
+  "a": "active learning",
+  "b": "active-learning methods",
+  "cos": 0.9135,
+  "p_same": null
+ },
+ {
+  "p": "habit",
+  "same": true,
+  "a": "runs every Sunday morning",
+  "b": "Goes for a run on Sunday mornings",
+  "cos": 0.8801,
+  "p_same": 0.9707
+ },
+ {
+  "p": "habit",
+  "same": true,
+  "a": "Attends a pottery class on Thursdays",
+  "b": "pottery class every Thursday",
+  "cos": 0.9461,
+  "p_same": null
+ },
+ {
+  "p": "goal",
+  "same": true,
+  "a": "reach B2 in Danish",
+  "b": "Gets Danish to B2 level",
+  "cos": 0.872,
+  "p_same": 0.9876
+ },
+ {
+  "p": "goal",
+  "same": true,
+  "a": "run the Copenhagen half marathon",
+  "b": "Runs a half marathon in Copenhagen in September",
+  "cos": 0.8903,
+  "p_same": 0.9325
+ },
+ {
+  "p": "goal",
+  "same": true,
+  "a": "read 20 books",
+  "b": "Reads 20 books",
+  "cos": 0.9771,
+  "p_same": null
+ },
+ {
+  "p": "values",
+  "same": true,
+  "a": "plain language",
+  "b": "Cares about plain language",
+  "cos": 0.8509,
+  "p_same": 0.7058
+ },
+ {
+  "p": "values",
+  "same": true,
+  "a": "Thinks accessibility is the floor",
+  "b": "Thinks accessibility is not a feature but the floor",
+  "cos": 0.8918,
+  "p_same": 0.8808
+ },
+ {
+  "p": "likes",
+  "same": true,
+  "a": "long walks by the river",
+  "b": "walking along the river",
+  "cos": 0.8864,
+  "p_same": 0.9707
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Leads the Design Systems team",
+  "b": "Leads the Fjord design system",
+  "cos": 0.6821,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Built the first active-learning loop for assay planning",
+  "b": "Built demand forecasting for grocery clients",
+  "cos": 0.3973,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Leads the property-prediction models used by the medicinal chemistry team",
+  "b": "Built the first active-learning loop for assay planning",
+  "cos": 0.4568,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Fine-tunes graph neural networks for solubility prediction",
+  "b": "Fine-tunes language models for patent search",
+  "cos": 0.4479,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Builds models that help chemists rank new molecules",
+  "b": "Builds models that predict antibody stability",
+  "cos": 0.4863,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Hires designers",
+  "b": "Mentors junior designers",
+  "cos": 0.6529,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Runs the on-call rotation for the data platform",
+  "b": "Runs the data platform's cost reviews",
+  "cos": 0.6716,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Migrates the legacy warehouse to the lakehouse",
+  "b": "Migrates the CRM to a new vendor",
+  "cos": 0.558,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Created wireframes and prototypes for agency clients",
+  "b": "Ran fortnightly usability sessions with riders",
+  "cos": 0.4426,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Sets the accessibility baseline for all patient-facing apps",
+  "b": "Designs patient apps",
+  "cos": 0.5893,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Designs the appointment booking flow",
+  "b": "Designs the onboarding flow",
+  "cos": 0.7586,
+  "p_same": 0.0373
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Writes the quarterly data-quality report",
+  "b": "Writes the monthly cost report",
+  "cos": 0.5936,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Reviews pull requests for the ingestion services",
+  "b": "Builds the ingestion services",
+  "cos": 0.8057,
+  "p_same": 0.0676
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Keeps the nightly batch pipelines running",
+  "b": "Builds streaming pipelines for real-time events",
+  "cos": 0.5025,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Manages DS team",
+  "b": "Manages the design budget",
+  "cos": 0.5685,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Leads the Design Systems team",
+  "b": "Leads the accessibility guild",
+  "cos": 0.5707,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Trains the support team on the new dashboard",
+  "b": "Builds the new dashboard for the support team",
+  "cos": 0.8501,
+  "p_same": 0.1067
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Maintains Contrast Club",
+  "b": "Maintains the Fjord design system",
+  "cos": 0.4247,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Owns the dbt models for finance reporting",
+  "b": "Owns the dbt models for marketing attribution",
+  "cos": 0.7295,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Plans the sprint for the platform team",
+  "b": "Plans the platform team's offsite",
+  "cos": 0.7275,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Monitors model drift in production",
+  "b": "Monitors pipeline latency in production",
+  "cos": 0.6268,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Evaluates the solubility models",
+  "b": "Evaluates the permeability models",
+  "cos": 0.6488,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Leads the Design Systems team (3 designers",
+  "b": "Sets the accessibility baseline (WCAG 2.2 AA) for all patient-facing apps",
+  "cos": 0.2679,
+  "p_same": null
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Creates prototypes and conducts research for agency clients",
+  "b": "Works on onboarding flows during summer internship",
+  "cos": 0.4809,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Python",
+  "b": "SQL",
+  "cos": 0.5252,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Figma",
+  "b": "Framer",
+  "cos": 0.5797,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "machine learning",
+  "b": "machine learning and chemistry",
+  "cos": 0.6981,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Data engineering",
+  "b": "Data visualisation",
+  "cos": 0.5945,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Usability testing",
+  "b": "User research",
+  "cos": 0.7288,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Prototyping",
+  "b": "Product design",
+  "cos": 0.5747,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Deep learning",
+  "b": "Reinforcement learning",
+  "cos": 0.6179,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Active learning",
+  "b": "Machine learning",
+  "cos": 0.5545,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Interaction design",
+  "b": "Graphic design",
+  "cos": 0.613,
+  "p_same": null
+ },
+ {
+  "p": "has_skill",
+  "same": false,
+  "a": "Workshop facilitation",
+  "b": "Usability testing",
+  "cos": 0.4139,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": false,
+  "a": "Bouldering",
+  "b": "Hiking",
+  "cos": 0.6594,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": false,
+  "a": "Urban sketching",
+  "b": "Watercolour painting",
+  "cos": 0.5155,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": false,
+  "a": "baking focaccia",
+  "b": "baking sourdough",
+  "cos": 0.7013,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": false,
+  "a": "chemistry",
+  "b": "machine learning",
+  "cos": 0.3667,
+  "p_same": null
+ },
+ {
+  "p": "interest",
+  "same": false,
+  "a": "jazz piano",
+  "b": "classical piano",
+  "cos": 0.6806,
+  "p_same": null
+ },
+ {
+  "p": "habit",
+  "same": false,
+  "a": "runs every Sunday morning",
+  "b": "swims every Sunday morning",
+  "cos": 0.8127,
+  "p_same": 0.0076
+ },
+ {
+  "p": "habit",
+  "same": false,
+  "a": "Attends a pottery class on Thursdays",
+  "b": "Attends a Danish class on Tuesdays",
+  "cos": 0.6016,
+  "p_same": null
+ },
+ {
+  "p": "goal",
+  "same": false,
+  "a": "reach B2 in Danish",
+  "b": "reach C1 in Spanish",
+  "cos": 0.4071,
+  "p_same": null
+ },
+ {
+  "p": "goal",
+  "same": false,
+  "a": "run the Copenhagen half marathon",
+  "b": "run a full marathon",
+  "cos": 0.7053,
+  "p_same": null
+ },
+ {
+  "p": "goal",
+  "same": false,
+  "a": "give first conference talk at Interfaces North",
+  "b": "submit a paper to Interfaces North",
+  "cos": 0.7439,
+  "p_same": null
+ },
+ {
+  "p": "values",
+  "same": false,
+  "a": "plain language",
+  "b": "honest research",
+  "cos": 0.4019,
+  "p_same": null
+ },
+ {
+  "p": "values",
+  "same": false,
+  "a": "design systems that people enjoy using",
+  "b": "accessibility",
+  "cos": 0.4314,
+  "p_same": null
+ },
+ {
+  "p": "likes",
+  "same": false,
+  "a": "long walks by the river",
+  "b": "long bike rides by the river",
+  "cos": 0.8233,
+  "p_same": 0.0474
+ },
+ {
+  "p": "responsibility",
+  "same": false,
+  "a": "Looks after the solubility models",
+  "b": "Looks after the permeability models",
+  "cos": 0.7025,
+  "p_same": null
+ }
+]

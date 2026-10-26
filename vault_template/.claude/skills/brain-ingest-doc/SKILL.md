@@ -38,14 +38,14 @@ If the document is in the vault (`raw/docs/…`), you can't read it here. Ask th
 
 ## 2. Extract facts
 
-Map statements to predicates from the v0.2 vocabulary in `AGENTS.md`. Typical CV mapping:
+Map statements to predicates from the v0.3 vocabulary in `AGENTS.md`. Typical CV mapping:
 
 | document says | operation |
 |---|---|
 | "Data Engineer, Northwind Labs, Feb 2023 – present" | `works_at` o=`[[orgs/northwind-labs]]` from=2023-02; `role` o="Data Engineer" from=2023-02 |
 | earlier job with dates | `works_at` with `from` and `to` |
 | "Led the Atlas Migration to the new warehouse" | `worked_on` o=`[[projects/atlas-migration]]`; on the project: `owner` / `goal` |
-| "MSc Computer Science, 2020" | `studied_at` + `degree` with `from`/`to` |
+| "MSc Computer Science, Westbridge University, 2018 – 2020" | `studied_at` o=`[[orgs/westbridge-university]]` + `degree` with `extra: {"at": "[[orgs/westbridge-university]]"}`, both with `from`/`to` |
 | skills list | one `has_skill` per skill, `o` = topic page if it exists, else literal |
 | "Fluent in Spanish" | `speaks` o="Spanish" |
 | certifications | `certification` |

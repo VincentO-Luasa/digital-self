@@ -1,0 +1,96 @@
+# Labelled pairs of multi-valued literal facts (fictional personas: Alex Rivera, Maya Lindqvist,
+# Theo Marchetti), used to calibrate brain.ingest.dedup: `same: true` when a careful human would
+# keep one fact for both (a paraphrase, a restatement, a more specific version of one duty),
+# `same: false` when they are related but different (same verb or object, another duty).
+# Each side is {o: object value, text: fact text}; an empty text is rendered from the template.
+pairs:
+  # --- same thing -----------------------------------------------------------------------------
+  - {p: responsibility, same: true, a: {o: fine-tuning graph neural networks, text: Fine-tunes graph neural networks for solubility prediction}, b: {o: fine-tuning graph neural networks to predict solubility, text: ""}}
+  - {p: responsibility, same: true, a: {o: models that help chemists rank new molecules, text: Builds models that help chemists rank new molecules}, b: {o: Helps chemists pick which molecules to make, text: ""}}
+  - {p: responsibility, same: true, a: {o: property-prediction models, text: Leads the property-prediction models used by the medicinal chemistry team}, b: {o: property-prediction models, text: ""}}
+  - {p: responsibility, same: true, a: {o: active-learning loop for assay planning, text: Built the first active-learning loop for assay planning}, b: {o: active-learning loop for assay planning, text: ""}}
+  - {p: responsibility, same: true, a: {o: Runs the Design Systems team, text: ""}, b: {o: Leads the Design Systems team, text: ""}}
+  - {p: responsibility, same: true, a: {o: Manages DS team, text: ""}, b: {o: design systems team, text: Manages the design systems team}}
+  - {p: responsibility, same: true, a: {o: nightly batch pipelines, text: Keeps the nightly batch pipelines running}, b: {o: Maintains the nightly batch pipelines, text: ""}}
+  - {p: responsibility, same: true, a: {o: on-call rotation, text: Runs the on-call rotation for the data platform}, b: {o: data platform on-call rotation, text: ""}}
+  - {p: responsibility, same: true, a: {o: Migrates the legacy warehouse to the lakehouse, text: ""}, b: {o: Moves the old data warehouse onto the new lakehouse, text: ""}}
+  - {p: responsibility, same: true, a: {o: Hires designers, text: ""}, b: {o: hiring, text: Recruits designers for the team}}
+  - {p: responsibility, same: true, a: {o: Mentors junior designers, text: ""}, b: {o: Mentors early-career designers, text: ""}}
+  - {p: responsibility, same: true, a: {o: accessibility baseline for all patient apps, text: Sets the accessibility baseline for all patient-facing apps}, b: {o: accessibility standards of every patient-facing app, text: Sets accessibility standards of every patient-facing app}}
+  - {p: responsibility, same: true, a: {o: Created wireframes and prototypes for agency clients, text: ""}, b: {o: wireframes for clients, text: Made wireframes and prototypes for clients}}
+  - {p: responsibility, same: true, a: {o: Ran fortnightly usability sessions with riders, text: ""}, b: {o: usability tests, text: Runs usability tests with riders every two weeks}}
+  - {p: responsibility, same: true, a: {o: Reviews pull requests for the ingestion services, text: ""}, b: {o: code review, text: Does code review for the ingestion services}}
+  - {p: responsibility, same: true, a: {o: Writes the quarterly data-quality report, text: ""}, b: {o: data quality report, text: Produces the data quality report every quarter}}
+  - {p: responsibility, same: true, a: {o: Owns the dbt models for finance reporting, text: ""}, b: {o: Maintains the finance reporting dbt models, text: ""}}
+  - {p: responsibility, same: true, a: {o: Plans the sprint for the platform team, text: ""}, b: {o: sprint planning, text: Runs sprint planning for the platform team}}
+  - {p: responsibility, same: true, a: {o: Leads Fjord, text: ""}, b: {o: lead Fjord, text: Leads Fjord full time}}
+  - {p: responsibility, same: true, a: {o: Looks after the solubility and permeability models, text: ""}, b: {o: Lodestar models, text: Looks after Lodestar, the solubility and permeability models}}
+  - {p: has_skill, same: true, a: {o: Deep learning, text: ""}, b: {o: deep-learning, text: ""}}
+  - {p: has_skill, same: true, a: {o: Accessibility (WCAG), text: ""}, b: {o: accessibility, text: ""}}
+  - {p: has_skill, same: true, a: {o: Machine learning, text: ""}, b: {o: ML, text: ""}}
+  - {p: has_skill, same: true, a: {o: User research, text: ""}, b: {o: User Research, text: ""}}
+  - {p: has_skill, same: true, a: {o: HTML and CSS, text: ""}, b: {o: HTML & CSS, text: ""}}
+  - {p: has_skill, same: true, a: {o: Prototyping, text: ""}, b: {o: Rapid prototyping, text: ""}}
+  - {p: has_skill, same: true, a: {o: Data modelling, text: ""}, b: {o: data modeling, text: ""}}
+  - {p: has_skill, same: true, a: {o: Apache Airflow, text: ""}, b: {o: Airflow, text: ""}}
+  - {p: interest, same: true, a: {o: Urban sketching, text: ""}, b: {o: urban sketcher, text: Draws bridges as an urban sketcher}}
+  - {p: interest, same: true, a: {o: Bouldering, text: ""}, b: {o: indoor bouldering, text: ""}}
+  - {p: interest, same: true, a: {o: baking focaccia, text: ""}, b: {o: focaccia, text: Bakes far too much focaccia}}
+  - {p: interest, same: true, a: {o: active learning, text: ""}, b: {o: active-learning methods, text: ""}}
+  - {p: habit, same: true, a: {o: runs every Sunday morning, text: Runs every Sunday morning}, b: {o: Sunday run, text: Goes for a run on Sunday mornings}}
+  - {p: habit, same: true, a: {o: pottery class, text: Attends a pottery class on Thursdays}, b: {o: pottery class every Thursday, text: ""}}
+  - {p: goal, same: true, a: {o: reach B2 in Danish, text: ""}, b: {o: Danish to B2, text: Gets Danish to B2 level}}
+  - {p: goal, same: true, a: {o: run the Copenhagen half marathon, text: ""}, b: {o: half marathon, text: Runs a half marathon in Copenhagen in September}}
+  - {p: goal, same: true, a: {o: read 20 books, text: ""}, b: {o: 20 books, text: Reads 20 books}}
+  - {p: values, same: true, a: {o: plain language, text: ""}, b: {o: plain language, text: Cares about plain language}}
+  - {p: values, same: true, a: {o: accessibility, text: Thinks accessibility is the floor}, b: {o: accessibility, text: Thinks accessibility is not a feature but the floor}}
+  - {p: likes, same: true, a: {o: long walks by the river, text: ""}, b: {o: walking along the river, text: ""}}
+  # --- related but different ------------------------------------------------------------------
+  - {p: responsibility, same: false, a: {o: Leads the Design Systems team, text: ""}, b: {o: Leads the Fjord design system, text: ""}}
+  - {p: responsibility, same: false, a: {o: active-learning loop for assay planning, text: Built the first active-learning loop for assay planning}, b: {o: demand forecasting, text: Built demand forecasting for grocery clients}}
+  - {p: responsibility, same: false, a: {o: property-prediction models, text: Leads the property-prediction models used by the medicinal chemistry team}, b: {o: active-learning loop, text: Built the first active-learning loop for assay planning}}
+  - {p: responsibility, same: false, a: {o: fine-tuning graph neural networks, text: Fine-tunes graph neural networks for solubility prediction}, b: {o: Fine-tunes language models for patent search, text: ""}}
+  - {p: responsibility, same: false, a: {o: models that help chemists rank new molecules, text: Builds models that help chemists rank new molecules}, b: {o: Builds models that predict antibody stability, text: ""}}
+  - {p: responsibility, same: false, a: {o: Hires designers, text: ""}, b: {o: Mentors junior designers, text: ""}}
+  - {p: responsibility, same: false, a: {o: on-call rotation, text: Runs the on-call rotation for the data platform}, b: {o: Runs the data platform's cost reviews, text: ""}}
+  - {p: responsibility, same: false, a: {o: Migrates the legacy warehouse to the lakehouse, text: ""}, b: {o: Migrates the CRM to a new vendor, text: ""}}
+  - {p: responsibility, same: false, a: {o: Created wireframes and prototypes for agency clients, text: ""}, b: {o: Ran fortnightly usability sessions with riders, text: ""}}
+  - {p: responsibility, same: false, a: {o: accessibility baseline, text: Sets the accessibility baseline for all patient-facing apps}, b: {o: Designs patient apps, text: ""}}
+  - {p: responsibility, same: false, a: {o: Designs the appointment booking flow, text: ""}, b: {o: Designs the onboarding flow, text: ""}}
+  - {p: responsibility, same: false, a: {o: Writes the quarterly data-quality report, text: ""}, b: {o: Writes the monthly cost report, text: ""}}
+  - {p: responsibility, same: false, a: {o: Reviews pull requests for the ingestion services, text: ""}, b: {o: Builds the ingestion services, text: ""}}
+  - {p: responsibility, same: false, a: {o: nightly batch pipelines, text: Keeps the nightly batch pipelines running}, b: {o: Builds streaming pipelines for real-time events, text: ""}}
+  - {p: responsibility, same: false, a: {o: Manages DS team, text: ""}, b: {o: Manages the design budget, text: ""}}
+  - {p: responsibility, same: false, a: {o: Leads the Design Systems team, text: ""}, b: {o: Leads the accessibility guild, text: ""}}
+  - {p: responsibility, same: false, a: {o: Trains the support team on the new dashboard, text: ""}, b: {o: Builds the new dashboard for the support team, text: ""}}
+  - {p: responsibility, same: false, a: {o: maintain Contrast Club, text: Maintains Contrast Club, an open-source contrast checker for Figma}, b: {o: Maintains the Fjord design system, text: ""}}
+  - {p: responsibility, same: false, a: {o: Owns the dbt models for finance reporting, text: ""}, b: {o: Owns the dbt models for marketing attribution, text: ""}}
+  - {p: responsibility, same: false, a: {o: Plans the sprint for the platform team, text: ""}, b: {o: Plans the platform team's offsite, text: ""}}
+  - {p: responsibility, same: false, a: {o: Monitors model drift in production, text: ""}, b: {o: Monitors pipeline latency in production, text: ""}}
+  - {p: responsibility, same: false, a: {o: Evaluates the solubility models, text: ""}, b: {o: Evaluates the permeability models, text: ""}}
+  - {p: responsibility, same: false, a: {o: Lead the Design Systems team, text: Leads the Design Systems team (3 designers, 2 engineers)}, b: {o: Set the accessibility baseline, text: Sets the accessibility baseline (WCAG 2.2 AA) for all patient-facing apps}}
+  - {p: responsibility, same: false, a: {o: Prototypes and research for agency clients, text: Creates prototypes and conducts research for agency clients}, b: {o: Summer internship, onboarding flows, text: Works on onboarding flows during summer internship}}
+  - {p: has_skill, same: false, a: {o: Python, text: ""}, b: {o: SQL, text: ""}}
+  - {p: has_skill, same: false, a: {o: Figma, text: ""}, b: {o: Framer, text: ""}}
+  - {p: has_skill, same: false, a: {o: machine learning, text: ""}, b: {o: machine learning and chemistry, text: ""}}
+  - {p: has_skill, same: false, a: {o: Data engineering, text: ""}, b: {o: Data visualisation, text: ""}}
+  - {p: has_skill, same: false, a: {o: Usability testing, text: ""}, b: {o: User research, text: ""}}
+  - {p: has_skill, same: false, a: {o: Prototyping, text: ""}, b: {o: Product design, text: ""}}
+  - {p: has_skill, same: false, a: {o: Deep learning, text: ""}, b: {o: Reinforcement learning, text: ""}}
+  - {p: has_skill, same: false, a: {o: Active learning, text: ""}, b: {o: Machine learning, text: ""}}
+  - {p: has_skill, same: false, a: {o: Interaction design, text: ""}, b: {o: Graphic design, text: ""}}
+  - {p: has_skill, same: false, a: {o: Workshop facilitation, text: ""}, b: {o: Usability testing, text: ""}}
+  - {p: interest, same: false, a: {o: Bouldering, text: ""}, b: {o: Hiking, text: ""}}
+  - {p: interest, same: false, a: {o: Urban sketching, text: ""}, b: {o: Watercolour painting, text: ""}}
+  - {p: interest, same: false, a: {o: baking focaccia, text: ""}, b: {o: baking sourdough, text: ""}}
+  - {p: interest, same: false, a: {o: chemistry, text: ""}, b: {o: machine learning, text: ""}}
+  - {p: interest, same: false, a: {o: jazz piano, text: ""}, b: {o: classical piano, text: ""}}
+  - {p: habit, same: false, a: {o: runs every Sunday morning, text: Runs every Sunday morning}, b: {o: swims every Sunday morning, text: Swims every Sunday morning}}
+  - {p: habit, same: false, a: {o: pottery class, text: Attends a pottery class on Thursdays}, b: {o: Danish class, text: Attends a Danish class on Tuesdays}}
+  - {p: goal, same: false, a: {o: reach B2 in Danish, text: ""}, b: {o: reach C1 in Spanish, text: ""}}
+  - {p: goal, same: false, a: {o: run the Copenhagen half marathon, text: ""}, b: {o: run a full marathon, text: ""}}
+  - {p: goal, same: false, a: {o: give first conference talk at Interfaces North, text: ""}, b: {o: submit a paper to Interfaces North, text: ""}}
+  - {p: values, same: false, a: {o: plain language, text: ""}, b: {o: honest research, text: ""}}
+  - {p: values, same: false, a: {o: design systems that people enjoy using, text: ""}, b: {o: accessibility, text: ""}}
+  - {p: likes, same: false, a: {o: long walks by the river, text: ""}, b: {o: long bike rides by the river, text: ""}}
+  - {p: responsibility, same: false, a: {o: Looks after the solubility models, text: ""}, b: {o: Looks after the permeability models, text: ""}}

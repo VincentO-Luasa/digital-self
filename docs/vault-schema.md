@@ -1,4 +1,4 @@
-# Vault schema (v0.2)
+# Vault schema (v0.3)
 
 The vault is the brain's long-term memory and the **single source of truth**. It is a folder of
 Obsidian-compatible markdown, versioned with a *local-only* git repo, living **outside** this code
@@ -90,6 +90,7 @@ Body sections, in order:
 | `kind::` | yes | `stated` (you said it), `observed` (in a document), `inferred` (the brain concluded it) |
 | `evidence::` | inferred only | list of sources supporting an inference (no fake confidence numbers) |
 | `by::` | history only | block id of the superseding fact; absent when a fact simply ended |
+| `level::`, `rel::`, `at::` | no | qualifiers of some predicates (see the vocabulary): a skill's level, a relation's kind, the school a degree is from |
 | `^f-xxxxxx` | yes | block id: `f-` + 6 lowercase base32 chars; Obsidian can link to it |
 
 Rules:
@@ -107,13 +108,13 @@ Rules:
 - **Inferred facts** (traits, patterns, flaws) always go through the review queue.
 - Hand-edits in Obsidian are allowed; `brain lint` validates and normalises the format.
 
-### Predicate vocabulary (v0.2)
+### Predicate vocabulary (v0.3)
 
 Single-valued per subject unless marked *(multi)*:
 
 - identity: `name`, `born`, `hometown`, `lives_in`, `nationality` *(multi)*, `speaks` *(multi)*
 - work: `works_at` *(multi)*, `role`, `team`, `manager`, `responsibility` *(multi)*, `worked_on` *(multi)*
-- education: `studied_at` *(multi)*, `degree` *(multi)*, `certification` *(multi)*
+- education: `studied_at` *(multi)*, `degree` *(multi; optional `at::` = wikilink to the school's org page, e.g. `(at:: [[orgs/westbridge-university]])`)*, `certification` *(multi)*
 - skills: `has_skill` *(multi, o = topic page or literal; optional `level::`)*
 - relationships: `family_of`, `partner_of`, `friend_of`, `colleague_of`, `mentor_of`, `knows` *(all multi; optional `rel::` e.g. sister)*; `met_at`, `last_seen`
 - projects: `owner`, `status`, `goal`, `stakeholder` *(multi)*, `deadline`, `uses` *(multi)*
@@ -121,6 +122,12 @@ Single-valued per subject unless marked *(multi)*:
 - generic: `member_of` *(multi: clubs, communities, groups)*, `located_in`, `part_of`, `related_to` *(multi)*, `note` *(multi, last resort)*
 
 New predicates are added here first (bump the schema version), never invented ad hoc by the LLM.
+
+`at::` (v0.3) ties a degree to the `studied_at` school it came from. Ingest sets it from the line
+of the document that names both; the profile card pairs a degree with its school by this link
+and never by overlapping dates alone. A degree without it (older vaults, hand edits) still
+works: the card falls back to equal or clearly overlapping study periods. Entity merges repoint
+it like `o::`.
 
 ## Episodes (episodes/)
 

@@ -538,6 +538,7 @@ def _repoint_page(page: Page, old: str, new: str) -> bool:
     before = page.model_dump()
     for fact in (*page.facts, *page.history):
         fact.o = sub(fact.o)
+        fact.extra = {k: sub(v) for k, v in fact.extra.items()}  # at:: [[orgs/…]]
         fact.src = [new if s == old else s for s in fact.src]
         fact.evidence = [new if e == old else e for e in fact.evidence]
     page.summary, page.notes = sub(page.summary), sub(page.notes)
