@@ -142,6 +142,15 @@ class CloseResult:
     questions_changed: bool = False
 
 
+def incomplete(report: Any) -> bool:
+    """The memory pipeline failed, or left an episode unextracted."""
+    if report is None:
+        return False
+    if getattr(report, "status", "processed") == "failed" or getattr(report, "error", None):
+        return True
+    return any(getattr(e, "error", None) for e in getattr(report, "episodes", []))
+
+
 def default_process() -> ProcessSession:
     from brain.memory import process_session  # built by the memory pipeline (Phase 2)
 
@@ -565,6 +574,10 @@ class InterviewSession:
         except Exception as err:
             log.warning("memory pipeline failed on %s: %s", result.transcript, err)
             result.error = f"{type(err).__name__}: {err}"
+            return result
+        if incomplete(result.report):
+            # an episode is still pending: tick the items once their answers are in memory, by
+            # asking them again rather than losing them
             return result
         for qid in self.resolved:
             if resolve_question(self.vault, qid):

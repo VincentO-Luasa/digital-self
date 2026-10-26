@@ -110,5 +110,5 @@ def test_missing_pipeline_keeps_the_transcript(cli_env, tmp_path: Path, monkeypa
     answers.write_text("Honesty.\n", encoding="utf-8")  # input ends: the session closes
     result = runner.invoke(app, ["interview", "--answers", str(answers)])
     assert result.exit_code == 0, result.output
-    assert "memory pipeline failed" in result.output and "processed later" in result.output
+    assert "memory pipeline failed" in result.output and "retries it" in result.output
     assert len(conversations(cli_env["env"])) == 1

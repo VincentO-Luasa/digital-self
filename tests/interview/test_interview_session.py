@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from datetime import timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -64,6 +65,16 @@ class FakeProcess:
         if self.error:
             raise self.error
         return {"episodes": 1}
+
+
+class ReportingProcess(FakeProcess):
+    def __init__(self, report) -> None:
+        super().__init__()
+        self.report = report
+
+    def __call__(self, vault, llm, transcript, **kwargs):
+        self.calls.append(((vault, llm, transcript), kwargs))
+        return self.report
 
 
 class PrivateAwareProcess(FakeProcess):
@@ -424,3 +435,22 @@ def test_close_without_answers_or_with_a_failing_pipeline(make, env) -> None:
     assert result.error == "RuntimeError: boom" and result.transcript
     assert not next(i for i in read_questions(env.vault) if i.id == item.id).done  # retry later
     assert timedelta(0) < failing.clock() - at(TODAY)
+
+
+def test_questions_stay_open_when_an_episode_failed(make, env) -> None:
+    item = add_question(
+        env.vault, "Who mentors you at work?", region="career.current_job", origin="lint"
+    )
+    session = make(
+        FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+    )
+    session.opening()
+    session.reply("Theo Marchetti does.")
+    failed = SimpleNamespace(
+        status="processed",
+        error=None,
+        episodes=[SimpleNamespace(error=None), SimpleNamespace(error="extraction failed: cut off")],
+    )
+    result = session.close(ReportingProcess(failed))
+    assert result.error is None and result.answered == []
+    assert not next(i for i in read_questions(env.vault) if i.id == item.id).done

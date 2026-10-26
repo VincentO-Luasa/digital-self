@@ -640,3 +640,20 @@ on the base M4 (a synthetic 100-page vault: 51 decisions, 100 texts embedded, 18
 200 pages: 96 decisions, 112 s; no change proposed on either); incremental runs check only what
 changed. Known gaps: duplicates across page types; one persona in the eval; a doubt answered in
 an interview is settled only through what the memory pipeline makes of the answer.
+
+## 2026-10-26 — Memory extraction in windows; questions ticked only once their answers are in memory
+
+A twelve-minute interview on one topic became a single 80-turn episode (~1,600 words), and its
+extraction reply hit `max_tokens` (3072): the whole episode was lost until a retry. Raising the
+limit only moves the wall, and one call over a long span also extracts less per exchange. Now an
+episode is extracted in windows of whole exchanges (`WINDOW_WORDS` = 450, cut only after an owner
+turn, so a question stays with its answer); every window sees the same known facts and episode
+summary, and the windows' extractions are merged (entities once per name) before calibration. A
+window whose reply is still cut off is halved at an exchange boundary, as ingest halves a chunk;
+a single exchange that is cut off fails as before. Short episodes are one window, so their
+behaviour and recorded fixtures are unchanged. Re-run on the failed transcript: one episode, 75 s.
+
+The interview used to tick its questions.md items whenever the pipeline returned, even when an
+episode had failed; those answers were then neither in memory nor asked again. Items are now
+ticked only when every episode was extracted; otherwise they stay open and the CLI points to
+`brain memory process --pending`.

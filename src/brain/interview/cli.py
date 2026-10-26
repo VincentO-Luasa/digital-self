@@ -28,7 +28,13 @@ from brain.interview.planner import (
     region_scores,
 )
 from brain.interview.questions import GapItem, read_questions, write_questions
-from brain.interview.session import InterviewSession, ProcessSession, Reply, default_process
+from brain.interview.session import (
+    InterviewSession,
+    ProcessSession,
+    Reply,
+    default_process,
+    incomplete,
+)
 
 console = Console()
 
@@ -230,11 +236,13 @@ def interview(
     if result.error:
         console.print(
             f"[yellow]memory pipeline failed ({escape(result.error)}); the transcript is "
-            "saved and can be processed later[/]"
+            "saved: `brain memory process --pending` retries it[/]"
         )
     elif result.report is not None:
         text = _describe_report(result.report)
         console.print(escape(text if text.startswith("memory:") else f"memory: {text}"))
+        if incomplete(result.report):
+            console.print("[yellow]`brain memory process --pending` retries what failed[/]")
     if result.answered:
         console.print(f"answered questions.md items: {', '.join(result.answered)}")
 

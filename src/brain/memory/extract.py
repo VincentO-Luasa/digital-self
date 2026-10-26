@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import re
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
@@ -47,7 +47,7 @@ from brain.ingest.extract import (
 )
 from brain.ingest.normalise import SELF_WORDS, fold, normalise_date
 from brain.ingest.normalise import build_changeset as normalise_facts
-from brain.llm.base import StructuredOutputError
+from brain.llm.base import OutputTruncated, StructuredOutputError
 from brain.llm.decide import NO, YES, Choice, ChoiceQuestion
 from brain.memory.conversation import in_range, render, render_plain
 from brain.memory.resolve import Resolution
@@ -98,6 +98,10 @@ KNOWN_TOKENS = 900  # the KNOWN FACTS block
 PER_ENTITY = 10  # known facts shown per mentioned entity (other than the owner)
 MAX_OBSERVATIONS = 2
 MAX_TOKENS = 3072
+# One extraction call reads at most about this many words of the episode: a long episode (an
+# interview on one topic can run 80 turns) is extracted in windows of whole exchanges, and a
+# window whose reply is still cut off is halved (docs/decisions.md).
+WINDOW_WORDS = 450
 MEMBERSHIP = frozenset({"works_at", "studied_at", "member_of"})
 PERSON_ONLY = frozenset({"met_at", "last_seen"})  # the schema files these under a person
 CORRECTION_P = 0.9  # p(the owner explicitly corrects the stored fact) to auto-apply
@@ -279,6 +283,62 @@ def build_messages(
         {"role": "system", "content": load_prompt("memory_extract")},
         {"role": "user", "content": user},
     ]
+
+
+def windows(turns: Sequence[Turn], *, words: int = WINDOW_WORDS) -> list[list[Turn]]:
+    """Consecutive spans of about ``words`` words, cut only after an owner turn so a question
+    stays with its answer."""
+    out: list[list[Turn]] = []
+    current: list[Turn] = []
+    size = 0
+    for turn in turns:
+        current.append(turn)
+        size += len(turn.text.split())
+        if turn.role == "user" and size >= words:
+            out.append(current)
+            current, size = [], 0
+    if current:
+        if out and not any(t.role == "user" for t in current):
+            out[-1] += current  # a trailing assistant turn belongs to the last exchange
+        else:
+            out.append(current)
+    return out
+
+
+def merge_extractions(parts: Sequence[MemoryExtraction]) -> MemoryExtraction:
+    """One extraction from several windows: entities once per name, everything else kept."""
+    entities: dict[str, ExtractedEntity] = {}
+    for part in parts:
+        for entity in part.entities:
+            entities.setdefault(entity.name.casefold(), entity)
+    return MemoryExtraction(
+        reasoning=" ".join(p.reasoning for p in parts if p.reasoning),
+        entities=list(entities.values()),
+        facts=[f for p in parts for f in p.facts],
+        observations=[o for p in parts for o in p.observations],
+        intentions=[i for p in parts for i in p.intentions],
+    )
+
+
+def extract_windows(
+    llm: Any, span: Sequence[Turn], build: Callable[[Sequence[Turn]], list[dict[str, str]]]
+) -> MemoryExtraction:
+    """Extract ``span`` window by window; a window cut off at ``MAX_TOKENS`` is halved until it
+    is a single exchange (then the error is raised)."""
+    queue = windows(span)
+    parts: list[MemoryExtraction] = []
+    while queue:
+        window = queue.pop(0)
+        try:
+            parts.append(llm.structured(build(window), MemoryExtraction, max_tokens=MAX_TOKENS))
+        except OutputTruncated:
+            owners = [i for i, t in enumerate(window) if t.role == "user"]
+            if len(owners) < 2:
+                raise
+            cut = owners[len(owners) // 2 - 1] + 1  # after the owner turn closing the first half
+            log.info("memory extraction window truncated; split in two")
+            queue[:0] = [window[:cut], window[cut:]]
+    return parts[0] if len(parts) == 1 else merge_extractions(parts)
 
 
 # --- calibrate ----------------------------------------------------------------------------------
@@ -663,18 +723,21 @@ def extract_episode(
         for e in dict.fromkeys(entities)
         if (p := vault.page(e))
     ]
-    messages = build_messages(
-        span,
-        owner=owner,
-        today=today,
-        known_entities=known_entities,
-        owner_names=owner_names,
-        known=known,
-        titles=titles,
-        summary=summary,
-    )
+
+    def build(window: Sequence[Turn]) -> list[dict[str, str]]:
+        return build_messages(
+            window,
+            owner=owner,
+            today=today,
+            known_entities=known_entities,
+            owner_names=owner_names,
+            known=known,
+            titles=titles,
+            summary=summary,
+        )
+
     start = time.perf_counter()
-    raw = llm.structured(messages, MemoryExtraction, max_tokens=MAX_TOKENS)
+    raw = extract_windows(llm, span, build)
     out.seconds = time.perf_counter() - start
     out.raw = raw
 
