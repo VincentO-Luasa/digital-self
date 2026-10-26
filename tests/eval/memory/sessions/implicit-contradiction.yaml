@@ -1,0 +1,19 @@
+# An implicit contradiction: the owner talks as if living elsewhere, without saying they moved.
+# Memory must not change by itself: a review, never an auto-applied supersession.
+started: 2026-10-27T08:15
+channel: chat
+turns:
+  - user: "Morning! Here in Braga the coffee is half the price of what I'm used to. Loving the slower pace."
+  - assistant: "Sounds lovely. Are you there for long?"
+  - user: "The walk to the station is ten minutes, so getting to the office is easy enough."
+gold:
+  episodes:
+    count: 1
+    regions: [[identity, self.routine, self.interests]]
+  queued:
+    - {s: self, p: lives_in, o: Braga}
+  facts: []
+  acceptable:
+    - {s: self, p: [likes, habit, note, interest], o: [coffee, slower pace, walk station]}
+  forbid:
+    - {s: self, p: lives_in, o: Braga}

@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "0.3"
+SCHEMA_VERSION = "0.4"
 
 Kind = Literal["stated", "observed", "inferred"]
 Privacy = Literal["normal", "private"]
@@ -130,7 +130,13 @@ class Episode(BaseModel):
     gist: str
     started: datetime
     status: EpisodeStatus = "pending"
+    privacy: Privacy = "normal"  # private: it holds an answer the owner marked private
     summary: str = ""
+
+
+def fact_private(fact: Fact) -> bool:
+    """A fact from an answer the owner marked private (``privacy:: private``, schema v0.4)."""
+    return fact.extra.get("privacy") == "private"
 
 
 class Observation(BaseModel):

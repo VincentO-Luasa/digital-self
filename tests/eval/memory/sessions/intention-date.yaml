@@ -1,0 +1,18 @@
+# A dated plan and an explicit "remind me" → an intention with a date.
+started: 2026-10-27T17:45
+channel: chat
+turns:
+  - user: "My performance review with Dana is on November 20th and I'm already nervous about it."
+  - assistant: "What worries you most?"
+  - user: "That the Atlas slip will overshadow everything else. Remind me the week before to pull together the Atlas metrics so I go in prepared."
+gold:
+  episodes:
+    count: 1
+    regions: [[career.current_job, projects]]
+  intentions:
+    - {text: [Atlas, metrics], after: [2026-11-09, 2026-11-20]}
+  facts: []
+  acceptable:
+    - {s: self, p: [manager], o: [Dana]}
+    - {s: Dana, p: [colleague_of, knows], o: self}
+    - {s: self, p: [goal, note], o: [performance review, prepare Atlas metrics]}

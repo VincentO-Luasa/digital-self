@@ -1,0 +1,139 @@
+{
+  "question": {
+    "type": "choice",
+    "name": "correction",
+    "instructions": "Does the owner tell that the stored fact is wrong or out of date?",
+    "choices": [
+      {
+        "value": "yes",
+        "description": "the owner states it is wrong, has changed or is no longer true"
+      },
+      {
+        "value": "no",
+        "description": "the owner restates it, or talks about something else, a plan, a doubt or someone else's view"
+      }
+    ]
+  },
+  "scores": [
+    {
+      "id": "joined-date",
+      "explicit": true,
+      "p": 0.9978,
+      "input": "Stored fact: Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)\n\nConversation:\nOWNER: Long day. Oh, small correction: I joined Northwind in January 2023, not February."
+    },
+    {
+      "id": "moved-city",
+      "explicit": true,
+      "p": 0.9992,
+      "input": "Stored fact: Lives in Porto (lives_in: Porto, since 2024)\n\nConversation:\nOWNER: I don't live in Porto any more, I moved to Braga last month."
+    },
+    {
+      "id": "left-date-answer",
+      "explicit": true,
+      "p": 0.9968,
+      "input": "Stored fact: Worked at Fabrikam Analytics as analytics engineer (works_at: Fabrikam Analytics, 2019-06 to 2023-01)\n\nConversation:\nASSISTANT: You were at Fabrikam until January 2023, right?\nOWNER: No, I left Fabrikam in March 2023, the handover took longer than planned."
+    },
+    {
+      "id": "switched-team",
+      "explicit": true,
+      "p": 0.9988,
+      "input": "Stored fact: Is in the data platform team (team: Data platform, since 2023-02)\n\nConversation:\nOWNER: I'm not on the data platform team any more, I switched to the ML infrastructure team in September."
+    },
+    {
+      "id": "scratch-skill",
+      "explicit": true,
+      "p": 0.9996,
+      "input": "Stored fact: Is skilled in Spark (has_skill: Spark)\n\nConversation:\nOWNER: Honestly, scratch Spark from my skills. I haven't touched it in years and I was never good at it."
+    },
+    {
+      "id": "wrong-language",
+      "explicit": true,
+      "p": 0.9941,
+      "input": "Stored fact: Speaks Spanish (speaks: Spanish)\n\nConversation:\nASSISTANT: Since you speak Spanish, maybe the Madrid conference?\nOWNER: That's wrong, I don't speak Spanish. It's Portuguese I speak."
+    },
+    {
+      "id": "promoted",
+      "explicit": true,
+      "p": 0.9986,
+      "input": "Stored fact: Is a senior data engineer (role: Senior data engineer, since 2025-03)\n\nConversation:\nOWNER: Big news, I got promoted to staff engineer in September, so I'm not a senior engineer anymore."
+    },
+    {
+      "id": "degree-subject",
+      "explicit": true,
+      "p": 0.9989,
+      "input": "Stored fact: Holds a BSc in Computer Science (degree: BSc Computer Science, since 2018)\n\nConversation:\nOWNER: Just to fix something you have wrong: my degree is in Mathematics, not Computer Science."
+    },
+    {
+      "id": "lived-dates",
+      "explicit": true,
+      "p": 0.9981,
+      "input": "Stored fact: Lived in Lisbon (lives_in: Lisbon, 2019 to 2024)\n\nConversation:\nOWNER: By the way I moved to Lisbon in 2018, not 2019. I always mix that up."
+    },
+    {
+      "id": "visiting-elsewhere",
+      "explicit": false,
+      "p": 0.0331,
+      "input": "Stored fact: Lives in Porto (lives_in: Porto, since 2024)\n\nConversation:\nOWNER: The weather in Lisbon was lovely this weekend, I walked along the river for hours."
+    },
+    {
+      "id": "restates",
+      "explicit": false,
+      "p": 0.0421,
+      "input": "Stored fact: Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)\n\nConversation:\nOWNER: I've been at Northwind since February 2023 and I still love it."
+    },
+    {
+      "id": "maybe-move",
+      "explicit": false,
+      "p": 0.3776,
+      "input": "Stored fact: Lives in Porto (lives_in: Porto, since 2024)\n\nConversation:\nOWNER: I might move to Lisbon next year if the rent keeps going up."
+    },
+    {
+      "id": "manager-thinks",
+      "explicit": false,
+      "p": 0.2019,
+      "input": "Stored fact: Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)\n\nConversation:\nOWNER: My manager thinks I joined in January, but I'm honestly not sure."
+    },
+    {
+      "id": "feels-like",
+      "explicit": false,
+      "p": 0.133,
+      "input": "Stored fact: Is a senior data engineer (role: Senior data engineer, since 2025-03)\n\nConversation:\nOWNER: Some days I feel more like a project manager than an engineer."
+    },
+    {
+      "id": "new-skill",
+      "explicit": false,
+      "p": 0.0067,
+      "input": "Stored fact: Is an expert in Python (has_skill: Python)\n\nConversation:\nOWNER: I've been learning Rust on weekends, it's fun."
+    },
+    {
+      "id": "home-for-holidays",
+      "explicit": false,
+      "p": 0.4074,
+      "input": "Stored fact: Lives in Porto (lives_in: Porto, since 2024)\n\nConversation:\nOWNER: Back in Lisbon with my parents for the long weekend, they say hi."
+    },
+    {
+      "id": "reorg-unknown",
+      "explicit": false,
+      "p": 0.5928,
+      "input": "Stored fact: Is in the data platform team (team: Data platform, since 2023-02)\n\nConversation:\nOWNER: The data platform team is getting reorganised next quarter. No idea where I'll end up."
+    },
+    {
+      "id": "past-job-story",
+      "explicit": false,
+      "p": 0.1192,
+      "input": "Stored fact: Worked at Fabrikam Analytics as analytics engineer (works_at: Fabrikam Analytics, 2019-06 to 2023-01)\n\nConversation:\nOWNER: Fabrikam was where I learned dbt, good times."
+    },
+    {
+      "id": "implicit-new-city",
+      "explicit": false,
+      "p": 0.269,
+      "input": "Stored fact: Lives in Porto (lives_in: Porto, since 2024)\n\nConversation:\nOWNER: Here in Braga the coffee is half the price, I'm loving it."
+    },
+    {
+      "id": "asks-assistant",
+      "explicit": false,
+      "p": 0.1825,
+      "input": "Stored fact: Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)\n\nConversation:\nOWNER: Wait, did I join Northwind in January or February? I can't remember."
+    }
+  ]
+}

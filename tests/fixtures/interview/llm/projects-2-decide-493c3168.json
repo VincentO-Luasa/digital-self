@@ -1,0 +1,76 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "An interviewer is asking the owner about their life, one question at a time.\n\nTopic: Projects: Atlas Migration\nInterviewer: You were testing Atlas in October 2026. Is it still in that phase, or have you launched?\nOwner: We went live in December, a few weeks late. Now I'm cleaning up the old cluster.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "answer",
+        "instructions": "How does the owner's reply relate to the interviewer's question?",
+        "choices": [
+          {
+            "value": "answered",
+            "description": "it gives the information that was asked for"
+          },
+          {
+            "value": "partial",
+            "description": "it gives only part of it, or stays vague"
+          },
+          {
+            "value": "declined",
+            "description": "the owner does not know, would rather not say, or it does not apply"
+          },
+          {
+            "value": "unclear",
+            "description": "it is off-topic or cannot be understood"
+          }
+        ]
+      },
+      {
+        "type": "predicate",
+        "name": "new_thread",
+        "instructions": "Does the owner's reply bring up something specific that was not asked about (a person, a project, an event, a change or a feeling) that a friend would naturally ask about next?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "answer",
+        "choice": "answered",
+        "probabilities": [
+          {
+            "value": "answered",
+            "probability": 0.998
+          },
+          {
+            "value": "partial",
+            "probability": 0.0016
+          },
+          {
+            "value": "declined",
+            "probability": 0.0003
+          },
+          {
+            "value": "unclear",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.9974
+      },
+      {
+        "type": "predicate",
+        "name": "new_thread",
+        "probability": 0.7773
+      }
+    ],
+    "usage": {
+      "input_tokens": 344,
+      "output_tokens": 0
+    }
+  }
+}

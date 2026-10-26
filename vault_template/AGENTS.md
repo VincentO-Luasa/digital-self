@@ -91,7 +91,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
   "Proposed 2 updates (review r-…), approve with `brain review`."
 - Leave out `rec`, `src` and block ids. The pipeline sets them, and `src` becomes the review id.
 
-### Operations (fact fields follow vault schema v0.3, see `SCHEMA.md`)
+### Operations (fact fields follow vault schema v0.4, see `SCHEMA.md`)
 
 ```json
 {"op": "create_entity", "id": "projects/atlas-migration", "type": "project", "title": "Atlas Migration", "aliases": ["Atlas"], "regions": ["projects"]}
@@ -102,12 +102,19 @@ or a hypothetical. Search first so you don't propose what memory already holds.
 {"op": "update_summary", "id": "projects/atlas-migration", "summary": "…"}
 {"op": "add_alias", "id": "people/sam-okafor", "alias": "Sammy"}
 {"op": "add_intention", "text": "Ask how the Atlas go-live went", "when": "[[projects/atlas-migration]]", "after": "2026-11-15"}
+{"op": "confirm_fact", "fact_id": "f-9w2mtd"}
 ```
+
+`confirm_fact` records that the owner restated a fact (this conversation is added to its sources;
+nothing else changes). `add_episode` and `update_episode` exist but are refused from you: only
+the local memory pipeline cuts conversations into episodes. Facts marked `(privacy:: private)`,
+private pages and episodes with `privacy: private` are never shown to you unless the owner
+confirmed sharing them.
 
 `subject` is an entity id or `self`. Dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. If the
 `brain_propose` tool schema differs from these examples, the tool schema wins.
 
-### Predicates (v0.3). Use only these, never invent new ones
+### Predicates (v0.4). Use only these, never invent new ones
 
 - identity: `name` `born` `hometown` `lives_in` `nationality`* `speaks`*
 - work: `works_at`* `role` `team` `manager` `responsibility`* `worked_on`*

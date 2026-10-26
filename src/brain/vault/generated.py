@@ -28,6 +28,7 @@ from brain.vault.models import (
     Intention,
     Observation,
     Page,
+    fact_private,
     link_target,
 )
 from brain.vault.store import SELF_PAGE, Vault
@@ -428,6 +429,8 @@ class _Card:
     def allowed(self, fact: Fact) -> bool:
         if self.include_private:
             return True
+        if fact_private(fact):  # from an answer the owner marked private
+            return False
         target = link_target(fact.o)
         return not (target and target in self.private_ids) and self.predicate_allowed(fact.p)
 
@@ -859,21 +862,41 @@ class _Card:
             if not i.done
             and not any(w in self.private_ids for w in i.when)
             and not self._mentions_private(i.text)
+            and not (not self.include_private and self._from_private_episode(i.src))
         ]
         return sorted(items, key=lambda i: (i.after is None, i.after or "", i.id))
 
+    def _from_private_episode(self, src: list[str]) -> bool:
+        private = {e.id for e in self.vault.episodes() if e.privacy == "private"}
+        return any(s in private for s in src)
+
     def questions(self) -> list[str]:
-        """Open items of ``questions.md``, in file order (the file is kept in priority order)."""
+        """Open items of ``questions.md``, in file order (the file is kept in priority order).
+        An item may continue on indented lines; one marked ``(privacy:: private)`` is never
+        shown."""
         path = self.vault.questions_path
         if not path.exists():
             return []
-        out = []
+        items: list[list[str]] = []
         for line in path.read_text(encoding="utf-8").splitlines():
-            m = re.match(r"^\s*[-*]\s+(\[( |x|X)\]\s+)?(.*)$", line)
+            if re.match(r"^\s*[-*]\s+", line):
+                items.append([line])
+            elif items and line.strip() and line[:1].isspace():
+                items[-1].append(line.strip())
+            elif items and items[-1]:  # a blank line or a heading ends the item
+                items.append([])
+        out = []
+        for lines in items:
+            if not lines:
+                continue
+            m = re.match(r"^\s*[-*]\s+(\[( |x|X)\]\s+)?(.*)$", " ".join(lines))
             if not m or (m.group(2) or " ") != " ":
+                continue
+            if re.search(r"\(privacy::\s*private\s*\)", m.group(3)):
                 continue
             text = re.sub(r"\s*\^[a-z]-[a-z0-9]+\s*$", "", m.group(3))
             text = re.sub(r"\s*\([a-z_]+::[^)]*\)", "", text).strip()
+            text = re.sub(r"\s*\^[a-z]-[a-z0-9]+\s*$", "", text)
             if text and not self._mentions_private(m.group(3)):
                 out.append(self.text_of(text))
         return out

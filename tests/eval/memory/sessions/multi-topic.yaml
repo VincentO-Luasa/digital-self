@@ -1,0 +1,25 @@
+# Three topics in one chat: a project update, a new habit, a friend's birthday with a date.
+started: 2026-10-27T21:00
+channel: chat
+turns:
+  - user: "Busy day. Atlas first: we finished migrating all the dbt models on Friday, and next week we start on the Airflow DAGs."
+  - assistant: "Good progress. Still worried about the go-live?"
+  - user: "Less than before, honestly. The team is in a good rhythm."
+  - assistant: "Glad to hear it. What else is new?"
+  - user: "I started Portuguese lessons with a tutor, every Wednesday evening. My Portuguese is embarrassing for someone who has lived here this long."
+  - assistant: "Good for you! Anything else?"
+  - user: "Oh, and Sam's birthday party is next Saturday, November 7th. I need to find him a gift, he's really into vinyl records."
+gold:
+  episodes:
+    count: [2, 3]
+    regions: [[projects], [self.routine, self.interests, identity, skills, self.values_goals], [relationships.friends]]
+  facts:
+    - {s: self, p: [habit, interest, goal, has_skill], o: [Portuguese lessons, Portuguese, learning Portuguese]}
+    - {s: Sam Okafor, p: [likes, interest], o: [vinyl records, vinyl]}
+  intentions:
+    - {text: [gift], after: [2026-10-27, 2026-11-07], optional: true}
+  acceptable:
+    - {s: Atlas Migration, p: [status, note, goal, uses], o: [dbt models migrated, Airflow DAGs, Airflow, dbt, migrating Airflow DAGs]}
+    - {s: self, p: [speaks], o: [Portuguese]}
+    - {s: Sam Okafor, p: [born, note], o: [November 7, birthday]}
+    - {s: self, p: [note, goal], o: [find gift Sam]}

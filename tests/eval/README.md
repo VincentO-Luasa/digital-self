@@ -100,3 +100,57 @@ acceptable:                   # fine if extracted, not expected: count as precis
    `why` is a free comment.
 3. `uv run pytest tests/eval` checks the gold parses, uses only vocabulary predicates and
    declared subjects, and that the document reads at a useful size.
+
+## Memory (`brain eval memory`)
+
+`memory/sessions/<name>.yaml` holds fictional chats with **Alex Rivera** (the unit tests'
+persona), each processed by `brain.memory.process_session` in a fresh copy of the fixture vault
+(`tests/fixtures/vault`, so the gold can name its fact ids) with the date fixed to 2026-10-27.
+The set covers new facts, restated known facts (must not duplicate), an explicit correction of
+an ended fact and of a current one (→ supersession, auto-applied), an implicit contradiction
+(→ review, never applied), facts about a friend, a dated intention, small talk (→ no episode)
+and a multi-topic chat (→ 2–3 episodes).
+
+```yaml
+started: 2026-10-27T20:30       # the first turn; turns are a minute apart
+channel: chat                   # chat | interview | import
+turns:
+  - user: "Update for you: I don't live in Porto any more. I moved to Braga in September."
+  - assistant: "Got it."
+gold:
+  episodes:
+    count: 1                    # or [min, max]
+    regions: [[identity, self.routine]]   # per expected episode: any of these regions
+  facts:                        # applied facts expected (subject: self or a page name)
+    - {s: self, p: [habit, interest], o: [bouldering, climbing]}
+  supersede:                    # owner corrections expected auto-applied: fact id + new value
+    - {fact: f-d5e6f7, p: lives_in, o: Braga, from: 2026-09}
+  acceptable_supersede: []      # other fact ids whose auto-applied correction is fine
+  queued:                       # facts expected in the review queue
+    - {s: self, p: lives_in, o: Braga}
+  intentions:                   # keywords of the text, window for after::
+    - {text: [Atlas, metrics], after: [2026-11-09, 2026-11-20]}
+  acceptable: []                # fine if applied, not expected
+  forbid:                       # applied = wrongly auto-applied
+    - {s: self, p: lives_in, o: Lisbon}
+```
+
+| metric | meaning |
+|---|---|
+| episodes | the count is within the gold range (accuracy over transcripts) |
+| regions | expected episodes whose regions a produced episode meets (equal or dotted parent/child) |
+| fact recall | gold facts among the applied facts (`add_fact`, and the new fact of an applied supersession) |
+| precision | applied facts matching a gold fact, an expected correction or an `acceptable` fact |
+| supersede | gold owner corrections auto-applied with the right value and dates |
+| queued | gold contradictions found in the review queue |
+| intentions | gold intentions written (all keywords, date in the window) |
+| wrong auto | auto-applied supersessions the gold does not expect + applied `forbid` facts. **Must be 0** |
+| dups | current facts that repeat another current fact of the subject (same predicate, value, dates) |
+
+```bash
+uv run brain eval memory --no-cache --json s1.json   # one sample (run twice: noise is large)
+uv run brain eval memory --only correction            # some transcripts, cached model replies
+uv run brain eval memory --keep                       # keep the scratch vaults
+```
+
+`uv run pytest tests/eval` checks the gold (vocabulary, regions, fact ids in the seed vault).

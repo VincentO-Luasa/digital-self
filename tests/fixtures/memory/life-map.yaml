@@ -1,0 +1,124 @@
+# Pinned copy of config/life-map.yaml for the memory tests (the segmentation prompt lists the
+# regions, so recorded fixtures depend on it). Re-copy and re-record when the life map changes.
+# Life map: the regions the brain tries to cover, and the "slots" it wants filled in each.
+# Interview mode picks the region with the best (low coverage x high weight) score, then asks
+# about its empty or stale slots. A vault can override this file with <vault>/life-map.yaml.
+#
+# slot fields:
+#   id         unique within the region
+#   p          predicate (docs/vault-schema.md) that fills the slot
+#   subject    `self`, or an entity type (`person`, `project`, ...) for per-entity slots
+#   ask        hint for the interviewer; the local model rephrases it naturally
+#   stale_days slot counts as stale (worth re-confirming) after this many days; omit = never
+#   multi      true if several values are expected (coverage counts >= `min`)
+version: 0.1
+
+regions:
+  identity:
+    label: Identity & basics
+    weight: 1.0
+    slots:
+      - {id: name, p: name, subject: self, ask: "What should I call you?"}
+      - {id: city, p: lives_in, subject: self, ask: "Where do you live these days?", stale_days: 365}
+      - {id: hometown, p: hometown, subject: self, ask: "Where did you grow up?"}
+      - {id: languages, p: speaks, subject: self, multi: true, min: 1, ask: "Which languages do you speak?"}
+
+  career.current_job:
+    label: Current job
+    weight: 1.0
+    slots:
+      - {id: employer, p: works_at, subject: self, ask: "Where do you work right now?", stale_days: 180}
+      - {id: role, p: role, subject: self, ask: "What's your role there?", stale_days: 180}
+      - {id: team, p: team, subject: self, ask: "Which team are you in, and who do you work closest with?", stale_days: 180}
+      - {id: responsibilities, p: responsibility, subject: self, multi: true, min: 2, ask: "What does a typical week of work involve?", stale_days: 120}
+      - {id: manager, p: manager, subject: self, ask: "Who do you report to?", stale_days: 180}
+
+  career.history:
+    label: Career history
+    weight: 0.6
+    slots:
+      - {id: past_roles, p: works_at, subject: self, multi: true, min: 2, ask: "Walk me through your previous jobs: what was each one like?"}
+      - {id: achievements, p: worked_on, subject: self, multi: true, min: 3, ask: "What are you proudest of from your past work?"}
+
+  education:
+    label: Education
+    weight: 0.4
+    slots:
+      - {id: schools, p: studied_at, subject: self, multi: true, min: 1, ask: "Where did you study?"}
+      - {id: degrees, p: degree, subject: self, multi: true, min: 1, ask: "Which degrees or certifications do you hold?"}
+
+  skills:
+    label: Skills
+    weight: 0.6
+    slots:
+      - {id: technical, p: has_skill, subject: self, multi: true, min: 5, ask: "Which tools and techniques are you strongest at?", stale_days: 365}
+
+  projects:
+    label: Projects
+    weight: 1.0
+    per_entity: project
+    slots:
+      - {id: goal, p: goal, subject: project, ask: "What is {name} trying to achieve?"}
+      - {id: status, p: status, subject: project, ask: "Where does {name} stand right now?", stale_days: 30}
+      - {id: stakeholders, p: stakeholder, subject: project, multi: true, min: 1, ask: "Who else is involved in {name}?"}
+      - {id: deadline, p: deadline, subject: project, ask: "Is there a deadline for {name}?", stale_days: 60}
+
+  relationships.family:
+    label: Family
+    weight: 0.8
+    privacy: private
+    per_entity: person
+    slots:
+      - {id: relation, p: family_of, subject: person, ask: "How is {name} related to you?"}
+      - {id: last_seen, p: last_seen, subject: person, ask: "When did you last see {name}?", stale_days: 90}
+
+  relationships.friends:
+    label: Friends
+    weight: 0.7
+    privacy: private
+    per_entity: person
+    slots:
+      - {id: relation, p: friend_of, subject: person, ask: "How do you know {name}?"}
+      - {id: met_at, p: met_at, subject: person, ask: "Where did you meet {name}?"}
+      - {id: last_seen, p: last_seen, subject: person, ask: "When did you last catch up with {name}?", stale_days: 90}
+
+  relationships.work:
+    label: Colleagues & network
+    weight: 0.6
+    per_entity: person
+    slots:
+      - {id: relation, p: colleague_of, subject: person, ask: "How do you work with {name}?"}
+
+  self.values_goals:
+    label: Values & goals
+    weight: 0.9
+    slots:
+      - {id: values, p: values, subject: self, multi: true, min: 3, ask: "What matters most to you in how you live and work?"}
+      - {id: goals, p: goal, subject: self, multi: true, min: 2, ask: "What are you working towards this year?", stale_days: 90}
+
+  self.traits:
+    label: Strengths & flaws
+    weight: 0.8
+    privacy: private
+    slots:
+      - {id: strengths, p: has_strength, subject: self, multi: true, min: 3, ask: "What do people come to you for?"}
+      - {id: flaws, p: has_flaw, subject: self, multi: true, min: 2, ask: "What tends to trip you up?"}
+
+  self.routine:
+    label: Daily life & habits
+    weight: 0.7
+    slots:
+      - {id: habits, p: habit, subject: self, multi: true, min: 3, ask: "What does a normal weekday look like for you?", stale_days: 120}
+
+  self.interests:
+    label: Interests
+    weight: 0.5
+    slots:
+      - {id: interests, p: interest, subject: self, multi: true, min: 3, ask: "What do you do for fun?", stale_days: 365}
+
+  self.health:
+    label: Health & wellbeing
+    weight: 0.4
+    privacy: private
+    slots:
+      - {id: health, p: health, subject: self, multi: true, min: 1, ask: "Anything about your health or energy you'd like me to keep in mind?", stale_days: 120}

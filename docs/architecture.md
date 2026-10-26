@@ -179,7 +179,7 @@ and retrieved context under ~1.5k tokens.
 |---|---|---|
 | 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked | done |
 | 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` | done |
-| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | next |
+| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`); graph-cleaning pass next |
 | 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook | |
 | 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint, decay | |
 | 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI | |
@@ -222,3 +222,19 @@ v3, normalisation guards; see the `ingest` skill). Still open:
 - Undated past places are skipped rather than kept as history; consider a `lived_in`-style
   history fact without dates.
 - Wrong dates from the model (a project dated like the job) are not caught.
+
+## Open items (from the Phase 2 memory pipeline)
+
+- `vault_template/AGENTS.md` should list `confirm_fact` and say that `add_episode` /
+  `update_episode` are refused from the big model; the big model's MCP tools (Phase 3) must treat
+  `privacy:: private` facts and `privacy: private` episodes like private pages.
+- A correction is bitemporally coarse: the replaced fact gets `to::` = the new `from::` when that
+  is later, else the day of the change (it was never true; `by::` says it was replaced).
+- `confirm_fact` adds the episode to `src::`; interview staleness (`stale_days`) could read "last
+  confirmed" from the newest episode in `src::` instead of `rec::`.
+- Embedding candidates for resolution embed every compatible page name per session (a few seconds
+  on a large vault): cache name vectors in the index.
+- Episodes are written per session at its close; long interviews (> ~6k tokens) are sent whole to
+  the segmenter (no windowing yet).
+- A supersession the model hints at for a multi-valued predicate (works_at Contoso "contradicts"
+  works_at Fabrikam) is queued even when the owner did not mean it; watch the review queue.

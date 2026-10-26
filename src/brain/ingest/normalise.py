@@ -39,7 +39,7 @@ from brain.vault.models import (
     is_multi_valued,
     link_target,
 )
-from brain.vault.ops import AddAlias, AddFact, ChangeSet, CreateEntity, Operation
+from brain.vault.ops import AddAlias, AddFact, ChangeSet, CreateEntity, Operation, Origin
 from brain.vault.raw import slugify
 from brain.vault.store import SELF_PAGE, Vault
 
@@ -897,6 +897,7 @@ def build_changeset(
     entity_kinds: Mapping[str, str] | None = None,
     brief: Brief | None = None,
     texts: Sequence[str] | None = None,
+    origin: Origin = "ingest",
 ) -> Normalised:
     """``today`` is the ingest date: the model sometimes dates facts to it ("Today is …" is in
     its prompt); a document can't, so such starts are dropped.
@@ -910,7 +911,10 @@ def build_changeset(
     entity, its parents and roles add structural facts, its homes date past cities.
 
     ``texts``: the text of each extraction's part, in the same order: a degree is linked to the
-    school its part names with it (``_link_degrees``)."""
+    school its part names with it (``_link_degrees``).
+
+    ``origin``: the change set's origin (``extract`` when the memory pipeline reuses this for a
+    conversation episode)."""
     entity_kinds = entity_kinds or {}
     notes: list[str] = []
     profile = vault.page(SELF_PAGE)
@@ -1034,5 +1038,5 @@ def build_changeset(
         ops.append(
             AddFact(subject=f.subject, p=f.p, o=f.o, text=text, kind=kind, extra=f.extra, **spec)
         )
-    changeset = ChangeSet(ops=ops, origin="ingest", src=[src], rationale=rationale)
+    changeset = ChangeSet(ops=ops, origin=origin, src=[src], rationale=rationale)
     return Normalised(changeset, notes, doc_owner)

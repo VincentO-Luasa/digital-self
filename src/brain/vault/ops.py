@@ -12,7 +12,14 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from brain.vault.models import EntityType, Kind, Privacy, check_partial_date
+from brain.vault.models import (
+    Channel,
+    EntityType,
+    EpisodeStatus,
+    Kind,
+    Privacy,
+    check_partial_date,
+)
 
 
 class FactSpec(BaseModel):
@@ -95,6 +102,44 @@ class AddObservation(BaseModel):
     importance: int = Field(ge=1, le=10)
 
 
+class ConfirmFact(BaseModel):
+    """The owner restated a fact the vault holds: the change set's sources are added to its
+    ``src::`` (nothing else changes). Used by the memory pipeline for ``confirms``."""
+
+    op: Literal["confirm_fact"] = "confirm_fact"
+    fact_id: str
+
+
+class AddEpisode(BaseModel):
+    """Write ``episodes/YYYY/MM/<id>.md`` (docs/vault-schema.md, Episodes). Memory pipeline only:
+    the big model never proposes episodes."""
+
+    op: Literal["add_episode"] = "add_episode"
+    id: str  # ep-YYYYMMDD-HHMM-<slug>
+    session: str
+    turns: tuple[int, int]
+    channel: Channel
+    provider: str | None = None
+    regions: list[str] = []
+    entities: list[str] = []  # entity ids
+    importance: int = Field(ge=1, le=10)
+    gist: str
+    started: datetime
+    status: EpisodeStatus = "pending"
+    privacy: Privacy = "normal"
+    summary: str = ""
+
+
+class UpdateEpisode(BaseModel):
+    """Change an episode's status (pending → extracted → consolidated) and add entity links
+    (entities created by its extraction). Memory pipeline only."""
+
+    op: Literal["update_episode"] = "update_episode"
+    id: str
+    status: EpisodeStatus | None = None
+    add_entities: list[str] = []
+
+
 Operation = Annotated[
     CreateEntity
     | AddFact
@@ -103,7 +148,10 @@ Operation = Annotated[
     | UpdateSummary
     | AddAlias
     | AddIntention
-    | AddObservation,
+    | AddObservation
+    | ConfirmFact
+    | AddEpisode
+    | UpdateEpisode,
     Field(discriminator="op"),
 ]
 

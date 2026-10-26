@@ -1,4 +1,4 @@
-# Vault schema (v0.3)
+# Vault schema (v0.4)
 
 The vault is the brain's long-term memory and the **single source of truth**. It is a folder of
 Obsidian-compatible markdown, versioned with a *local-only* git repo, living **outside** this code
@@ -91,6 +91,7 @@ Body sections, in order:
 | `evidence::` | inferred only | list of sources supporting an inference (no fake confidence numbers) |
 | `by::` | history only | block id of the superseding fact; absent when a fact simply ended |
 | `level::`, `rel::`, `at::` | no | qualifiers of some predicates (see the vocabulary): a skill's level, a relation's kind, the school a degree is from |
+| `privacy::` | no | `private` (v0.4): the fact comes from an answer the owner marked private; it is private whatever its page's privacy (see Privacy) |
 | `^f-xxxxxx` | yes | block id: `f-` + 6 lowercase base32 chars; Obsidian can link to it |
 
 Rules:
@@ -101,6 +102,12 @@ Rules:
 - **Restating is not contradicting.** A new fact with the same subject, `p` and `o` as a current
   fact is a duplicate (skipped) when its dates are missing, equal or less precise. Different dates
   (e.g. a new `to::`) make it a contradiction, which goes to review.
+- **Restated facts gain a source.** When the owner restates a fact the vault holds (same subject,
+  `p`, value; no new dates), its `src::` gains the episode (`confirm_fact`); nothing else changes.
+  This also holds for an ended fact in `## History` (one without `by::`).
+- **An ended fact can be corrected.** A History fact without `by::` (it simply ended) may be
+  replaced by a corrected version ("I left in March, not January"): it stays in History and gets
+  `by::`; the corrected fact goes to `## Facts` (with its own `to::`).
 - **Back-to-back is not overlap.** A fact ending in `2025-03` and one starting in `2025-03` hand over;
   they don't clash.
 - **Contradiction checks are scoped** to the same `subject` + `p` (+ `o` for multi-valued
@@ -108,7 +115,7 @@ Rules:
 - **Inferred facts** (traits, patterns, flaws) always go through the review queue.
 - Hand-edits in Obsidian are allowed; `brain lint` validates and normalises the format.
 
-### Predicate vocabulary (v0.3)
+### Predicate vocabulary (v0.4)
 
 Single-valued per subject unless marked *(multi)*:
 
@@ -148,9 +155,18 @@ importance: 6                      # 1–10, scored at segmentation time
 gist: Alex worries the Atlas migration deadline is unrealistic   # ≤30 tokens, used by retrieval
 started: 2026-10-25T14:12
 status: extracted                  # pending | extracted | consolidated
+# privacy: private                 # v0.4, only when private: it holds an answer marked private
 ---
 <3–6 sentence summary of what was said>
 ```
+
+Episodes are written by the memory pipeline only (`add_episode`, `update_episode`; the big model
+never proposes them): `pending` when the session is segmented, `extracted` in the same commit as
+the facts drawn from it, `consolidated` by Phase 4. `importance` is computed in code from labels
+the model gives (emotion, goal link, a date ahead, "remember this", a life change; see the
+`memory` skill). `entities` gains the pages its extraction created. A conversation with nothing
+personal yields no episode; `log.md` records `extract | <transcript> | no episode: …` instead, so
+it is not segmented again.
 
 ## Big-model conversations (raw/external/)
 
@@ -187,6 +203,9 @@ Append-only dated observations — the bridge between episodes and wiki pages:
 - 2026-10-25 · imp 7 · Alex is anxious about the Q1 platform migration deadline · [[ep-20261025-1412-career]] ^o-4hd8sa
 ```
 
+The date is the day of the conversation (the change set's date), the importance that of the
+episode it comes from.
+
 Recency for retrieval is measured from **last access**, so recalled memories are reinforced.
 Low-importance, never-accessed observations are summarised and archived at consolidation; they
 are never silently dropped.
@@ -207,12 +226,31 @@ are never silently dropped.
 
 Every change the pipeline is not allowed to auto-apply becomes a review file: a JSON block of
 operations (`create_entity`, `add_fact`, `supersede_fact`, `merge_entities`, `update_summary`,
-`add_alias`, `add_intention`). The canonical JSON shape of each operation is the Pydantic model in
-`brain.vault.ops`; `vault_template/AGENTS.md` mirrors it. Each review also carries a
-human-readable diff. Auto-applied: plain stated/observed facts with no contradiction. Queued:
+`add_alias`, `add_intention`, `add_observation`, `confirm_fact`). The canonical JSON shape of each
+operation is the Pydantic model in `brain.vault.ops`; `vault_template/AGENTS.md` mirrors it.
+`add_episode` and `update_episode` exist for the memory pipeline only (refused from the big
+model) and are never queued. Each review also carries a human-readable diff. Auto-applied: plain
+stated/observed facts with no contradiction, confirmations, journal lines, intentions. Queued:
 inferred facts, relationship changes, contradictions, supersessions, merges, and any change from
 the big model that touches a `private` page (as subject, as the object of a fact, or through a
 region the life map marks private).
+
+**Owner corrections (v0.4).** One kind of supersession is auto-applied: the owner, in a
+conversation, *explicitly* says that one of their own stored facts is wrong, has changed or is no
+longer true ("No, I left Fabrikam in March 2024, not 2023", "I don't live in Lisbon any more").
+All of these must hold, else it is queued like any supersession:
+
+- a typed decision on the conversation and the stored fact ("does the owner tell that the stored
+  fact is wrong or out of date?") gives p ≥ 0.9 (the memory pipeline asks it);
+- origin `extract`; the fact is about the owner (`self`), its predicate is not a relationship;
+- no private page, no region the life map marks private, no `privacy:: private` fact, and the
+  correction does not come from an answer marked private;
+- the replacement (if any) is `stated` and has the same predicate.
+
+Implicit contradictions (the owner talks as if a fact had changed without saying so), facts
+about other people, projects or organisations, and relationship changes stay in the queue. The
+change is one vault commit, and `log.md` says `owner correction applied: ^f-…`, so it can be
+reverted with git like any other.
 
 ## Privacy
 
@@ -221,3 +259,10 @@ region the life map marks private).
   only inside a handoff packet you confirmed.
 - `.privacy/denylist.txt` (one term per line, generated from private pages' titles and aliases +
   manual entries) is read by the code repo's pre-commit hook to block accidental leaks.
+- **Private answers** (v0.4). In an interview the owner can mark an answer private (the transcript
+  has `[interview] privacy:: private …` before it). Everything drawn from it is private: its
+  episode gets `privacy: private` (its journal lines are private through their source), its facts
+  get `privacy:: private` even on a normal page, pages it creates are private, and it adds no
+  alias. The index, the profile card's big-model variant and anything served to the big model
+  treat these as private pages. A `questions.md` item marked `(privacy:: private)` is never shown
+  in a generated file.

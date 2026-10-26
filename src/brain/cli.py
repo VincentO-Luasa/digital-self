@@ -15,6 +15,7 @@ from rich.table import Table
 from brain.config import Settings, load_settings
 from brain.index.db import connect, open_index, read_meta
 from brain.index.reindex import ReindexStats, reindex
+from brain.interview.cli import interview as interview_cmd
 from brain.llm import LLM
 from brain.vault import gitops
 from brain.vault.generated import refresh_generated
@@ -81,6 +82,14 @@ def _print_reindex(stats: ReindexStats) -> None:
     )
 
 
+def _refresh_questions(vault: Vault, db: Any) -> None:
+    """questions.md follows coverage, which follows the index: rebuild it after a reindex."""
+    from brain.interview import refresh_questions
+
+    if refresh_questions(vault, db):
+        console.print("regenerated: questions.md")
+
+
 def _refresh(vault: Vault, settings: Settings, llm: Any | None) -> None:
     """After memory changed: regenerate index.md / core.md, then reindex if the model is up."""
     changed = refresh_generated(vault, max_tokens=settings.core_max_tokens)
@@ -92,6 +101,7 @@ def _refresh(vault: Vault, settings: Settings, llm: Any | None) -> None:
     db = _open_db(settings, llm)
     try:
         _print_reindex(reindex(vault, db, llm))
+        _refresh_questions(vault, db)
     finally:
         db.close()
 
@@ -171,6 +181,15 @@ def status() -> None:
     ops = sum(len(r.ops) for r in pending)
     table.add_row("reviews", f"{len(pending)} pending ({ops} operations)")
     table.add_row("index", _index_status(settings.db_path))
+    if settings.db_path.exists():
+        from brain.interview.cli import coverage_summary
+        from brain.interview.coverage import coverage_report
+
+        conn = connect(settings.db_path)
+        try:
+            table.add_row("coverage", coverage_summary(coverage_report(conn, vault.lifemap)))
+        finally:
+            conn.close()
     head = gitops.head(vault.root)
     table.add_row("vault git", head[:10] if head else "no commits")
     console.print(table)
@@ -205,6 +224,7 @@ def reindex_cmd(
     db = _open_db(settings, llm)
     try:
         _print_reindex(reindex(vault, db, llm, full=full))
+        _refresh_questions(vault, db)
     finally:
         db.close()
 
@@ -312,6 +332,7 @@ def ingest_cmd(
                     on_chunk=progress,
                 )
             ]
+        _refresh_questions(vault, db)
     except (UnsupportedDocument, FetchError) as err:
         raise _fail(str(err)) from err
     finally:
@@ -421,8 +442,13 @@ def chat_cmd(
         list[str] | None,
         typer.Option("--message", "-m", help="Send this message and exit (repeatable)."),
     ] = None,
+    no_memory: Annotated[
+        bool,
+        typer.Option("--no-memory", help="Keep the transcript, but don't turn it into memory."),
+    ] = False,
 ) -> None:
-    """Chat with your brain (read-only in Phase 1; the transcript is saved to raw/)."""
+    """Chat with your brain. The transcript is saved to raw/; when the session closes it is
+    segmented into episodes and extracted into memory (unless --no-memory)."""
     from brain.chat import ChatSession, run_repl
 
     settings = get_settings()
@@ -441,8 +467,118 @@ def chat_cmd(
                 console.print()
         else:
             run_repl(session, console)
-        if session.close() and session.transcript:
+        session.close()
+        if session.transcript:
             console.print(f"[dim]transcript: {session.transcript.rel}[/]")
+            if no_memory:
+                console.print(
+                    "[dim]memory: skipped (--no-memory); `brain memory process --pending` later[/]"
+                )
+            else:
+                _process(vault, llm, session.transcript, "chat", db, settings)
+    finally:
+        db.close()
+
+
+def _process(
+    vault: Vault, llm: Any, transcript: Any, channel: str, db: Any, settings: Settings
+) -> Any:
+    from brain.memory import process_session
+
+    console.print("[dim]remembering…[/]")
+    report = process_session(
+        vault,
+        llm,
+        transcript,
+        channel=channel,  # type: ignore[arg-type]
+        db=db,
+        core_max_tokens=settings.core_max_tokens,
+    )
+    _print_memory(report)
+    return report
+
+
+def _print_memory(report: Any, *, verbose: bool = False) -> None:
+    color = "red" if report.status == "failed" else "green"
+    console.print(f"[{color}]{escape(report.summary())}[/]")
+    for ep in report.episodes:
+        bits = f"+{ep.facts_added} facts, {ep.superseded} superseded"
+        if ep.corrected:
+            bits += f" ({ep.corrected} owner correction{'s' if ep.corrected > 1 else ''})"
+        bits += f", {ep.queued} queued"
+        console.print(
+            f"  {ep.id} [dim](imp {ep.importance}, {', '.join(ep.regions) or 'no region'})[/] "
+            f"{escape(ep.gist)} · {bits}" + (f" · [red]{escape(ep.error)}[/]" if ep.error else "")
+        )
+        if verbose:
+            for note in ep.notes:
+                console.print(f"    [dim]· {escape(note)}[/]")
+    if verbose:
+        for note in report.notes:
+            console.print(f"  [dim]· {escape(note)}[/]")
+    if report.review_ids:
+        console.print(f"review: {', '.join(report.review_ids)} (run `brain review`)")
+
+
+app.command("interview")(interview_cmd)
+
+memory_app = typer.Typer(help="The memory pipeline (episodes, extraction).", no_args_is_help=True)
+app.add_typer(memory_app, name="memory")
+
+
+@memory_app.command("process")
+def memory_process_cmd(
+    transcript: Annotated[
+        Path | None,
+        typer.Argument(help="A transcript under raw/conversations/ (path or vault-relative)."),
+    ] = None,
+    pending: Annotated[
+        bool, typer.Option("--pending", help="Every transcript not processed yet.")
+    ] = False,
+    channel: Annotated[
+        str, typer.Option(help="chat | interview | import (default: the transcript's own).")
+    ] = "",
+    verbose: Annotated[bool, typer.Option("--notes", help="Print every note.")] = False,
+) -> None:
+    """Turn finished transcripts into episodes and memory (idempotent)."""
+    from brain.memory import pending_transcripts, process_session
+    from brain.vault.raw import Transcript
+
+    if (transcript is None) == (not pending):
+        raise _fail("give a TRANSCRIPT or --pending")
+    settings = get_settings()
+    vault = _vault(settings)
+    if pending:
+        todo = pending_transcripts(vault)
+        if not todo:
+            console.print("Nothing to process.")
+            return
+    else:
+        assert transcript is not None
+        path = transcript if transcript.is_absolute() else Path.cwd() / transcript
+        if not path.is_file():
+            path = vault.root / transcript
+        if not path.is_file():
+            raise _fail(f"{transcript}: no such transcript")
+        todo = [Transcript.open(vault, path)]
+    llm = _model(settings)
+    db = _open_db(settings, llm)
+    try:
+        for item in todo:
+            fm, _ = item.read()
+            kind = channel or str(fm.get("channel") or "chat")
+            if kind not in ("chat", "interview", "import"):
+                raise _fail(f"unknown channel {kind!r}")
+            console.print(f"[bold]{escape(item.rel)}[/]")
+            report = process_session(
+                vault,
+                llm,
+                item,
+                channel=kind,  # type: ignore[arg-type]
+                db=db,
+                core_max_tokens=settings.core_max_tokens,
+            )
+            _print_memory(report, verbose=verbose)
     finally:
         db.close()
 
@@ -551,6 +687,121 @@ def eval_ingest_cmd(
             shutil.rmtree(workdir, ignore_errors=True)
     kinds = ev.error_kinds(scores)
     _print_eval(scores, kinds)
+    if json_out:
+        meta = {
+            "run_at": datetime.now().isoformat(timespec="seconds"),
+            "today": ev.EVAL_TODAY.isoformat(),
+            "model": settings.llm.chat_model,
+            "cache": None if cache is None else str(cache.directory),
+            "cache_hits": None if cache is None else cache.hits,
+        }
+        data = ev.report_json(scores, meta)
+        json_out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        console.print(f"details: {json_out}")
+
+
+def _print_memory_eval(scores: list[Any], ev: Any) -> None:
+    table = Table(
+        "transcript",
+        "episodes",
+        "regions",
+        "fact recall",
+        "precision",
+        "supersede",
+        "queued",
+        "intentions",
+        "wrong auto",
+        "dups",
+        "s",
+    )
+    rows = [(s.gold.name, s.counts(), s.seconds, s) for s in scores]
+    if len(scores) > 1:
+        rows.append(("[bold]all[/]", ev.totals(scores), sum(s.seconds for s in scores), None))
+    for name, c, seconds, s in rows:
+        if s:
+            want = "–".join(map(str, sorted(set(s.gold.count))))
+            episodes = f"{s.episodes} ({'ok' if s.count_ok else 'want ' + want})"
+        else:
+            episodes = _frac(c["count_ok"], c["cases"])
+        wrong = c["wrong_auto"]
+        table.add_row(
+            name,
+            episodes,
+            _frac(c["regions_matched"], c["regions"]),
+            _frac(c["facts_matched"], c["facts"]),
+            _frac(c["applied_matched"], c["applied"]),
+            _frac(c["supersede_ok"], c["supersede"]),
+            _frac(c["queued_matched"], c["queued"]),
+            _frac(c["intentions_matched"], c["intentions"]),
+            f"[red]{wrong}[/]" if wrong else "0",
+            str(c["duplicates"]),
+            f"{seconds:.0f}",
+        )
+    console.print(table)
+    for s in scores:
+        for item in s.wrong_auto:
+            console.print(f"[red]{escape(s.gold.name)}: {escape(item)}[/]")
+        if s.error:
+            console.print(f"[red]{escape(s.gold.name)}: {escape(s.error)}[/]")
+
+
+@eval_app.command("memory")
+def eval_memory_cmd(
+    only: Annotated[
+        list[str] | None,
+        typer.Option("--only", help="Only transcripts whose name contains this (repeatable)."),
+    ] = None,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Re-run the model (a new sample).")
+    ] = False,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Write every fact, miss and note here.")
+    ] = None,
+    keep: Annotated[
+        bool, typer.Option("--keep", help="Keep the scratch vaults and print where they are.")
+    ] = False,
+) -> None:
+    """Score the memory pipeline on fictional transcripts (never touches your vault).
+
+    Each transcript goes into a fresh copy of the fixture vault; see tests/eval/README.md.
+    """
+    import json
+    import shutil
+    import tempfile
+    from datetime import datetime
+
+    from brain.eval import memory_eval as ev
+
+    cases = ev.load_set(only=only or ())
+    if not cases:
+        raise _fail("no evaluation transcript matches --only")
+    settings = get_settings()
+    llm = _model(settings)
+    cache = None
+    if not no_cache:
+        from brain.llm.cache import StructuredCache
+
+        llm = cache = StructuredCache(llm, ev.default_cache_dir())
+    workdir = Path(tempfile.mkdtemp(prefix="brain-eval-memory-"))
+    scores = []
+    try:
+        for n, case in enumerate(cases, 1):
+            console.print(f"[bold]{n}/{len(cases)}[/] {escape(case.name)} …")
+            score = ev.run_case(case, llm, workdir)
+            m = ev.metrics(score.counts(), score.seconds)
+            console.print(
+                f"  {score.episodes} episode(s) · recall {m['fact_recall']} · "
+                f"precision {m['fact_precision']} · wrong auto {m['wrongly_auto_applied']} · "
+                f"{score.seconds:.0f}s"
+                + (f" · [red]{escape(score.error)}[/]" if score.error else "")
+            )
+            scores.append(score)
+    finally:
+        if keep:
+            console.print(f"scratch vaults: {workdir}")
+        else:
+            shutil.rmtree(workdir, ignore_errors=True)
+    _print_memory_eval(scores, ev)
     if json_out:
         meta = {
             "run_at": datetime.now().isoformat(timespec="seconds"),

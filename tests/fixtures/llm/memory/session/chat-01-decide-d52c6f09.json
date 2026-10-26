@@ -1,0 +1,29 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "OWNER: Evening! Long day. The Atlas go-live got moved to December 1st, which is a relief honestly.\nOWNER: The warehouse team needed more time for the parallel run. Also, small correction: I joined Northwind in January 2023, not February.\nOWNER: Sam just started a new job at Contoso as a product manager. We're celebrating on Saturday.",
+    "questions": [
+      {
+        "type": "predicate",
+        "name": "personal",
+        "instructions": "Does the owner say anything about their own life: their work, projects, plans, people they know, places, past, feelings, preferences or habits?"
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "predicate",
+        "name": "personal",
+        "probability": 0.9933
+      }
+    ],
+    "usage": {
+      "input_tokens": 164,
+      "output_tokens": 0
+    }
+  }
+}

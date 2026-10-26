@@ -1,0 +1,19 @@
+# Known facts restated (must not be duplicated), plus a musing that is no fact.
+started: 2026-10-27T22:40
+channel: chat
+turns:
+  - user: "Quick one before bed. You know I've been at Northwind since February 2023, on the data platform team, and I still live in Porto."
+  - assistant: "Yes, I have all of that. What's on your mind?"
+  - user: "I'm wondering whether to ask for a transfer to the Lisbon office one day. Nothing decided, just thinking out loud."
+  - assistant: "What draws you to Lisbon?"
+  - user: "Mostly I miss the river walks there. But Porto is home now."
+gold:
+  episodes:
+    count: 1
+    regions: [[career.current_job, identity]]
+  facts: []
+  acceptable:
+    - {s: self, p: [likes, interest, goal, note, habit], o: [river walks, transfer Lisbon office, Lisbon office]}
+  forbid:
+    - {s: self, p: lives_in, o: Lisbon}
+    - {s: self, p: works_at, o: Lisbon office}

@@ -30,6 +30,7 @@ from brain.vault.models import (
     Intention,
     Observation,
     Page,
+    fact_private,
     link_target,
 )
 
@@ -238,7 +239,7 @@ def add_fact(
             kind="fact",
             entity_id=page.id,
             text=label + res.plain(fact.text) + validity_suffix(fact),
-            privacy=page.privacy,
+            privacy=PRIVATE if fact_private(fact) else page.privacy,
             importance=None,
             date=fact.rec.isoformat(),
             src=src,
@@ -249,6 +250,8 @@ def add_fact(
 def episode_privacy(
     ep: Episode, entities: list[str], res: Resolver, private: Collection[str]
 ) -> str:
+    if ep.privacy == PRIVATE:
+        return PRIVATE
     if any(res.privacy(e) == PRIVATE for e in entities):
         return PRIVATE
     return PRIVATE if any(region_is_private(r, private) for r in ep.regions) else NORMAL

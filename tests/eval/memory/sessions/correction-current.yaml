@@ -1,0 +1,16 @@
+# An explicit change of a current fact ("I don't live in X any more") → supersede, auto-applied.
+started: 2026-10-27T20:30
+channel: chat
+turns:
+  - user: "Update for you: I don't live in Porto any more. I moved to Braga in September, the rent was getting silly."
+  - assistant: "Got it. How's Braga treating you?"
+  - user: "Quieter, cheaper, and I still go to the Porto office twice a week by train."
+gold:
+  episodes:
+    count: 1
+    regions: [[identity, self.routine]]
+  supersede:
+    - {fact: f-d5e6f7, p: lives_in, o: Braga, from: 2026-09}
+  facts: []
+  acceptable:
+    - {s: self, p: [habit, note], o: [Porto office twice a week, train, office twice a week]}

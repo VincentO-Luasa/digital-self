@@ -1,0 +1,275 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You update the owner's memory from one episode of a conversation. KNOWN FACTS is what memory already holds; list only what the owner's words add or change.\n\nFields, in this order:\n- reasoning: one short sentence on what the owner says that is new or different from KNOWN FACTS.\n- entities: the people, organisations, projects, places and events that facts point to. Never the owner. Each has name (as written), type (person, org, project, place, event, or tool for a tool, app, product or technology), id (its id in KNOWN ENTITIES, else \"\") and aliases ([] if none). Teams, skills and languages are not entities.\n- facts: one per fact, one value each. Each fact has:\n  - subject: \"self\" for the owner, otherwise an entity name.\n  - predicate: one of the predicates below.\n  - object: an entity name, \"self\", or a short literal such as \"Python\", \"Senior data engineer\"; \"\" only with label contradicts when the owner says the known fact is no longer true and gives no new value.\n  - text: \"\" when predicate and object say it all. Otherwise a short sentence that starts with a verb, contains the object and has no name and no pronoun, e.g. \"Plays five-a-side football on Thursdays\".\n  - start, end: when it began and stopped, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given), made absolute from today's date (\"last March\", \"next month\"; a month ahead without a year is its next one); \"\" if not said or still true.\n  - label: new (not in KNOWN FACTS), confirms (says what a known fact says), contradicts (the owner says a known fact is wrong, has changed or is no longer true), or noop (nothing worth keeping).\n  - known: the id of the known fact it confirms or contradicts (e.g. \"f-k3x9q2\"); \"\" for new.\n- observations: 0 to 2 short sentences for the owner's journal about how the owner feels or what happened to them, with the owner's name, e.g. \"Alex is anxious about the Atlas go-live\". [] if nothing.\n- intentions: things to bring up with the owner later, each with text (what to ask or say, e.g. \"Ask how the Atlas go-live went\"), after (YYYY-MM-DD from when it makes sense, \"\" if any time) and about (names of the entities it is about; [] if none). [] if none.\n\nPredicates:\n- name, born, hometown (where they grew up), lives_in (the city they live in), nationality, speaks (a language).\n- works_at (an employer organisation), role (a job title), team (a team name), manager (who they report to), responsibility (one duty in a job, as a verb phrase), worked_on (a project).\n- studied_at (a school or university), degree, certification.\n- has_skill (a skill, tool or technology), habit (something done regularly), values, interest, likes, dislikes, goal (an aim of the owner or of a project), fears (a lasting fear), health (a lasting condition). A passing worry, mood or feeling about something is an observation, not a fact.\n- About a project (subject: the project): owner (who leads it), status, deadline (a date), stakeholder, uses (a tool).\n- friend_of, family_of, partner_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person, object: \"self\"). met_at (where the owner met them), last_seen (a date): subject the person.\n- member_of (a club or group), located_in, part_of.\n\nRules:\n- Only what the OWNER says or confirms; never the assistant's guesses, questions or advice. NOTE lines mark an interview's questions (topic, region, the entity asked about) and private answers: use them to know what an answer is about, never as facts.\n- Facts about other people use that person as subject (Sam's new job: subject Sam, works_at).\n- Every fact that is new or different, and only those: no guesses, no outside knowledge. A fact restated as it is known is confirms, with its id.\n- When the owner corrects or updates a known fact, give the corrected fact with label contradicts and the known fact's id. A changed value (a move, a new role) starts when the owner says it did.\n- Reuse KNOWN ENTITIES: put their id in id.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"entities\":[{\"name\":\"…\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"lives_in\",\"object\":\"…\",\"text\":\"\",\"start\":\"2026-09\",\"end\":\"\",\"label\":\"contradicts\",\"known\":\"f-…\"}],\"observations\":[\"…\"],\"intentions\":[{\"text\":\"…\",\"after\":\"\",\"about\":[]}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-27. Owner: Alex Rivera.\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera, Alex)\n- people/sam-okafor: Sam Okafor, Sam, Samuel Okafor\n\nKNOWN FACTS (id: subject · predicate · value · dates):\n- f-y5z6a7: Sam Okafor · friend_of · the owner · since 2014\n- f-b2c3d4: Sam Okafor · met_at · University in Bristol\n- f-e5f6g7: Sam Okafor · last_seen · 2026-10-19\n\nEPISODE SUMMARY: Alex informs the assistant that Sam has started a new job as a product manager at Contoso. They plan to celebrate this event on Saturday.\n\nEPISODE:\n[5] OWNER: Sam just started a new job at Contoso as a product manager. We're celebrating on Saturday."
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 3072,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "MemoryExtraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "MemoryFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "habit",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of",
+                    "dislikes",
+                    "fears",
+                    "health",
+                    "partner_of",
+                    "met_at",
+                    "last_seen"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                },
+                "label": {
+                  "enum": [
+                    "new",
+                    "confirms",
+                    "contradicts",
+                    "noop"
+                  ],
+                  "title": "Label",
+                  "type": "string"
+                },
+                "known": {
+                  "title": "Known",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end",
+                "label",
+                "known"
+              ],
+              "title": "MemoryFact",
+              "type": "object"
+            },
+            "MemoryIntention": {
+              "properties": {
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "after": {
+                  "title": "After",
+                  "type": "string"
+                },
+                "about": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "About",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "text",
+                "after",
+                "about"
+              ],
+              "title": "MemoryIntention",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/MemoryFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            },
+            "observations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Observations",
+              "type": "array"
+            },
+            "intentions": {
+              "items": {
+                "$ref": "#/$defs/MemoryIntention"
+              },
+              "title": "Intentions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "entities",
+            "facts",
+            "observations",
+            "intentions"
+          ],
+          "title": "MemoryExtraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-bda0e49d",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The owner states Sam Okafor has a new job at Contoso as a product manager, which is new information not present in the known facts.\", \"entities\": [{\"name\": \"Sam Okafor\", \"type\": \"person\", \"id\": \"sam-okafor\", \"aliases\": [\"Sam\", \"Samuel Okafor\"]}, {\"name\": \"Contoso\", \"type\": \"org\", \"id\": \"\", \"aliases\": []}], \"facts\": [{\"subject\": \"Sam Okafor\", \"predicate\": \"works_at\", \"object\": \"Contoso\", \"text\": \"\", \"start\": \"2026-10\", \"end\": \"\", \"label\": \"new\", \"known\": \"\"}, {\"subject\": \"Sam Okafor\", \"predicate\": \"role\", \"object\": \"product manager\", \"text\": \"\", \"start\": \"2026-10\", \"end\": \"\", \"label\": \"new\", \"known\": \"\"}], \"observations\": [\"Alex is planning to celebrate Sam's new job on Saturday.\"], \"intentions\": [{\"text\": \"Ask how the celebration with Sam went\", \"after\": \"2026-10-31\", \"about\": [\"Sam Okafor\", \"Contoso\"]}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1793025246,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 270,
+      "prompt_tokens": 1332,
+      "total_tokens": 1602,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1332,
+      "output_tokens": 270,
+      "time_to_first_token": 3.87,
+      "total_time": 13.65,
+      "prompt_eval_duration": 3.87,
+      "generation_duration": 9.79,
+      "prompt_tokens_per_second": 344.59,
+      "generation_tokens_per_second": 27.59
+    }
+  }
+}

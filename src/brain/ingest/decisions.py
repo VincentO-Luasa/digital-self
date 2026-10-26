@@ -665,6 +665,11 @@ def _named(text: str, name: str, aliases: Sequence[str] = ()) -> bool:
     return any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", text) for w in words)
 
 
+def named(text: str, name: str, aliases: Sequence[str] = ()) -> bool:
+    """Public form of ``_named`` (used by the memory pipeline's grounding)."""
+    return _named(text, name, aliases)
+
+
 def ground(extraction: Extraction, text: str, self_names: set[str], checks: Checks) -> None:
     """Drop facts whose entities the part never names: a fact's subject (unless the owner) and,
     for predicates that point at a page (``works_at``, ``worked_on``, relations, …), its object.

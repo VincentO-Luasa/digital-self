@@ -129,6 +129,7 @@ def render_episode(episode: Episode) -> str:
             ("gist", episode.gist),
             ("started", episode.started),
             ("status", episode.status),
+            ("privacy", "private" if episode.privacy == "private" else None),
         ]
     )
     return fm + (f"{episode.summary}\n" if episode.summary else "")

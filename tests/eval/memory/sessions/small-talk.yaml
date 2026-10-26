@@ -1,0 +1,15 @@
+# Small talk and a general-knowledge question: nothing personal → no episode.
+started: 2026-10-27T12:30
+channel: chat
+turns:
+  - user: "hey"
+  - assistant: "Hi Alex! How's it going?"
+  - user: "good good. tell me a joke"
+  - assistant: "Why did the database administrator leave his wife? She had one-to-many relationships."
+  - user: "haha. what's the capital of Australia again?"
+  - assistant: "Canberra."
+  - user: "right, thanks!"
+gold:
+  episodes:
+    count: 0
+  facts: []

@@ -185,6 +185,20 @@ class Transcript:
             except FileExistsError:
                 n += 1
 
+    @classmethod
+    def open(cls, vault: Vault, path: Path | str) -> Transcript:
+        """An existing transcript (absolute, or relative to the vault root)."""
+        path = Path(path)
+        if not path.is_absolute():
+            path = vault.root / path
+        fm, turns = parse_transcript(path.read_text(encoding="utf-8"))
+        session_id = str(fm.get("id") or path.stem)
+        return cls(vault, path, session_id, turns=max((t.n for t in turns), default=0))
+
+    def read(self) -> tuple[dict[str, Any], list[Turn]]:
+        """Frontmatter and turns as written so far."""
+        return parse_transcript(self.path.read_text(encoding="utf-8"))
+
     @property
     def rel(self) -> str:
         return rel_path(self.vault, self.path)

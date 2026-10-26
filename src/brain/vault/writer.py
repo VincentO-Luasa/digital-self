@@ -1,5 +1,13 @@
 """The single writer: validate operations, apply the safe ones, queue the rest for review,
-append to log.md and commit the vault (one commit per change set)."""
+append to log.md and commit the vault (one commit per change set).
+
+Owner corrections: a ``supersede_fact`` whose fact id the caller lists in ``corrections`` (the
+memory pipeline, after a typed decision that the owner explicitly corrected that fact) is applied
+instead of queued, but only when ``correction_problem`` finds nothing: origin ``extract``, a fact
+about the owner, no relationship predicate, no private page or region, a ``stated`` replacement
+with the same predicate. Everything else stays in the review queue (docs/vault-schema.md,
+Reviews).
+"""
 
 from __future__ import annotations
 
@@ -7,7 +15,7 @@ import contextlib
 import json
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -19,27 +27,32 @@ from brain.vault.models import (
     PREDICATES,
     RELATIONSHIP_PREDICATES,
     SELF_ID,
+    Episode,
     Fact,
     Intention,
     Observation,
     Page,
     Privacy,
+    fact_private,
     is_multi_valued,
     link_target,
     new_id,
 )
 from brain.vault.ops import (
     AddAlias,
+    AddEpisode,
     AddFact,
     AddIntention,
     AddObservation,
     ChangeSet,
+    ConfirmFact,
     CreateEntity,
     FactSpec,
     MergeEntities,
     Operation,
     Origin,
     SupersedeFact,
+    UpdateEpisode,
     UpdateSummary,
 )
 from brain.vault.parse import (
@@ -50,6 +63,7 @@ from brain.vault.parse import (
     split_frontmatter,
 )
 from brain.vault.render import (
+    render_episode,
     render_fact,
     render_frontmatter,
     render_intention,
@@ -61,6 +75,8 @@ from brain.vault.store import SELF_PAGE, Vault
 
 TYPE_DIRS = {t: d for d, t in DIR_TYPES.items()}
 ENTITY_ID = re.compile(r"^[a-z]+/[a-z0-9][a-z0-9._-]*$")
+EPISODE_ID = re.compile(r"^ep-\d{8}-\d{4}-[a-z0-9][a-z0-9-]*$")
+EPISODE_OPS = (AddEpisode, UpdateEpisode)  # written by the memory pipeline, never proposed
 SECTION_HEADING = re.compile(r"^##\s+\S")  # as parse._parse_page_body sees it
 REVIEW_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 SELF_REGION_PAGES = {"self.values_goals": "self/goals"}  # other self.* regions → self/<name>
@@ -90,6 +106,9 @@ class ApplyResult:
     review_id: str | None = None
     facts_added: int = 0
     superseded: int = 0
+    confirmed: int = 0  # facts whose src:: gained this change set's sources
+    corrected: list[str] = field(default_factory=list)  # fact ids superseded as owner corrections
+    episodes: list[str] = field(default_factory=list)  # episode ids written or updated
     created: list[str] = field(default_factory=list)  # new page ids
     new_ids: list[str] = field(default_factory=list)  # new fact / observation / intention ids
     changed: list[Path] = field(default_factory=list)
@@ -129,6 +148,13 @@ class _State:
         self.intention_lines: list[str] = []
         self.journal_lines: dict[str, list[str]] = {}
         self.text_files: dict[Path, str] = {}
+        self.episodes: dict[str, Episode] = {
+            e.id: e.model_copy(deep=True) for e in vault.episodes()
+        }
+        self.episode_paths: dict[str, Path] = {
+            e.id: vault.episode_path(e) for e in self.episodes.values()
+        }
+        self.dirty_episodes: set[str] = set()
 
     def new_id(self, prefix: str) -> str:
         while (candidate := new_id(prefix)) in self.used_ids:
@@ -217,6 +243,11 @@ def _overlaps(a: Fact | FactSpec, b: Fact | FactSpec) -> bool:
     return not _ends_by(a.valid_to, b.valid_from) and not _ends_by(b.valid_to, a.valid_from)
 
 
+def overlaps(a: Fact | FactSpec, b: Fact | FactSpec) -> bool:
+    """Valid times overlap (back-to-back periods hand over and do not)."""
+    return _overlaps(a, b)
+
+
 def _date_problem(*dates: str | None) -> str | None:
     """Partial dates must be real calendar dates (the models only check the shape)."""
     for d in dates:
@@ -250,9 +281,10 @@ def _adds_nothing(new: str | None, old: str | None) -> bool:
     return new is None or (old is not None and old.startswith(new))
 
 
-def _duplicate(state: _State, subject: str, spec: FactSpec) -> Fact | None:
-    """A current fact with the same p and o that already says everything ``spec`` says."""
-    for f in state.facts_about(subject):
+def duplicate_in(facts: Iterable[Fact], spec: FactSpec) -> Fact | None:
+    """Of ``facts`` (one subject's), one with the same p and o that already says everything
+    ``spec`` says (its dates are missing, equal or coarser)."""
+    for f in facts:
         if f.p != spec.p or _norm(f.o) != _norm(spec.o):
             continue
         if _adds_nothing(spec.valid_from, f.valid_from) and _adds_nothing(
@@ -262,15 +294,25 @@ def _duplicate(state: _State, subject: str, spec: FactSpec) -> Fact | None:
     return None
 
 
-def _conflicts(state: _State, subject: str, spec: FactSpec) -> list[Fact]:
-    """Scoped contradiction check: same subject + p (+ o for multi-valued predicates), with
-    overlapping valid time. Run after ``_duplicate``: a same-o hit here carries new dates."""
+def conflicts_in(facts: Iterable[Fact], subject: str, spec: FactSpec) -> list[Fact]:
+    """Scoped contradiction check over ``facts`` (one subject's current facts): same p (+ o for
+    multi-valued predicates), with overlapping valid time. Run after ``duplicate_in``: a same-o
+    hit here carries new dates."""
     multi = is_multi_valued(spec.p, subject)
     return [
         f
-        for f in state.facts_about(subject)
+        for f in facts
         if f.p == spec.p and (not multi or _norm(f.o) == _norm(spec.o)) and _overlaps(f, spec)
     ]
+
+
+def _duplicate(state: _State, subject: str, spec: FactSpec) -> Fact | None:
+    """A current fact with the same p and o that already says everything ``spec`` says."""
+    return duplicate_in(state.facts_about(subject), spec)
+
+
+def _conflicts(state: _State, subject: str, spec: FactSpec) -> list[Fact]:
+    return conflicts_in(state.facts_about(subject), subject, spec)
 
 
 def _conflict(state: _State, subject: str, spec: FactSpec) -> Fact | None:
@@ -293,8 +335,12 @@ def _require_page(state: _State, entity: str) -> _Depends | str | None:
     return f"unknown entity {entity}"
 
 
-def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | None:
+def _validate(
+    op: Operation, state: _State, src: list[str], origin: Origin = "extract"
+) -> _Depends | str | None:
     """None if the op can be applied or queued, DEPENDS, or the reason to skip it."""
+    if isinstance(op, EPISODE_OPS) and origin == "external":
+        return "episodes are written by the memory pipeline only"
     match op:
         case CreateEntity():
             if not ENTITY_ID.match(op.id):
@@ -319,7 +365,8 @@ def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | 
             found = state.find_fact(op.fact_id)
             if not found:
                 return f"unknown fact ^{op.fact_id}"
-            if found[2]:
+            if found[2] and (found[1].by or not op.new):
+                # an ended fact (History, no by::) can still be corrected by a replacement
                 return f"^{op.fact_id} is already superseded"
             if problem := _date_problem(op.to) or _order_problem(found[1].valid_from, op.to):
                 return problem
@@ -354,6 +401,27 @@ def _validate(op: Operation, state: _State, src: list[str]) -> _Depends | str | 
         case AddObservation():
             if not src:
                 return "no source for the observation"
+        case ConfirmFact():
+            found = state.find_fact(op.fact_id)
+            if not found:
+                return f"unknown fact ^{op.fact_id}"
+            if found[2] and found[1].by:
+                return f"^{op.fact_id} is superseded"
+            if not src or set(src) <= set(found[1].src):
+                return f"^{op.fact_id} already cites {', '.join(src) or 'nothing'}"
+        case AddEpisode():
+            if not EPISODE_ID.match(op.id):
+                return f"bad episode id {op.id!r}"
+            if op.id in state.episodes:
+                return f"episode {op.id} already exists"
+            if not op.session.strip() or not op.gist.strip():
+                return "an episode needs a session and a gist"
+            if op.turns[0] < 1 or op.turns[1] < op.turns[0]:
+                return f"bad turn range {list(op.turns)}"
+            return _heading_problem(op.summary)
+        case UpdateEpisode():
+            if op.id not in state.episodes:
+                return f"unknown episode {op.id}"
     return None
 
 
@@ -383,7 +451,45 @@ def _private_target(op: Operation, state: _State) -> str | None:
     return None
 
 
-def _policy(op: Operation, state: _State, origin: Origin) -> str | None:
+def _region_private(state: _State, page: Page) -> bool:
+    return state.lifemap.privacy_for(page.regions) == "private"
+
+
+def _correction_problem(op: SupersedeFact, state: _State, origin: Origin) -> str | None:
+    """Why a supersession the caller marked as an owner correction may not be auto-applied."""
+    if origin != "extract":
+        return f"origin {origin}"
+    found = state.find_fact(op.fact_id)
+    if not found:
+        return f"unknown fact ^{op.fact_id}"
+    page, old, _ = found
+    if page.subject != SELF_ID:
+        return f"a fact about {page.subject}, not the owner"
+    if fact_private(old) or (op.new is not None and op.new.extra.get("privacy") == "private"):
+        return "from an answer the owner marked private"
+    if old.p in RELATIONSHIP_PREDICATES:
+        return f"relationship predicate {old.p}"
+    if page.privacy == "private" or _region_private(state, page):
+        return f"private page {page.id}"
+    if (region := state.lifemap.region_for(old.p, SELF_ID)) and state.lifemap.privacy_for(
+        [region]
+    ) == "private":
+        return f"private region {region}"
+    if op.new is not None:
+        if op.new.p != old.p:
+            return f"replacement changes the predicate ({old.p} → {op.new.p})"
+        if op.new.kind != "stated":
+            return f"{op.new.kind} replacement"
+        if (obj := link_target(op.new.o)) and (
+            _page_privacy(state, Vault.page_id_for(obj)) == "private"
+        ):
+            return f"points at private page {obj}"
+    return None
+
+
+def _policy(
+    op: Operation, state: _State, origin: Origin, corrections: Collection[str] = ()
+) -> str | None:
     if origin == "external" and (private := _private_target(op, state)):
         return f"external change to private page {private}"
     match op:
@@ -395,15 +501,31 @@ def _policy(op: Operation, state: _State, origin: Origin) -> str | None:
             if clash := _conflict(state, _subject(op), op):
                 return f"contradicts current fact ^{clash.id} ({clash.p}:: {clash.o})"
         case SupersedeFact():
-            return "supersession"
+            if op.fact_id not in corrections:
+                return "supersession"
+            if problem := _correction_problem(op, state, origin):
+                return f"supersession (not auto-applied as an owner correction: {problem})"
         case MergeEntities():
             return "entity merge"
     return None
 
 
-def needs_review(op: Operation, vault: Vault, *, origin: Origin = "extract") -> str | None:
+def needs_review(
+    op: Operation,
+    vault: Vault,
+    *,
+    origin: Origin = "extract",
+    corrections: Collection[str] = (),
+) -> str | None:
     """Why ``op`` would be queued for review against the current vault, or None."""
-    return _policy(op, _State(vault, datetime.now()), origin)
+    return _policy(op, _State(vault, datetime.now()), origin, corrections)
+
+
+def correction_problem(
+    op: SupersedeFact, vault: Vault, *, origin: Origin = "extract"
+) -> str | None:
+    """Why ``op`` could not be auto-applied as an owner correction (None: it could)."""
+    return _correction_problem(op, _State(vault, datetime.now()), origin)
 
 
 # --- applying ----------------------------------------------------------------------------------
@@ -515,10 +637,17 @@ def _apply_add_fact(op: AddFact, state: _State, src: list[str], result: ApplyRes
 def _apply_supersede(op: SupersedeFact, state: _State, src: list[str], result: ApplyResult) -> None:
     found = state.find_fact(op.fact_id)
     assert found
-    page, old, _ = found
+    page, old, in_history = found
     new = _build_fact(state, op.new, src) if op.new else None
-    end = op.to or old.valid_to or (_start_after(old, op.new.valid_from) if op.new else None)
-    _retire(state, page, old, end, new.id if new else None, result)
+    if in_history:  # an ended fact corrected: it stays in History, now replaced
+        assert new is not None
+        index = page.history.index(old)
+        page.history[index] = old.model_copy(update={"by": new.id})
+        state.touch(page)
+        result.superseded += 1
+    else:
+        end = op.to or old.valid_to or (_start_after(old, op.new.valid_from) if op.new else None)
+        _retire(state, page, old, end, new.id if new else None, result)
     if new:
         page.facts.append(new)
         result.facts_added += 1
@@ -623,6 +752,42 @@ def _apply_observation(op: AddObservation, state: _State, src: list[str], create
     return obs.id
 
 
+def _apply_confirm(op: ConfirmFact, state: _State, src: list[str], result: ApplyResult) -> None:
+    found = state.find_fact(op.fact_id)
+    assert found
+    page, fact, _ = found
+    fact.src = [*fact.src, *(s for s in src if s not in fact.src)]
+    state.touch(page)
+    result.confirmed += 1
+
+
+def _apply_episode(op: AddEpisode, state: _State, result: ApplyResult) -> None:
+    episode = Episode.model_validate(
+        {
+            **op.model_dump(exclude={"op"}),
+            "gist": _clean(op.gist),
+            "summary": op.summary.strip(),
+            "regions": list(dict.fromkeys(op.regions)),
+            "entities": list(dict.fromkeys(_entity(e) for e in op.entities)),
+        }
+    )
+    state.episodes[episode.id] = episode
+    state.episode_paths[episode.id] = state.vault.episode_path(episode)
+    state.dirty_episodes.add(episode.id)
+    result.episodes.append(episode.id)
+
+
+def _apply_update_episode(op: UpdateEpisode, state: _State, result: ApplyResult) -> None:
+    episode = state.episodes[op.id]
+    if op.status:
+        episode.status = op.status
+    for entity in map(_entity, op.add_entities):
+        if entity not in episode.entities:
+            episode.entities.append(entity)
+    state.dirty_episodes.add(op.id)
+    result.episodes.append(op.id)
+
+
 def _apply_op(op: Operation, state: _State, cs: ChangeSet, result: ApplyResult) -> None:
     match op:
         case CreateEntity():
@@ -647,6 +812,12 @@ def _apply_op(op: Operation, state: _State, cs: ChangeSet, result: ApplyResult) 
             result.new_ids.append(_apply_intention(op, state, cs.src))
         case AddObservation():
             result.new_ids.append(_apply_observation(op, state, cs.src, cs.created))
+        case ConfirmFact():
+            _apply_confirm(op, state, cs.src, result)
+        case AddEpisode():
+            _apply_episode(op, state, result)
+        case UpdateEpisode():
+            _apply_update_episode(op, state, result)
 
 
 # --- reviews -----------------------------------------------------------------------------------
@@ -686,6 +857,12 @@ def _diff(op: Operation, state: _State) -> list[str]:
             return [f"+ - [ ] {op.text}" + (f" (when:: {when})" if when else "")]
         case AddObservation():
             return [f"+ imp {op.importance} · {op.text}"]
+        case ConfirmFact():
+            return [f"~ ^{op.fact_id} confirmed"]
+        case AddEpisode():
+            return [f"+ episode {op.id}: {op.gist}"]
+        case UpdateEpisode():
+            return [f"~ episode {op.id}" + (f" → {op.status}" if op.status else "")]
     return []
 
 
@@ -695,10 +872,12 @@ def _target(op: Operation) -> str:
             return op.id
         case AddFact():
             return _subject(op)
-        case SupersedeFact():
+        case SupersedeFact() | ConfirmFact():
             return f"^{op.fact_id}"
         case MergeEntities():
             return f"{op.merge} → {op.keep}"
+        case AddEpisode() | UpdateEpisode():
+            return op.id
     return "journal" if isinstance(op, AddObservation) else "intentions"
 
 
@@ -795,11 +974,15 @@ def _append_lines(text: str, lines: list[str]) -> str:
 def _log_entry(cs: ChangeSet, result: ApplyResult, now: datetime) -> list[str]:
     src = ", ".join(cs.src) or "-"
     counts = f"+{result.facts_added} facts, {result.superseded} superseded"
+    if result.confirmed:
+        counts += f", {result.confirmed} confirmed"
     counts += f", {len(result.queued)} queued"
     if result.skipped:
         counts += f", {len(result.skipped)} skipped"
     lines = [f"## [{now:%Y-%m-%d %H:%M}] {cs.origin} | {src} | {counts}"]
     lines += [f"- created {page_id}" for page_id in result.created]
+    lines += [f"- owner correction applied: ^{fact_id}" for fact_id in result.corrected]
+    lines += [f"- episode {episode_id}" for episode_id in dict.fromkeys(result.episodes)]
     if result.review_id:
         lines.append(f"- queued for review: {result.review_id}")
     lines += [f"- skipped {op.op}: {reason}" for op, reason in result.skipped]
@@ -830,6 +1013,8 @@ def _collect_files(state: _State) -> dict[Path, str | None]:
             files[path] = render_journal(month, []) + "\n" + "\n".join(lines) + "\n"
         else:
             files[path] = _append_lines(base, lines)
+    for episode_id in sorted(state.dirty_episodes):
+        files[state.episode_paths[episode_id]] = render_episode(state.episodes[episode_id])
     return files
 
 
@@ -905,18 +1090,19 @@ def _run(
     review: bool | None,
     now: datetime,
     extra_files: dict[Path, str | None] | None = None,
+    corrections: Collection[str] = (),
 ) -> ApplyResult:
     state = _State(vault, now)
     result = ApplyResult()
     for op in cs.ops:
-        problem = _validate(op, state, cs.src)
+        problem = _validate(op, state, cs.src, cs.origin)
         if isinstance(problem, str):
             result.skipped.append((op, problem))
             continue
         if problem is DEPENDS:
             reason: str | None = "depends on an operation queued for review"
         elif review is None:
-            reason = _policy(op, state, cs.origin)
+            reason = _policy(op, state, cs.origin, corrections)
         else:
             reason = "review requested" if review else None
         if reason:
@@ -930,6 +1116,8 @@ def _run(
             result.skipped.append((op, str(exc)))
             continue
         result.applied.append(op)
+        if review is None and isinstance(op, SupersedeFact) and op.fact_id in corrections:
+            result.corrected.append(op.fact_id)
 
     files = _collect_files(state)
     if result.queued:
@@ -953,10 +1141,37 @@ def apply(
     *,
     review: bool | None = None,
     now: datetime | None = None,
+    corrections: Collection[str] = (),
 ) -> ApplyResult:
     """Apply a change set: ``review=None`` follows the policy, True queues every valid op,
-    False applies every valid op (used by ``approve``)."""
-    return _run(changeset, vault, review=review, now=now or datetime.now())
+    False applies every valid op (used by ``approve``).
+
+    ``corrections``: ids of facts the owner explicitly corrected (decided by the caller); a
+    ``supersede_fact`` of one of them is applied when ``correction_problem`` allows it."""
+    return _run(changeset, vault, review=review, now=now or datetime.now(), corrections=corrections)
+
+
+def log_event(
+    vault: Vault, origin: Origin, src: list[str], message: str, *, now: datetime | None = None
+) -> str | None:
+    """Append one line to log.md and commit (an outcome that changes no memory, e.g. a
+    conversation with nothing to remember)."""
+    now = now or datetime.now()
+    files: dict[Path, str | None] = {}
+    entry = f"## [{now:%Y-%m-%d %H:%M}] {origin} | {', '.join(src) or '-'} | {_clean(message)}"
+    _append_log(vault, files, [entry])
+    return _write_and_commit(vault, files, f"brain: {origin} {', '.join(src) or '-'}")
+
+
+def log_has(vault: Vault, origin: Origin, src: str, message_start: str) -> bool:
+    """Whether log.md has an entry ``origin | src | message_start…``."""
+    if not vault.log_path.exists():
+        return False
+    pattern = re.compile(
+        rf"^## \[[^\]]+\] {re.escape(origin)} \| {re.escape(src)} \| {re.escape(message_start)}",
+        re.M,
+    )
+    return bool(pattern.search(vault.log_path.read_text(encoding="utf-8")))
 
 
 def approve(review_id: str, vault: Vault, *, now: datetime | None = None) -> ApplyResult:

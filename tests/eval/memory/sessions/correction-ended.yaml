@@ -1,0 +1,15 @@
+# An explicit correction of an ended fact (the end date of a past job) → supersede, auto-applied.
+started: 2026-10-27T18:05
+channel: chat
+turns:
+  - user: "I was going through old payslips today. Your notes say I left Fabrikam in January 2023, but that's wrong: I left Fabrikam in March 2023. The handover dragged on."
+  - assistant: "Thanks for correcting that. So you were at Fabrikam Analytics until March 2023?"
+  - user: "Yes, March 2023. Funny how these things blur."
+gold:
+  episodes:
+    count: 1
+    regions: [[career.history, career.current_job]]
+  supersede:
+    - {fact: f-f6b7a2, p: works_at, o: Fabrikam Analytics, to: 2023-03}
+  acceptable_supersede: [f-r3l4e5]   # the role there ended with the job: a fair inference
+  facts: []

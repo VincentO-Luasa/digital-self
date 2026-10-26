@@ -1,0 +1,220 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You split a conversation between the owner and their assistant into episodes: stretches where the owner talks about one topic of their life.\n\nFields, in this order:\n- reasoning: one short sentence on the topics the owner talks about.\n- episodes: in conversation order, never overlapping. Each episode has:\n  - first_turn, last_turn: the first and last turn numbers it spans (the [n] tags).\n  - topic: 1 to 3 lowercase words naming the topic, e.g. \"atlas deadline\".\n  - regions: the life areas it is about, ids from REGIONS.\n  - mentions: the people, organisations, projects, places and events the owner talks about, each with name (as written) and type (person, org, project, place or event). Never the owner. Tools, teams, skills and topics are not mentions.\n  - gist: one line of at most 20 words saying what the owner said or felt, with the owner's name, e.g. \"Alex worries the Atlas go-live date is unrealistic\".\n  - summary: 3 to 6 sentences on what the owner said: facts, changes, plans with their dates, feelings, opinions. Third person with the owner's name; dates as written or made absolute from today's date.\n- Never guess anyone's pronouns: write he, she, his or her only when the conversation states them; otherwise repeat the name or use they/them.\n  - emotion: none, mild or strong: how much feeling the owner shows.\n  - goal: none, related or central: how much it bears on the owner's goals, projects or plans.\n  - future: true if it names something planned or due on a later date.\n  - remember: true if the owner asks the assistant to remember or note something.\n  - change: none, minor or major: a change in the owner's life (a new job, a move, a breakup, a birth, a diagnosis are major).\n\nRules:\n- A new episode starts only when the owner moves to another topic. Turns about one topic, with small digressions, are one episode. A short conversation is usually one episode.\n- Greetings, thanks, small talk, jokes, and questions about general knowledge or the world are no episode. A conversation where the owner says nothing about their own life gives \"episodes\":[].\n- Only what the owner says or confirms counts; the assistant's guesses and suggestions are not facts. NOTE lines mark an interview's questions (topic, region, the entity asked about) and private answers: a new question on another topic usually starts a new episode.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"episodes\":[{\"first_turn\":1,\"last_turn\":4,\"topic\":\"…\",\"regions\":[\"…\"],\"mentions\":[{\"name\":\"…\",\"type\":\"person\"}],\"gist\":\"…\",\"summary\":\"…\",\"emotion\":\"none\",\"goal\":\"none\",\"future\":false,\"remember\":false,\"change\":\"none\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "REGIONS (id: life area):\n- identity: Identity & basics\n- career.current_job: Current job\n- career.history: Career history\n- education: Education\n- skills: Skills\n- projects: Projects\n- relationships.family: Family\n- relationships.friends: Friends\n- relationships.work: Colleagues & network\n- self.values_goals: Values & goals\n- self.traits: Strengths & flaws\n- self.routine: Daily life & habits\n- self.interests: Interests\n- self.health: Health & wellbeing\n\nToday is 2026-10-27. Owner: Alex Rivera. Channel: chat.\n\nCONVERSATION:\n[1] OWNER: Evening! Long day. The Atlas go-live got moved to December 1st, which is a relief honestly.\n[2] ASSISTANT: That sounds like a relief. Last time you said November 15 felt unrealistic. What changed?\n[3] OWNER: The warehouse team needed more time for the parallel run. Also, small correction: I joined Northwind in January 2023, not February.\n[4] ASSISTANT: Thanks, noted. Anything else going on?\n[5] OWNER: Sam just started a new job at Contoso as a product manager. We're celebrating on Saturday.\n[6] ASSISTANT: Congratulations to Sam! Enjoy Saturday."
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 3072,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Segmentation",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "Mention": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "title": "Mention",
+              "type": "object"
+            },
+            "SegmentedEpisode": {
+              "properties": {
+                "first_turn": {
+                  "title": "First Turn",
+                  "type": "integer"
+                },
+                "last_turn": {
+                  "title": "Last Turn",
+                  "type": "integer"
+                },
+                "topic": {
+                  "title": "Topic",
+                  "type": "string"
+                },
+                "regions": {
+                  "items": {
+                    "enum": [
+                      "identity",
+                      "career.current_job",
+                      "career.history",
+                      "education",
+                      "skills",
+                      "projects",
+                      "relationships.family",
+                      "relationships.friends",
+                      "relationships.work",
+                      "self.values_goals",
+                      "self.traits",
+                      "self.routine",
+                      "self.interests",
+                      "self.health"
+                    ],
+                    "type": "string"
+                  },
+                  "title": "Regions",
+                  "type": "array"
+                },
+                "mentions": {
+                  "items": {
+                    "$ref": "#/$defs/Mention"
+                  },
+                  "title": "Mentions",
+                  "type": "array"
+                },
+                "gist": {
+                  "title": "Gist",
+                  "type": "string"
+                },
+                "summary": {
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "emotion": {
+                  "enum": [
+                    "none",
+                    "mild",
+                    "strong"
+                  ],
+                  "title": "Emotion",
+                  "type": "string"
+                },
+                "goal": {
+                  "enum": [
+                    "none",
+                    "related",
+                    "central"
+                  ],
+                  "title": "Goal",
+                  "type": "string"
+                },
+                "future": {
+                  "title": "Future",
+                  "type": "boolean"
+                },
+                "remember": {
+                  "title": "Remember",
+                  "type": "boolean"
+                },
+                "change": {
+                  "enum": [
+                    "none",
+                    "minor",
+                    "major"
+                  ],
+                  "title": "Change",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "first_turn",
+                "last_turn",
+                "topic",
+                "regions",
+                "mentions",
+                "gist",
+                "summary",
+                "emotion",
+                "goal",
+                "future",
+                "remember",
+                "change"
+              ],
+              "title": "SegmentedEpisode",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "episodes": {
+              "items": {
+                "$ref": "#/$defs/SegmentedEpisode"
+              },
+              "title": "Episodes",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "episodes"
+          ],
+          "title": "Segmentation",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-c95dba99",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"reasoning\":\"The owner discusses the Atlas project deadline, their employment start date at Northwind, and their friend Sam's new job at Contoso.\",\"episodes\":[{\"first_turn\":1,\"last_turn\":3,\"topic\":\"atlas deadline\",\"regions\":[\"projects\"],\"mentions\":[{\"name\":\"Atlas\",\"type\":\"project\"},{\"name\":\"Northwind\",\"type\":\"org\"}],\"gist\":\"Alex notes the Atlas go-live is moved to December 1st and corrects their start date at Northwind.\",\"summary\":\"Alex states that the Atlas go-live date has been moved to December 1st, which they find relieving. They correct their previous statement, confirming they joined Northwind in January 2023, not February. The warehouse team required more time for the parallel run.\",\"emotion\":\"mild\",\"goal\":\"related\",\"future\":true,\"remember\":false,\"change\":\"none\"},{\"first_turn\":5,\"last_turn\":5,\"topic\":\"sam job\",\"regions\":[\"relationships.friends\"],\"mentions\":[{\"name\":\"Sam\",\"type\":\"person\"},{\"name\":\"Contoso\",\"type\":\"org\"}],\"gist\":\"Alex mentions Sam started a new job at Contoso and they are celebrating on Saturday.\",\"summary\":\"Alex informs the assistant that Sam has started a new job as a product manager at Contoso. They plan to celebrate this event on Saturday.\",\"emotion\":\"mild\",\"goal\":\"related\",\"future\":true,\"remember\":false,\"change\":\"none\"}]}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1793025216,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 289,
+      "prompt_tokens": 954,
+      "total_tokens": 1243,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 954,
+      "output_tokens": 289,
+      "time_to_first_token": 3.03,
+      "total_time": 12.84,
+      "prompt_eval_duration": 3.03,
+      "generation_duration": 9.82,
+      "prompt_tokens_per_second": 315.35,
+      "generation_tokens_per_second": 29.44
+    }
+  }
+}

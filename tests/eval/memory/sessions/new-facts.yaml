@@ -1,0 +1,19 @@
+# New facts the vault does not hold: a habit and a skill being learnt.
+started: 2026-10-27T19:10
+channel: chat
+turns:
+  - user: "I finally signed up at the bouldering gym near the office. I'm going Tuesdays and Thursdays after work from now on."
+  - assistant: "Nice! How did the first session go?"
+  - user: "Brutal, my forearms are dead. But I loved it. I've also started learning Rust in the evenings, mostly so I can read the code of our new ingestion service."
+  - assistant: "Two new things at once! Is the Rust for work or for fun?"
+  - user: "A bit of both. The team wants to rewrite the ingestion service in Rust next year."
+gold:
+  episodes:
+    count: [1, 2]
+    regions: [[self.routine, self.interests], [skills, career.current_job, self.interests]]
+  facts:
+    - {s: self, p: [habit, interest, likes], o: [bouldering, climbing, bouldering gym]}
+    - {s: self, p: [has_skill, interest, goal, habit], o: [Rust, learning Rust]}
+  acceptable:
+    - {s: self, p: [goal, responsibility, note, interest], o: [rewrite ingestion service Rust, ingestion service]}
+    - {s: self, p: [member_of], o: [bouldering gym]}

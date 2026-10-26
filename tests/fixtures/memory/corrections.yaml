@@ -1,0 +1,109 @@
+# Labelled cases for the owner-correction decision (brain.memory.extract.CORRECTION).
+# Fictional persona only (Alex Rivera). `explicit: true` = the owner explicitly says the stored
+# fact is wrong, has changed or is no longer true (auto-applied at p >= CORRECTION_P);
+# false = implicit, hypothetical, uncertain, someone else's claim, a restatement, or unrelated.
+# Scores: tests/fixtures/llm/memory/correction-scores.json, recorded by
+# `BRAIN_RECORD_FIXTURES=1 uv run pytest -m llm tests/memory/test_memory_correction_calibration.py`.
+cases:
+  - id: joined-date
+    explicit: true
+    stored: "Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)"
+    conversation:
+      - "OWNER: Long day. Oh, small correction: I joined Northwind in January 2023, not February."
+  - id: moved-city
+    explicit: true
+    stored: "Lives in Porto (lives_in: Porto, since 2024)"
+    conversation:
+      - "OWNER: I don't live in Porto any more, I moved to Braga last month."
+  - id: left-date-answer
+    explicit: true
+    stored: "Worked at Fabrikam Analytics as analytics engineer (works_at: Fabrikam Analytics, 2019-06 to 2023-01)"
+    conversation:
+      - "ASSISTANT: You were at Fabrikam until January 2023, right?"
+      - "OWNER: No, I left Fabrikam in March 2023, the handover took longer than planned."
+  - id: switched-team
+    explicit: true
+    stored: "Is in the data platform team (team: Data platform, since 2023-02)"
+    conversation:
+      - "OWNER: I'm not on the data platform team any more, I switched to the ML infrastructure team in September."
+  - id: scratch-skill
+    explicit: true
+    stored: "Is skilled in Spark (has_skill: Spark)"
+    conversation:
+      - "OWNER: Honestly, scratch Spark from my skills. I haven't touched it in years and I was never good at it."
+  - id: wrong-language
+    explicit: true
+    stored: "Speaks Spanish (speaks: Spanish)"
+    conversation:
+      - "ASSISTANT: Since you speak Spanish, maybe the Madrid conference?"
+      - "OWNER: That's wrong, I don't speak Spanish. It's Portuguese I speak."
+  - id: promoted
+    explicit: true
+    stored: "Is a senior data engineer (role: Senior data engineer, since 2025-03)"
+    conversation:
+      - "OWNER: Big news, I got promoted to staff engineer in September, so I'm not a senior engineer anymore."
+  - id: degree-subject
+    explicit: true
+    stored: "Holds a BSc in Computer Science (degree: BSc Computer Science, since 2018)"
+    conversation:
+      - "OWNER: Just to fix something you have wrong: my degree is in Mathematics, not Computer Science."
+  - id: lived-dates
+    explicit: true
+    stored: "Lived in Lisbon (lives_in: Lisbon, 2019 to 2024)"
+    conversation:
+      - "OWNER: By the way I moved to Lisbon in 2018, not 2019. I always mix that up."
+  - id: visiting-elsewhere
+    explicit: false
+    stored: "Lives in Porto (lives_in: Porto, since 2024)"
+    conversation:
+      - "OWNER: The weather in Lisbon was lovely this weekend, I walked along the river for hours."
+  - id: restates
+    explicit: false
+    stored: "Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)"
+    conversation:
+      - "OWNER: I've been at Northwind since February 2023 and I still love it."
+  - id: maybe-move
+    explicit: false
+    stored: "Lives in Porto (lives_in: Porto, since 2024)"
+    conversation:
+      - "OWNER: I might move to Lisbon next year if the rent keeps going up."
+  - id: manager-thinks
+    explicit: false
+    stored: "Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)"
+    conversation:
+      - "OWNER: My manager thinks I joined in January, but I'm honestly not sure."
+  - id: feels-like
+    explicit: false
+    stored: "Is a senior data engineer (role: Senior data engineer, since 2025-03)"
+    conversation:
+      - "OWNER: Some days I feel more like a project manager than an engineer."
+  - id: new-skill
+    explicit: false
+    stored: "Is an expert in Python (has_skill: Python)"
+    conversation:
+      - "OWNER: I've been learning Rust on weekends, it's fun."
+  - id: home-for-holidays
+    explicit: false
+    stored: "Lives in Porto (lives_in: Porto, since 2024)"
+    conversation:
+      - "OWNER: Back in Lisbon with my parents for the long weekend, they say hi."
+  - id: reorg-unknown
+    explicit: false
+    stored: "Is in the data platform team (team: Data platform, since 2023-02)"
+    conversation:
+      - "OWNER: The data platform team is getting reorganised next quarter. No idea where I'll end up."
+  - id: past-job-story
+    explicit: false
+    stored: "Worked at Fabrikam Analytics as analytics engineer (works_at: Fabrikam Analytics, 2019-06 to 2023-01)"
+    conversation:
+      - "OWNER: Fabrikam was where I learned dbt, good times."
+  - id: implicit-new-city
+    explicit: false
+    stored: "Lives in Porto (lives_in: Porto, since 2024)"
+    conversation:
+      - "OWNER: Here in Braga the coffee is half the price, I'm loving it."
+  - id: asks-assistant
+    explicit: false
+    stored: "Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)"
+    conversation:
+      - "OWNER: Wait, did I join Northwind in January or February? I can't remember."

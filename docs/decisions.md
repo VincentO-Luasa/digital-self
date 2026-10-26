@@ -460,3 +460,97 @@ page uncached), against ~60–130 s of extraction. Known gaps: "Manages DS team"
 at Fernhill" (cosine 0.65) and "Boulders twice a week" / "Climbs at the bouldering gym" stay
 apart; a degree whose line names no school (a markdown CV with the school as a heading two
 lines up) gets no link; `at::` is not a retrieval graph edge yet.
+
+## 2026-10-26 — Interview mode: private regions only on request; code steers, the model phrases
+Decision: `brain interview` never picks a region the life map marks `privacy: private` (family,
+friends, traits, health) on its own. It interviews about one only when the owner names it
+(`brain interview relationships.friends`, its label, or a unique last part such as `friends`);
+naming a parent (`relationships`) picks among its non-private children. In a private region every
+answer is marked private, and anywhere the owner can say `private` (or `private: <answer>`) to
+mark the answers of the current step. The transcript carries `[interview] privacy:: private`
+system turns before those answers (and `process_session` gets `private_turns` once it accepts
+them), so nothing from them reaches the big model.
+Why: an unprompted "tell me about your health" is intrusive, and the owner should decide when
+private topics enter memory. Coverage of private regions is still computed and listed in
+`questions.md` (`privacy:: private`), so the owner sees the gaps.
+Also: region choice is `argmax(weight × (1 − coverage) + boost)`, the boost counting only items
+other components or the owner added to `questions.md` (0.1 × priority/5 each, capped at 0.3: a
+nudge, never an override); coverage items are already in the coverage term. Slot coverage gives
+partial credit to multi slots (`n/min`) and none to stale facts; timeless slots (no
+`stale_days`) count history, since a school that ended is still known; "confirmed" is the latest
+of `rec::` and the dates in `src::`. Per answer, `LLM.decide` labels it (answered / partial /
+declined / unclear, plus "opens a new thread?") and code chooses follow-up, clarify or next step
+(≤2 follow-ups per step, 3 declines in a row end the session); a structured call phrases the
+question, and code rejects a message naming anything (capitalised word, number) absent from the
+facts it was given, the profile or the conversation, falling back to the slot's hint.
+Alternatives: let the model choose the next action and write the question in one call (fewer
+calls, but no typed signal to test and tune, and harder to keep to one question); ask private
+regions at low priority (rejected: still unprompted).
+
+## 2026-10-26 — Memory pipeline: episodes, predict-calibrate, owner corrections (schema v0.4)
+`brain.memory.process_session` turns a finished transcript into episodes and memory (the
+`memory` skill has the flow). Choices:
+1. **Reuse ingest's machinery** rather than a second extractor: the episode's candidate facts are
+   handed to `ingest.decisions.check_part` (grounding, typed checks, story details),
+   `normalise.build_changeset` (now with `origin=`) and `dedup.merge_paraphrases` unchanged; ingest
+   tests and its eval are untouched. Memory adds only what conversations need: KNOWN FACTS in the
+   prompt with a per-fact label (predict-calibrate, Nemori), comparison with memory by name
+   (`plan_ops`), grounding of objects of any predicate (`ground_links`), and owner corrections.
+2. **Small talk** is decided by one typed yes/no on the owner's lines (as ingest's gate), not by
+   the segmenter alone: no segmentation call (~6–10 s) for a "hey, tell me a joke" chat, and a
+   `no episode` log line so it is never asked again (a marker in markdown, not in `.brain/`).
+3. **Importance** is computed in code from categorical labels (emotion none/mild/strong, goal
+   none/related/central, life change none/minor/major, a date ahead, "remember this"): 2 + 0/1/3
+   + 0/1/2 + 0/1/3 + 1 + 3, clamped to 1–10. Small models rate numbers badly; labels are stable.
+4. **`confirms` changes nothing but provenance.** A restated fact gets the episode added to its
+   `src::` (`confirm_fact`), never a new `rec::`, a new fact or new dates. More sources raise its
+   salience on the card; "last confirmed" for interview staleness can be read from it later.
+5. **Owner corrections auto-apply** (schema v0.4, Reviews): an *explicit* correction of the
+   owner's own fact, decided by a typed question at p ≥ 0.9 and allowed by
+   `writer.correction_problem` (origin extract; about `self`; no relationship; nothing private;
+   stated, same predicate). Implicit contradictions, other people's or projects' facts,
+   relationships and private material stay in the review queue; each change is one vault commit.
+   Question chosen on 20 labelled fictional cases (`tests/fixtures/memory/corrections.yaml`):
+
+   | wording | explicit (9): min p | others (11): max p | explicit ≥ 0.9 | others ≥ 0.9 |
+   |---|---|---|---|---|
+   | yes/no "explicitly says … wrong, changed or no longer true?" | 0.78 | 0.56 | 3 | 0 |
+   | yes/no "explicitly correct or update … (value or dates)?" | 0.35 | 0.56 | 5 | 0 |
+   | four-way wrong / changed / same / other | 0.996 | 0.92 | 9 | 1 |
+   | three-way corrects / restates / something else | 1.000 | 0.84 | 9 | 0 |
+   | **two-way yes/no choice with descriptions (kept)** | **0.994** | **0.59** | **9** | **0** |
+
+6. **An ended fact can be corrected** ("I left in March, not January"): a History fact without
+   `by::` may be superseded by a replacement; it stays in History with `by::`. Without this the
+   corrected job would have been a second, contradicting fact.
+7. **Private answers** (interview `[interview] privacy:: private` markers, or `private_turns`):
+   per episode, conservatively: the whole episode is `privacy: private` (its summary may quote
+   the answer), its facts get `privacy:: private` (a fact-level flag the index and the card's
+   big-model variant honour, so a private answer about the owner can live on a normal page
+   without leaking), new pages are private, no alias is added, and no correction from it is
+   auto-applied. Interview markers are shown to the model as `NOTE` lines (never facts) and
+   their `region::`/`about::` join the episode's regions and entities.
+8. **Resolution** proposes candidates by words and by name embeddings (instructed both sides:
+   related 0.58–0.96, unrelated people/orgs ≤ 0.48, two cities 0.73), but only a typed choice
+   (p ≥ 0.8) links a mention to a page; embeddings alone never merge.
+
+Tried and dropped: a yes/no correction predicate (too few explicit corrections reach 0.9); the
+model's "contradicts" label alone as the trigger (it mislabels; the writer's scoped check and the
+decision decide); per-turn privacy inside an episode (the summary would leak the answer).
+
+Measured with `brain eval memory` (9 fictional transcripts, Alex Rivera; two `--no-cache`
+samples):
+
+| sample | episode count | regions | fact recall | precision | corrections auto-applied | queued | intentions | wrongly auto-applied | duplicates | s total |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 9/9 | 11/11 | 5/6 | 9/12 | 2/2 | 0/1 | 2/2 | **0** | 0 | 175 |
+| 2 | 9/9 | 11/11 | 6/6 | 10/12 | 2/2 | 0/1 | 2/2 | **0** | 0 | 189 |
+
+Per session 15–25 s for a 3–5-turn chat (segmentation 6–8 s, ~1 s for small talk that the gate
+stops), ~40 s for the three-topic chat. Two earlier samples, before grounding of link objects
+and the membership-text fix, had the same counts but 1 of 4 corrections lost (a "Left Fabrikam
+in March 2023" `works_at` turned into a duty by ingest's verb-led guard). Unverified extras are
+mostly reasonable but outside the gold (a planned project "uses Rust", a goal "transfer to the
+Lisbon office"); systematic misses: "moving in January" dated to the past January (5 of 6 runs over all
+samples), the implicit contradiction never extracted as `lives_in` (so nothing queued: the safe
+side), a self `goal` linking to the project page.

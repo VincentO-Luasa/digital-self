@@ -89,5 +89,6 @@ scripts/privacy_check.sh --all   # before every push
 
 ## Status
 
-Phase 1 done (vault, index, ingest, read-only chat, CLI). Next: Phase 2. See the phase table in
-`docs/architecture.md`.
+Phase 1 done (vault, index, ingest, read-only chat, CLI). Phase 2 core done (episodes, memory
+pipeline with owner corrections, interview mode); next: the graph-cleaning pass. See the phase
+table in `docs/architecture.md`.

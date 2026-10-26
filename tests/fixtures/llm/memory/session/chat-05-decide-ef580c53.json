@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Stored fact: Works at Northwind Labs as data engineer (works_at: Northwind Labs, since 2023-02)\n\nConversation:\nOWNER: Evening! Long day. The Atlas go-live got moved to December 1st, which is a relief honestly.\nASSISTANT: That sounds like a relief. Last time you said November 15 felt unrealistic. What changed?\nOWNER: The warehouse team needed more time for the parallel run. Also, small correction: I joined Northwind in January 2023, not February.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "correction",
+        "instructions": "Does the owner tell that the stored fact is wrong or out of date?",
+        "choices": [
+          {
+            "value": "yes",
+            "description": "the owner states it is wrong, has changed or is no longer true"
+          },
+          {
+            "value": "no",
+            "description": "the owner restates it, or talks about something else, a plan, a doubt or someone else's view"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "correction",
+        "choice": "yes",
+        "probabilities": [
+          {
+            "value": "yes",
+            "probability": 0.9981
+          },
+          {
+            "value": "no",
+            "probability": 0.0019
+          }
+        ],
+        "confidence": 0.9961
+      }
+    ],
+    "usage": {
+      "input_tokens": 209,
+      "output_tokens": 0
+    }
+  }
+}

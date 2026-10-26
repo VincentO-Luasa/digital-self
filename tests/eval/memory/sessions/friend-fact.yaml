@@ -1,0 +1,21 @@
+# Facts about a friend (subject: the friend, not the owner).
+started: 2026-10-27T22:05
+channel: chat
+turns:
+  - user: "Sam told me at football tonight that he's moving to Berlin in January. He got a job at Contoso there."
+  - assistant: "Big news! How do you feel about it?"
+  - user: "Happy for him, honestly. But Thursday football won't be the same without him."
+gold:
+  episodes:
+    count: 1
+    regions: [[relationships.friends]]
+  facts:
+    - {s: Sam Okafor, p: lives_in, o: Berlin, from: 2027-01}
+    - {s: Sam Okafor, p: works_at, o: Contoso}
+  acceptable:
+    - {s: Contoso, p: located_in, o: Berlin}
+    - {s: Sam Okafor, p: last_seen, o: 2026-10-27}
+    - {s: self, p: [habit, likes, interest], o: [football, Thursday football]}
+  forbid:
+    - {s: self, p: lives_in, o: Berlin}
+    - {s: self, p: works_at, o: Contoso}
