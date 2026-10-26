@@ -8,6 +8,10 @@
 - Adjacent inline elements are kept apart (``<span>02</span><span>Lab</span>`` would read
   "02Lab"), and decorative ordinals ("01", "02" in front of a section's kicker or heading) are
   dropped: the model took "02Lab" for a name.
+- The cells of one row are kept together (``rows``): a timeline row, card or list item laid out
+  as a grid (``<div class="row"><span>2021 – 2022</span><div><h3>School</h3><p>MSc …</p></div>
+  </div>``) would otherwise read as three lines, the date above the name it belongs to, and
+  the model shifted dates by one row. Definition terms are joined with their definitions.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Any
 
 from bs4 import BeautifulSoup, NavigableString, Tag
@@ -164,6 +169,173 @@ def space_inline(soup: BeautifulSoup) -> None:
             el.insert_after(" ")
 
 
+# --- rows -------------------------------------------------------------------------------------
+
+ROW_TAGS = frozenset({"div", "li", "article"})
+KEPT_BLOCKS = frozenset({"ul", "ol", "table", "dl", "pre", "blockquote", "figure"})
+ROW_MAX_WORDS = 80  # a row is small: a section or a card with a long write-up is not one
+ROW_MAX_CELLS = 8
+CELL_SEP = " · "
+CELL_LONG = 30  # a cell longer than this is a write-up, not a cell of a row
+
+
+@dataclass
+class Cell:
+    text: str
+    element: Tag | None  # the block holding it (None: loose inline text in the row)
+    heading: bool = False
+    kept: bool = False  # a list, table, … kept as it is, after the row's line
+
+
+def _is_block(node: Any) -> bool:
+    return isinstance(node, Tag) and node.name not in INLINE and node.name != "br"
+
+
+def _has_blocks(tag: Tag) -> bool:
+    return any(_is_block(c) for c in tag.children)
+
+
+def _text(node: Any) -> str:
+    raw = node.get_text(" ") if isinstance(node, Tag) else str(node)
+    return " ".join(raw.split())
+
+
+def cells(tag: Tag) -> list[Cell]:
+    """The row's text blocks in reading order: blocks with only inline content (descending into
+    blocks that hold more blocks), runs of loose inline text, and kept blocks (lists, tables)."""
+    out: list[Cell] = []
+    run: list[str] = []
+
+    def flush() -> None:
+        if text := " ".join(" ".join(run).split()):
+            out.append(Cell(text, None))
+        run.clear()
+
+    for child in tag.children:
+        if not _is_block(child):
+            run.append(_text(child))
+            continue
+        flush()
+        if child.name in KEPT_BLOCKS:
+            out.append(Cell(_text(child), child, kept=True))
+        elif _has_blocks(child):
+            out += cells(child)
+        elif text := _text(child):
+            out.append(Cell(text, child, heading=child.name in HEADINGS))
+    flush()
+    return out
+
+
+def _signature(tag: Tag) -> tuple[str, frozenset[str]]:
+    return tag.name, frozenset(tag.get("class") or [])
+
+
+def _repeated(tag: Tag) -> bool:
+    """A sibling of the same tag and classes that also holds blocks: one of a series of rows
+    (a grid, a timeline, cards). A lone block of a page is a section, not a row."""
+    parent = tag.parent
+    if tag.name == "li" or not isinstance(parent, Tag):
+        return tag.name == "li"
+    sig = _signature(tag)
+    return any(
+        s is not tag and isinstance(s, Tag) and _signature(s) == sig and _has_blocks(s)
+        for s in parent.children
+    )
+
+
+def _row_cells(tag: Tag) -> list[Cell] | None:
+    """The cells of ``tag`` if it is a row: a repeated small block (``ROW_TAGS``) holding other
+    blocks, with 2 to ``ROW_MAX_CELLS`` text cells of at most ``ROW_MAX_WORDS`` words in all and
+    at most one heading (not the page's h1)."""
+    if tag.name not in ROW_TAGS or not _has_blocks(tag) or not _repeated(tag):
+        return None
+    found = cells(tag)
+    texts = [c for c in found if not c.kept]
+    headings = [c for c in texts if c.heading]
+    if not 2 <= len(texts) <= ROW_MAX_CELLS or len(headings) > 1:
+        return None
+    if any(c.element is not None and c.element.name == "h1" for c in headings):
+        return None
+    if sum(len(c.text.split()) for c in texts) > ROW_MAX_WORDS:
+        return None
+    return found
+
+
+def _line(soup: BeautifulSoup, name: str, text: str) -> Tag:
+    el = soup.new_tag(name)
+    el.string = text
+    return el
+
+
+def join_rows(soup: BeautifulSoup) -> int:
+    """Rewrite every innermost row as one list item ("- 2021 – 2022 · School B · MSc in X, …"),
+    consecutive rows in one list, a row's own lists and tables kept under it. A series of rows
+    (same parent) where any cell is a write-up (over ``CELL_LONG`` words: a project card) is
+    left as it is (measured on the eval homepage: one line per card, or the card's label moved
+    into its heading, did not help). Definition terms are joined with their definitions.
+    Returns how many rows changed."""
+    rows: list[tuple[Tag, list[Cell]]] = []
+    for tag in soup.find_all(ROW_TAGS):
+        if (found := _row_cells(tag)) is None:
+            continue
+        # document order: an ancestor comes first; the innermost row wins
+        rows = [(t, c) for t, c in rows if t not in tag.parents]
+        rows.append((tag, found))
+    long_series = {
+        id(t.parent)
+        for t, found in rows
+        if any(len(c.text.split()) > CELL_LONG for c in found if not c.kept)
+    }
+    rows = [(t, c) for t, c in rows if id(t.parent) not in long_series]
+    last: Tag | None = None  # the list item made for the previous row
+    for tag, found in rows:
+        text = CELL_SEP.join(c.text for c in found if not c.kept)
+        kept = [c.element for c in found if c.kept and c.element is not None]
+        for el in kept:
+            el.extract()
+        if tag.name == "li":
+            tag.clear()
+            tag.append(text)
+            for el in kept:
+                tag.append(el)
+            last = None
+            continue
+        item = _line(soup, "li", text)
+        for el in kept:
+            item.append(el)
+        previous = tag.find_previous_sibling(True)
+        if last is not None and previous is not None and previous is last.parent:
+            last.parent.append(item)
+            tag.decompose()
+        else:
+            ul = soup.new_tag("ul")
+            ul.append(item)
+            tag.replace_with(ul)
+        last = item
+    for dl in soup.find_all("dl"):
+        _join_definitions(soup, dl)
+    return len(rows)
+
+
+def _join_definitions(soup: BeautifulSoup, dl: Tag) -> None:
+    """``<dt>2021 – 2022</dt><dd>School B, MSc in X</dd>`` → a list item "2021 – 2022 · School
+    B, MSc in X" (each term with the definitions that follow it)."""
+    items: list[list[str]] = []
+    for child in dl.find_all(["dt", "dd"], recursive=False):
+        text = _text(child)
+        if child.name == "dt" or not items:
+            items.append([text] if text else [])
+        elif text:
+            items[-1].append(text)
+    if not items:
+        return
+    ul = soup.new_tag("ul")
+    for parts in items:
+        if parts:
+            ul.append(_line(soup, "li", CELL_SEP.join(parts)))
+    dl.replace_with(ul)
+
+
 def _hidden(tag: Tag) -> bool:
     if tag.has_attr("hidden") or tag.get("role") in DROP_ROLES:
         return True
@@ -249,6 +421,7 @@ def html_to_markdown(html: str) -> tuple[str, str]:
             tag.decompose()
     drop_ordinals(soup)
     space_inline(soup)
+    join_rows(soup)
     if not title and (h1 := soup.find("h1")):
         title = h1.get_text(" ", strip=True)
     body = soup.body or soup

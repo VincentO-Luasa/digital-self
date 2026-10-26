@@ -18,7 +18,9 @@ from brain.ingest.decisions import (
     SCREEN_ENTITIES,
     SCREEN_LEISURE,
     SCREEN_SKILLS,
+    SCREEN_STORY,
     SKIP_BELOW,
+    STORY,
     check_part,
     compact,
     evidence,
@@ -83,9 +85,19 @@ ANSWERS = {
 RELATIONS = {"Northwind Labs": ("employer", 0.98), "Harbor Guild": ("member", 0.95)}
 
 
+# statement → (what it records, p(event or lesson)); unlisted statements are a job or trait
+STORIES = {
+    "Learnt that nightly jobs need owners": ("lesson", 0.97),
+    "Spent a weekend debugging the scheduler": ("event", 0.6),  # under the threshold: kept
+}
+
+
 def suspects(instructions: str, items: list[str]) -> list[str]:
     """The items a careful screen would flag: values for the entity screen, hobbies among skills,
-    skills among interests (and Tidepool, so that its own question runs)."""
+    skills among interests (and Tidepool, so that its own question runs), story details among
+    statements."""
+    if instructions == SCREEN_STORY.instructions:
+        return [i for i in items if i in STORIES]
     if instructions.startswith("Which of these names"):
         return [i for i in items if ANSWERS[i][0] in ("team", "tool", "topic")]
     if "works or worked for" in instructions:
@@ -116,6 +128,16 @@ def decider(text: str, questions: Sequence[Question]) -> list[Decision]:
             )
             continue
         item = re.search(r'"(.+?)"', q.instructions).group(1)  # type: ignore[union-attr]
+        if q.name == "records":
+            value, p = STORIES.get(item, ("job", 0.02))
+            probs = {o: (1 - p) / 2 for o in ("job", "trait")} | {"event": 0.0, "lesson": 0.0}
+            probs[value] = p if value in STORY else 1 - p
+            out.append(
+                Decision(
+                    name=q.name, type="choice", choice=value, probabilities=probs, confidence=p
+                )
+            )
+            continue
         value, conf = RELATIONS[item] if q.name == "relation" else ANSWERS[item]
         out.append(choice(q.name, value, conf, options))
     return out
@@ -192,8 +214,9 @@ def test_checks_override_only_confident_answers() -> None:
     ex = extraction()
     checks = check_part(llm, PROFILE, ex, owner=["Alex Rivera"])
     assert checks.kinds == {"data platform": "team", "lakehouse cloud": "tool"}
-    # screens: entities, skills; 3 kinds, 2 relations (two employers: asked directly), 3 uses
-    assert checks.overridden == 2 and checks.asked == 10
+    # screens: entities, statements, skills; 3 kinds, 2 relations (two employers: asked
+    # directly), 3 uses
+    assert checks.overridden == 2 and checks.asked == 11
     predicates = {f.object: f.predicate for f in ex.facts if f.subject == "self"}
     assert predicates["Python"] == "has_skill"  # interest → has_skill
     assert predicates["Bouldering"] == "interest"  # has_skill → interest, text re-rendered
@@ -212,14 +235,16 @@ def test_checks_override_only_confident_answers() -> None:
         SCREEN_EMPLOYERS.instructions,
         SCREEN_SKILLS.instructions,
         SCREEN_LEISURE.instructions,
+        SCREEN_STORY.instructions,
     }
     for q in questions:
         assert q.instructions in screens or re.fullmatch(
-            r"(What kind of thing is|In the text, is|In the text, what is the person\'s relation to) "
+            r"(What kind of thing is|In the text, is|In the text, what is the person\'s relation to"
+            r"|What does this statement about the person record:) "
             r'"[^"]+"( in the text\?| a skill .*\?|\?)',
             q.instructions,
         ), q.instructions
-    assert [q.name for q in questions].count("screen") == 2  # one round each
+    assert [q.name for q in questions].count("screen") == 3  # one round each
     inputs = [call[1]["text"] for call in llm.calls]
     assert all(len(t) < len(PROFILE) for t in inputs)  # sentences naming the items, not the part
     assert "Data Platform" in notes and "→ asking about" in notes
@@ -243,7 +268,7 @@ def test_ingest_applies_checks_and_records_every_decision(
     notes = report.normalised.notes
     assert any(n.startswith("check: 'Lakehouse Cloud' is a tool") for n in notes)
     [item] = report.chunks
-    assert item.checks == 10 and item.changed == 5
+    assert item.checks == 11 and item.changed == 5
     assert ("member_of", "[[orgs/harbor-guild]]") in self_facts and item.check_seconds >= 0
 
 
@@ -372,8 +397,9 @@ def test_values_the_part_never_names_skip_the_screen() -> None:
     check_part(llm, text, ex)
     asked = [(q.name, c[1]["text"]) for c in llm.calls for q in c[1]["questions"]]
     # bouldering is not named: asked directly, on the whole part; the four named skills screened
-    assert [name for name, _ in asked] == ["screen", "use"]
-    assert asked[1][1] == text
+    # (after the statements' story screen)
+    assert [name for name, _ in asked] == ["screen", "screen", "use"]
+    assert asked[2][1] == text
     assert next(f for f in ex.facts if f.object == "bouldering").predicate == "interest"
 
 
@@ -400,3 +426,40 @@ def decider_for(answers: dict[str, tuple[str, float]]):
         return out
 
     return decide
+
+
+def test_story_details_are_dropped_on_a_confident_answer(monkeypatch) -> None:
+    """A write-up's events, findings, lessons and plans are not duties or skills: screened, then
+    asked; dropped at p(event or lesson) >= ACT_ABOVE. Languages are not asked (routed later)."""
+    text = (
+        "## The migration\n\nI look after the nightly jobs at Northwind Labs. Last spring I spent "
+        "a weekend debugging the scheduler and learnt that nightly jobs need owners. I speak "
+        "Portuguese."
+    )
+    ex = Extraction.model_validate(
+        {
+            "reasoning": "r",
+            "owner_names": [],
+            "entities": [],
+            "facts": [
+                fact("self", "responsibility", "nightly jobs", "Looks after the nightly jobs"),
+                fact(
+                    "self", "responsibility", "scheduler", "Spent a weekend debugging the scheduler"
+                ),
+                fact("self", "interest", "owners", "Learnt that nightly jobs need owners"),
+                fact("self", "has_skill", "Portuguese", ""),
+            ],
+        }
+    )
+    monkeypatch.setitem(ANSWERS, "Portuguese", ("skill", 0.99))
+    llm = FakeLLM(decider=decider)
+    checks = check_part(llm, text, ex)
+    assert [f.object for f in ex.facts] == ["nightly jobs", "scheduler", "Portuguese"]
+    notes = "\n".join(checks.notes)
+    assert "'Learnt that nightly jobs need owners' is a story detail (p=0.97): dropped" in notes
+    assert (
+        "'Spent a weekend debugging the scheduler' records event (p(story)=0.60) under 0.8" in notes
+    )
+    asked = [q for c in llm.calls for q in c[1]["questions"] if q.name == "records"]
+    assert len(asked) == 2 and not any("Portuguese" in q.instructions for q in asked)
+    assert {"event", "lesson"} == STORY

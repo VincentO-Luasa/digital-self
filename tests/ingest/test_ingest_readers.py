@@ -222,3 +222,87 @@ def test_fixture_homepage_kickers_read_cleanly() -> None:
         and "02 Career" not in doc.text
     )
     assert "7+ years building data pipelines" in doc.text
+
+
+def _row(when: str, name: str, what: str) -> str:
+    return (
+        f'<div class="row"><span class="when">{when}</span>'
+        f"<div><h3>{name}</h3><p>{what}</p></div></div>"
+    )
+
+
+def test_timeline_rows_read_as_one_line_each() -> None:
+    """A CSS-grid timeline puts the date cell before the name: read cell by cell, every date
+    lands on the line above the name it belongs to."""
+    _, text = html_to_markdown(
+        page(
+            "<section><h2>Education</h2><div class='timeline'>"
+            + _row("2021 — 2022", "Porto Business School", "MSc in Data Science, double degree.")
+            + _row("2018 — 2021", "University of Coimbra", "BSc in Mathematics.")
+            + "</div></section>"
+            "<section><h2>About</h2><p>I live in Porto.</p></section>"
+        )
+    )
+    assert text.splitlines() == [
+        "## Education",
+        "",
+        "- 2021 — 2022 · Porto Business School · MSc in Data Science, double degree.",
+        "- 2018 — 2021 · University of Coimbra · BSc in Mathematics.",
+        "",
+        "## About",
+        "",
+        "I live in Porto.",
+    ]
+
+
+def test_cards_with_a_write_up_are_left_as_they_are() -> None:
+    """A series of cards where one has a write-up stays card by card (label, heading, text);
+    short cards are rows like any other."""
+    story = " ".join(["Moved nightly jobs to the lakehouse and cut the run time."] * 4)
+    card = '<article class="card"><p class="label">{}</p><h3>{}</h3><p>{}</p></article>'
+    _, text = html_to_markdown(
+        page(
+            "<h2>Projects</h2><div class='grid'>"
+            + card.format("Migration · Northwind Labs · 2024–now", "Atlas Migration", story)
+            + card.format("Side project · 2022", "Tidepool", "A small library.")
+            + "</div><h2>Talks</h2><div class='grid'>"
+            + card.format("2025", "Data Days", "Lisbon.")
+            + card.format("2024", "Pipeline Summit", "Porto.")
+            + "</div>"
+        )
+    )
+    assert "Migration · Northwind Labs · 2024–now\n\n### Atlas Migration\n\n" in text
+    assert "Side project · 2022\n\n### Tidepool\n\nA small library." in text
+    assert "- 2025 · Data Days · Lisbon.\n- 2024 · Pipeline Summit · Porto." in text
+
+
+def test_definition_lists_and_list_items_keep_their_cells_together() -> None:
+    _, text = html_to_markdown(
+        page(
+            "<dl><dt>2021 – 2022</dt><dd>Porto Business School</dd><dd>MSc</dd>"
+            "<dt>2018 – 2021</dt><dd>University of Coimbra</dd></dl>"
+            "<ul><li><span>2023</span><p>Northwind Labs</p><ul><li>Atlas</li></ul></li>"
+            "<li><span>2021</span><p>Fabrikam Retail</p></li></ul>"
+        )
+    )
+    assert "- 2021 – 2022 · Porto Business School · MSc" in text
+    assert "- 2018 – 2021 · University of Coimbra" in text
+    assert "- 2023 · Northwind Labs\n  - Atlas" in text
+    assert "- 2021 · Fabrikam Retail" in text
+
+
+def test_sections_long_blocks_and_tables_are_not_rows() -> None:
+    long = " ".join(["I build pipelines for the data platform team every day."] * 10)
+    body = (
+        "<header><p>Data engineer · Porto</p><h1>Alex Rivera</h1></header>"
+        # a lone block is a section, not a row (no sibling of the same kind)
+        "<div class='intro'><h2>Hello</h2><p>Short intro.</p></div>"
+        # two sibling blocks, each too long to be a row
+        f"<div class='post'><h2>One</h2><p>{long}</p></div>"
+        f"<div class='post'><h2>Two</h2><p>{long}</p></div>"
+        "<table><tr><th>Years</th><th>Org</th></tr><tr><td>2021</td><td>Northwind</td></tr></table>"
+    )
+    _, text = html_to_markdown(page(body))
+    assert "# Alex Rivera" in text and "## Hello\n\nShort intro." in text
+    assert "## One\n\n" in text and "## Two\n\n" in text
+    assert "| 2021 | Northwind |" in text

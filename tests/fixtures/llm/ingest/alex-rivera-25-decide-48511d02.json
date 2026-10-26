@@ -1,0 +1,77 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Atlas Migration\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly batch pipelines from a legacy Hadoop cluster to a managed cloud warehouse.\nIt uses Airflow for orchestration and dbt for transformations.\n## Skills\n- Python and SQL\n- Apache Spark\n- Airflow and dbt",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "Leads the Atlas Migration at Northwind Labs"
+          },
+          {
+            "value": "has skill: Python"
+          },
+          {
+            "value": "has skill: SQL"
+          },
+          {
+            "value": "has skill: Apache Spark"
+          },
+          {
+            "value": "has skill: Airflow"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Leads the Atlas Migration at Northwind Labs",
+            "probability": 0.161
+          },
+          {
+            "value": "has skill: Python",
+            "probability": 0.0029
+          },
+          {
+            "value": "has skill: SQL",
+            "probability": 0.0012
+          },
+          {
+            "value": "has skill: Apache Spark",
+            "probability": 0.0023
+          },
+          {
+            "value": "has skill: Airflow",
+            "probability": 0.015
+          },
+          {
+            "value": "none of them",
+            "probability": 0.8176
+          }
+        ],
+        "confidence": 0.7811
+      }
+    ],
+    "usage": {
+      "input_tokens": 219,
+      "output_tokens": 0
+    }
+  }
+}

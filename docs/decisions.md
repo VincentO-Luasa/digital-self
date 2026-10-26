@@ -319,3 +319,59 @@ sentence, so "lived in Seville and worked in Madrid" keeps Madrid as a home.
 A person belongs to several clubs, networks and groups at once; as a single-valued predicate a
 second membership was treated as a contradiction and dropped or queued. `located_in` and
 `part_of` stay single-valued.
+
+## 2026-10-26 — Timeline rows as lines, résumé dates in grounding, story details dropped
+A real homepage and résumé showed three generic failures; each fix is structural, measured on
+the eval set extended with two documents of a second fictional persona (a homepage whose
+experience/education timelines are CSS-grid rows with the date cell before the name and
+CV-style "Sep 21 — Feb 23" dates; a first-person experiment write-up with a few facts in a long
+story). Two extraction samples per variant (separate caches); post-extraction fixes are paired
+on the baseline's cached extractions, the reader fix re-extracts only the HTML whose text
+changed.
+1. **Rows** (`html.join_rows`): an innermost repeated block holding 2–8 short cells becomes one
+   list item ("- 2019 — 2020 · School B · MSc in X, double degree with School A"); `<dl>` pairs
+   likewise. Cells read one per line put each date above the name it belongs to, and the model
+   shifted dates by one row on the real page. A series where any cell is a write-up (> 30 words:
+   project cards) is left alone: a first version also rewrote cards (label moved into the
+   heading, or one line per card) and the card homepage lost 9 points of pages and 13 of
+   precision on one sample, gained 3 on the other.
+2. **Résumé dates** (`dates.years_in`, `brief.units`): grounding read only four-digit years, so
+   "Sep 21 – July 22" lost every period date; it now reads month + two-digit year, MM/YYYY,
+   MM/YY, YYYY-MM and ’YY, keeps CV lines (ending with a date, or starting with a date range)
+   apart from wrapped prose, and keeps a record line whole (a CSV row's date was cut off from
+   its organisation by a sentence split once lines stopped being joined). An end "now" is still
+   not checked. Extraction already turned "Sep 21" into 2021-09 (verified on the new homepage),
+   so `normalise_date` is unchanged.
+3. **Story details** (`decisions._check_stories`): the owner's duty / skill / interest / habit /
+   likes statements are screened, then asked "what does this statement record?" (job / trait /
+   event / lesson); p(event or lesson) ≥ 0.8 drops the fact. Wording chosen on 29 labelled
+   statements from the eval documents (13 story details, 16 facts), at 0.8: job/trait/event/
+   lesson caught 9 and lost no fact; duty/trait/story caught 8 and lost a CV achievement;
+   "still true a year later?" 5 (one fact lost); "would it belong in a profile?" 3; "fact or
+   story detail?" kept everything (measured on the eval: 0 drops). Drop rather than `note`: a
+   note is still an unverified fact in the wiki (with the first wording, `note` scored precision
+   0.785 / 0.741 against `drop`'s 0.791 / 0.744 and the baseline's 0.785 / 0.745), and the raw document stays in the vault for Phase 2 episodes. Languages are not
+   asked (a has_skill "Dutch" with a story-like text was dropped before normalisation could
+   route it to `speaks`). Hike mountains listed as interests are not caught (named places read
+   as interests; open).
+
+| variant (sample 1 / sample 2) | required | optional | precision | dates | pages | queued |
+|---|---|---|---|---|---|---|
+| baseline (HEAD 5607008), 8 docs | 1.000 / 0.989 | 0.802 / 0.817 | 0.785 / 0.745 | 0.904 / 0.890 | 0.889 / 0.900 | 21 / 20 |
+| + résumé dates only | same | same | same | same | same | same |
+| + story check only (paired) | 1.000 / 0.989 | 0.802 / 0.817 | 0.794 / 0.750 | same | same | same |
+| + rows, cards rewritten too (dropped) | 1.000 / 0.977 | 0.778 / 0.825 | 0.779 / 0.745 | 0.904 / 0.889 | 0.878 / 0.889 | 20 / 22 |
+| + rows, write-up series left alone | 1.000 / 0.989 | 0.802 / 0.817 | 0.787 / 0.744 | same | same | same |
+| all three (kept) | 1.000 / 0.989 | 0.802 / 0.817 | 0.795 / 0.749 | 0.904 / 0.890 | 0.889 / 0.900 | 21 / 20 |
+
+Per target document: the write-up's precision 0.471 → 0.533 and 0.571 → 0.615 (story check;
+year-in-review notes 0.581 → 0.600, 0.655 → 0.679); no gold fact lost anywhere. The timeline
+homepage scored required 1.0 and dates 0.92 already at baseline (the shift did not reproduce
+with this model on this page), facts unchanged with rows (precision +1.3 / −0.8), but the brief
+now keeps all 11 period dates the grounding dropped before (rows + résumé dates; neither alone).
+Cost: rows none (73 / 93 s vs 73 / 74 s per sample on that page: sampling); story check
+~1.2 s per part (33 questions over 20 parts, ~3 s per document, a few % of an ingest); dates
+none. Known gaps: one line per row hides a row heading from the outline (rows are small);
+the story check sees paraphrased statements, so its evidence is the whole part when the value
+is not named.
+

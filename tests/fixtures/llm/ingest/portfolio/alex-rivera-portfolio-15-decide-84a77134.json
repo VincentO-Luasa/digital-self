@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Senior Data Engineer at Northwind Labs\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "records",
+        "instructions": "What does this statement about the person record: \"leads the Atlas Migration\"?",
+        "choices": [
+          {
+            "value": "job",
+            "description": "their job, role, duties or achievements at work"
+          },
+          {
+            "value": "trait",
+            "description": "a skill, habit, hobby or interest they have"
+          },
+          {
+            "value": "event",
+            "description": "one event or step of a story the text tells, or what happened in it"
+          },
+          {
+            "value": "lesson",
+            "description": "a finding, an opinion formed, a lesson learnt or a plan for next time"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "records",
+        "choice": "job",
+        "probabilities": [
+          {
+            "value": "job",
+            "probability": 0.9972
+          },
+          {
+            "value": "trait",
+            "probability": 0.0015
+          },
+          {
+            "value": "event",
+            "probability": 0.001
+          },
+          {
+            "value": "lesson",
+            "probability": 0.0002
+          }
+        ],
+        "confidence": 0.9963
+      }
+    ],
+    "usage": {
+      "input_tokens": 160,
+      "output_tokens": 0
+    }
+  }
+}

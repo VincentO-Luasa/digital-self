@@ -2,12 +2,12 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Northwind Labs — Porto\nBuilt the ingestion framework for the product analytics team.",
+    "input": "## Education & toolkit\n- Data modelling and public speaking",
     "questions": [
       {
         "type": "choice",
         "name": "kind",
-        "instructions": "What kind of thing is \"ingestion framework\" in the text?",
+        "instructions": "What kind of thing is \"Data modelling\" in the text?",
         "choices": [
           {
             "value": "person"
@@ -53,50 +53,50 @@
       {
         "type": "choice",
         "name": "kind",
-        "choice": "project",
+        "choice": "topic",
         "probabilities": [
           {
             "value": "person",
-            "probability": 0.0136
+            "probability": 0.0043
           },
           {
             "value": "org",
-            "probability": 0.0025
+            "probability": 0.002
           },
           {
             "value": "team",
-            "probability": 0.005
+            "probability": 0.0041
           },
           {
             "value": "project",
-            "probability": 0.5784
+            "probability": 0.0014
           },
           {
             "value": "place",
-            "probability": 0.0009
+            "probability": 0.0028
           },
           {
             "value": "event",
-            "probability": 0.0009
+            "probability": 0.0034
           },
           {
             "value": "tool",
-            "probability": 0.3981
+            "probability": 0.3887
           },
           {
             "value": "topic",
-            "probability": 0.0005
+            "probability": 0.5652
           },
           {
             "value": "activity",
-            "probability": 0.0001
+            "probability": 0.0281
           }
         ],
-        "confidence": 0.5257
+        "confidence": 0.5108
       }
     ],
     "usage": {
-      "input_tokens": 151,
+      "input_tokens": 144,
       "output_tokens": 0
     }
   }

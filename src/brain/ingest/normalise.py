@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from brain.ingest.brief import PAGE_TYPES, Brief, BriefName, homes, lookup, name_index
+from brain.ingest.dates import MONTHS
 from brain.ingest.extract import ExtractedFact, Extraction
 from brain.vault.models import RELATIONSHIP_PREDICATES, SELF_ID, Kind, is_multi_valued
 from brain.vault.ops import AddAlias, AddFact, ChangeSet, CreateEntity, Operation
@@ -186,27 +187,6 @@ SUBJECT_REGIONS = {
 }
 TYPE_REGIONS = {"project": "projects"}
 OPEN_ENDED = {"present", "now", "current", "currently", "ongoing", "today", "to date"}
-MONTHS = {
-    m: i
-    for i, names in enumerate(
-        [
-            ("jan", "january"),
-            ("feb", "february"),
-            ("mar", "march"),
-            ("apr", "april"),
-            ("may",),
-            ("jun", "june"),
-            ("jul", "july"),
-            ("aug", "august"),
-            ("sep", "sept", "september"),
-            ("oct", "october"),
-            ("nov", "november"),
-            ("dec", "december"),
-        ],
-        start=1,
-    )
-    for m in names
-}
 
 
 def clean(text: str) -> str:
@@ -499,7 +479,7 @@ def _one_current(facts: list[_Fact], notes: list[str]) -> list[_Fact]:
 
 
 def _team_as_employer(facts: list[_Fact], name_of: Callable[[str], str], notes: list[str]):
-    """``works_at`` naming one of the document's teams ("BioAI" beside team BioAI)."""
+    """``works_at`` naming one of the document's teams ("Data Platform" beside that team)."""
     teams = {fold(f.o) for f in facts if f.p == "team"}
     out = []
     for f in facts:
@@ -758,7 +738,7 @@ def _subject_ok(p: str, kind: str) -> bool:
     return kind in ("self", "person")
 
 
-def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact | None:
+def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> list[_Fact]:
     p, text, value = raw.predicate, clean(raw.text), clean(raw.object)
     about = text or f"{p} {value}"
     subject = res.lookup(raw.subject)
@@ -767,13 +747,13 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
             notes.append(f"dropped {p} fact about {clean(raw.subject)!r} ({why}): {about}")
         else:
             notes.append(f"dropped fact with unknown subject {raw.subject!r}: {about}")
-        return None
+        return []
     if not value:
         notes.append(f"dropped {p} fact without an object: {about}")
-        return None
+        return []
     if ZERO_COUNT.search(value) or ZERO_COUNT.search(text):
         notes.append(f"dropped {p} fact with a zero count (an unread page counter?): {about}")
-        return None
+        return []
     if p == "has_skill" and fold(value) in LANGUAGES:
         p = "speaks"
         notes.append(f"has_skill → speaks ({value} is a language)")
@@ -791,7 +771,7 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
     if p in LITERAL_OBJECTS:
         if target == subject and p != "name":
             notes.append(f"dropped {p} fact whose subject is its object: {about}")
-            return None
+            return []
         target = target if target in res.pages else None
     else:
         if target == SELF_ID and p not in TOWARDS_OWNER | {"manager", "mentor_of"}:
@@ -805,19 +785,19 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
             p, target, value = "responsibility", None, _sentence(text or value)
         elif target is None and (why := res.literal(value)) and p in OBJECT_TYPES:
             notes.append(f"dropped {p} fact: {value!r} is {why}, not a page: {about}")
-            return None
+            return []
         elif target is None and p in ENTITY_OBJECTS and subject == SELF_ID:
             target = res.plan(value, res.entity_kinds.get(fold(value), ENTITY_OBJECTS[p]), [])
     if target == subject:
         notes.append(f"dropped {p} fact whose subject is its object: {about}")
-        return None
+        return []
     if subject == SELF_ID and target and p in TOWARDS_OWNER:
         subject, target = target, SELF_ID  # (self, owner, project) → (project, owner, self)
 
     skind = res.kind(subject)
     if not _subject_ok(p, skind):
         notes.append(f"dropped {p} fact: its subject {res.title(subject)!r} is a {skind}: {about}")
-        return None
+        return []
     allowed = OBJECT_TYPES.get(p)
     if target and allowed and (okind := res.kind(target)) not in allowed:
         name = res.title(target) if target != SELF_ID else value
@@ -826,13 +806,13 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
             p = "worked_on"
         elif p in RELATIONSHIP_PREDICATES or p in ("works_at", "studied_at", "owner", "manager"):
             notes.append(f"dropped {p} fact: {name!r} is a {okind}: {about}")
-            return None
+            return []
         else:
             notes.append(f"{p}: {name!r} is a {okind}, kept as a literal value: {about}")
             target, value = None, name
     elif not target and p in RELATIONSHIP_PREDICATES:
         notes.append(f"dropped {p} fact: it must point at the owner: {about}")
-        return None
+        return []
 
     o = f"[[{target}]]" if target else value
     start, end = normalise_date(raw.start), normalise_date(raw.end)
@@ -842,7 +822,7 @@ def _convert_fact(raw: ExtractedFact, res: _Resolver, notes: list[str]) -> _Fact
     if start and end and end < start:
         notes.append(f"dropped end {end} before start {start}: {about}")
         end = None
-    return _Fact(subject, p, o, text, start, end)
+    return [_Fact(subject, p, o, text, start, end)]
 
 
 def build_changeset(
@@ -928,7 +908,7 @@ def build_changeset(
     cutoff = (today or date.today()).isoformat()
     for extraction in extractions:
         for raw in extraction.facts:
-            if fact := _convert_fact(raw, res, notes):
+            for fact in _convert_fact(raw, res, notes):
                 if fact.start and len(fact.start) == len(cutoff) and fact.start >= cutoff:
                     notes.append(
                         f"dropped start {fact.start} (the ingest day): {fact.text or fact.o}"

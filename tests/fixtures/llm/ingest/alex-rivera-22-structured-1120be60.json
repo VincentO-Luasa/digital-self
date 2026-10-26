@@ -1,0 +1,219 @@
+{
+  "kind": "structured",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You extract facts about the owner from one excerpt of a document the owner wrote or that is about the owner.\n\nFields, in this order:\n- reasoning: one short sentence on what the excerpt covers.\n- owner_names: names the excerpt uses for the owner (full name, short name); [] if none.\n- entities: the people, organisations (company, university, school, club), projects, places and events that facts point to. Never the owner. Each entity has name (as written), type, id (its id in KNOWN ENTITIES, else \"\") and aliases (other names the excerpt uses; [] if none). type is person, org, project, place, event, or tool for a tool, app, product, website, dataset, record id or technology. Teams, skills and languages are not entities.\n- facts: one per fact, one value each. Each fact has:\n  - subject: \"self\" for the owner, otherwise an entity name.\n  - predicate: one of the predicates below.\n  - object: an entity name, \"self\", or a short literal such as \"Python\", \"Spanish\", \"Senior data engineer\".\n  - text: \"\" when predicate and object say it all (speaks Spanish, has_skill Python, works_at Northwind Labs, responsibility \"Runs the on-call rotation\"). Otherwise a short sentence that starts with a verb, contains the object and has no name and no pronoun (he, his, she, her, they, their, I, my), e.g. \"Does calisthenics every morning\".\n  - start, end: when it began and when it stopped, as YYYY or YYYY-MM (YYYY-MM-DD only if the day is given); \"\" if not said or still true.\n\nPredicates:\n- name: full name. born: birth date. hometown: where they grew up. lives_in: the city they live in. nationality. speaks: a language.\n- works_at: an employer organisation, nothing else. role: a job title. team: a team name. manager: who they report to. responsibility: one duty in a job, as a short verb phrase (\"Works on…\", \"Builds…\", \"Experiments with…\", \"Runs…\"). worked_on: a project.\n- studied_at: a school or university. degree. certification.\n- has_skill: a skill, tool, technology or programming language. habit: something they do regularly.\n- values, interest, likes: what the owner cares about, enjoys or is into.\n- goal: an aim of the owner or of a project.\n- About a project (subject: the project): owner (who leads it; object: the person or \"self\"), status, deadline, stakeholder, uses (a tool).\n- friend_of, family_of, colleague_of, mentor_of, knows: how a person relates to the owner (subject: the person, object: \"self\").\n- member_of: a club or group. located_in: where an organisation or place is. part_of: a larger whole.\n\nRules:\n- Every fact the excerpt states (values, interests, team and each job duty too), and only those: no guesses, no outside knowledge.\n- Each job: works_at (object: the organisation) and role, with the same start and end.\n- Past tense or \"before\", \"previously\": set end to when it stopped if the excerpt tells (e.g. the start of what came next). If it does not, use no lives_in, works_at or role fact for it.\n- Months as YYYY-MM (March 2025 → 2025-03).\n- Reuse KNOWN ENTITIES: put their id in id.\n- Skip contact details, copyright lines and navigation text.\n\nReply with minified JSON on one line (no indentation, no newlines), shaped like:\n{\"reasoning\":\"…\",\"owner_names\":[\"…\"],\"entities\":[{\"name\":\"…\",\"type\":\"org\",\"id\":\"\",\"aliases\":[]}],\"facts\":[{\"subject\":\"self\",\"predicate\":\"works_at\",\"object\":\"…\",\"text\":\"\",\"start\":\"2021\",\"end\":\"\"}]}\n"
+      },
+      {
+        "role": "user",
+        "content": "Today is 2026-10-25.\nDocument: Alex Rivera — Data Engineer\nSection: Alex Rivera > Projects > Projects; Skills and Education\n\nKNOWN ENTITIES (id: names):\n- self: the owner (Alex Rivera)\n- orgs/data-platform-team: Data Platform team\n- orgs/fabrikam-retail: Fabrikam Retail\n- orgs/northwind-labs: Northwind Labs\n- orgs/platform-team: platform team\n- orgs/product-analytics-team: product analytics team\n- places/lisbon: Lisbon\n- places/madrid: Madrid\n- places/porto: Porto\n- places/seville: Seville\n- places/valencia: Valencia\n- projects/atlas-migration: Atlas Migration\n\nEXCERPT:\n<<<\n## Projects\n\n### Atlas Migration\n\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all\nnightly batch pipelines from a legacy Hadoop cluster to a managed cloud warehouse. It\nuses Airflow for orchestration and dbt for transformations.\n\n### Tidepool\n\nTidepool is a small open-source library for data quality checks that I started in 2022.\nI maintain it together with my friend Sam Okafor. Its code lives on CodeHarbor and its\ntest suite runs on the public TripLog dataset (record TL4521).\n\n## Skills\n\n- Python and SQL\n- Apache Spark\n- Airflow and dbt\n- Data modelling\n\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and\nthe Lumen notebook app.\n\n## Education\n\nMSc in Data Science, Westbridge University, 2018–2019.\n\nBSc in Computer Science, Calder College, 2014–2018.\n>>>"
+      }
+    ],
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "max_tokens": 6144,
+    "extra_body": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "top_k": 20
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "Extraction",
+        "strict": true,
+        "schema": {
+          "$defs": {
+            "ExtractedEntity": {
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "person",
+                    "org",
+                    "project",
+                    "place",
+                    "event",
+                    "tool"
+                  ],
+                  "title": "Type",
+                  "type": "string"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Aliases",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "id",
+                "aliases"
+              ],
+              "title": "ExtractedEntity",
+              "type": "object"
+            },
+            "ExtractedFact": {
+              "properties": {
+                "subject": {
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "predicate": {
+                  "enum": [
+                    "name",
+                    "born",
+                    "hometown",
+                    "lives_in",
+                    "nationality",
+                    "speaks",
+                    "works_at",
+                    "role",
+                    "team",
+                    "manager",
+                    "responsibility",
+                    "worked_on",
+                    "studied_at",
+                    "degree",
+                    "certification",
+                    "has_skill",
+                    "habit",
+                    "values",
+                    "interest",
+                    "likes",
+                    "goal",
+                    "owner",
+                    "status",
+                    "deadline",
+                    "stakeholder",
+                    "uses",
+                    "friend_of",
+                    "family_of",
+                    "colleague_of",
+                    "mentor_of",
+                    "knows",
+                    "member_of",
+                    "located_in",
+                    "part_of"
+                  ],
+                  "title": "Predicate",
+                  "type": "string"
+                },
+                "object": {
+                  "title": "Object",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject",
+                "predicate",
+                "object",
+                "text",
+                "start",
+                "end"
+              ],
+              "title": "ExtractedFact",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "reasoning": {
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "owner_names": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Owner Names",
+              "type": "array"
+            },
+            "entities": {
+              "items": {
+                "$ref": "#/$defs/ExtractedEntity"
+              },
+              "title": "Entities",
+              "type": "array"
+            },
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ExtractedFact"
+              },
+              "title": "Facts",
+              "type": "array"
+            }
+          },
+          "required": [
+            "reasoning",
+            "owner_names",
+            "entities",
+            "facts"
+          ],
+          "title": "Extraction",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "response": {
+    "id": "chatcmpl-03f4d15c",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\n  \"reasoning\": \"The excerpt details Alex Rivera's current project leadership at Northwind Labs, a personal open-source project Tidepool, technical skills, daily tools, and educational background.\",\n  \"owner_names\": [\n    \"Alex Rivera\"\n  ],\n  \"entities\": [\n    {\n      \"name\": \"Northwind Labs\",\n      \"type\": \"org\",\n      \"id\": \"orgs/northwind-labs\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Atlas Migration\",\n      \"type\": \"project\",\n      \"id\": \"projects/atlas-migration\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Hadoop\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Airflow\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"dbt\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Tidepool\",\n      \"type\": \"project\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Sam Okafor\",\n      \"type\": \"person\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"CodeHarbor\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"TripLog\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"TL4521\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Python\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"SQL\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Apache Spark\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Pebble\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Lumen\",\n      \"type\": \"tool\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Westbridge University\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    },\n    {\n      \"name\": \"Calder College\",\n      \"type\": \"org\",\n      \"id\": \"\",\n      \"aliases\": []\n    }\n  ],\n  \"facts\": [\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"works_at\",\n      \"object\": \"Northwind Labs\",\n      \"text\": \"\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"role\",\n      \"object\": \"Data Engineer\",\n      \"text\": \"\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"responsibility\",\n      \"object\": \"leading the Atlas Migration\",\n      \"text\": \"Leads the Atlas Migration at Northwind Labs\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"owner\",\n      \"object\": \"self\",\n      \"text\": \"\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"uses\",\n      \"object\": \"Hadoop\",\n      \"text\": \"Moves pipelines from a legacy Hadoop cluster\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"uses\",\n      \"object\": \"Airflow\",\n      \"text\": \"Uses Airflow for orchestration\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Atlas Migration\",\n      \"predicate\": \"uses\",\n      \"object\": \"dbt\",\n      \"text\": \"Uses dbt for transformations\",\n      \"start\": \"2026\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"worked_on\",\n      \"object\": \"Tidepool\",\n      \"text\": \"\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"owner\",\n      \"object\": \"self\",\n      \"text\": \"\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"friend_of\",\n      \"object\": \"Sam Okafor\",\n      \"text\": \"Maintains Tidepool together with friend Sam Okafor\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"uses\",\n      \"object\": \"CodeHarbor\",\n      \"text\": \"Code lives on CodeHarbor\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"uses\",\n      \"object\": \"TripLog\",\n      \"text\": \"Test suite runs on the public TripLog dataset\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"Tidepool\",\n      \"predicate\": \"uses\",\n      \"object\": \"TL4521\",\n      \"text\": \"Test suite runs on record TL4521\",\n      \"start\": \"2022\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Python\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"SQL\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Apache Spark\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Airflow\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"dbt\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"has_skill\",\n      \"object\": \"Data modelling\",\n      \"text\": \"\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"habit\",\n      \"object\": \"Pebble\",\n      \"text\": \"Uses Pebble every day\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"habit\",\n      \"object\": \"CodeHarbor\",\n      \"text\": \"Uses CodeHarbor every day\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"habit\",\n      \"object\": \"Lumen\",\n      \"text\": \"Uses Lumen notebook app every day\",\n      \"start\": \"\",\n      \"end\": \"\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"studied_at\",\n      \"object\": \"Westbridge University\",\n      \"text\": \"\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"degree\",\n      \"object\": \"MSc in Data Science\",\n      \"text\": \"\",\n      \"start\": \"2018\",\n      \"end\": \"2019\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"studied_at\",\n      \"object\": \"Calder College\",\n      \"text\": \"\",\n      \"start\": \"2014\",\n      \"end\": \"2018\"\n    },\n    {\n      \"subject\": \"self\",\n      \"predicate\": \"degree\",\n      \"object\": \"BSc in Computer Science\",\n      \"text\": \"\",\n      \"start\": \"2014\",\n      \"end\": \"2018\"\n    }\n  ]\n}",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1793013218,
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 2208,
+      "prompt_tokens": 1293,
+      "total_tokens": 3501,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "input_tokens": 1293,
+      "output_tokens": 2208,
+      "time_to_first_token": 3.07,
+      "total_time": 57.61,
+      "prompt_eval_duration": 3.07,
+      "generation_duration": 54.53,
+      "prompt_tokens_per_second": 421.07,
+      "generation_tokens_per_second": 40.49
+    }
+  }
+}

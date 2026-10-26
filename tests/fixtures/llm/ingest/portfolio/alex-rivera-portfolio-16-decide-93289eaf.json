@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "records",
+        "instructions": "What does this statement about the person record: \"built a small chat bot\"?",
+        "choices": [
+          {
+            "value": "job",
+            "description": "their job, role, duties or achievements at work"
+          },
+          {
+            "value": "trait",
+            "description": "a skill, habit, hobby or interest they have"
+          },
+          {
+            "value": "event",
+            "description": "one event or step of a story the text tells, or what happened in it"
+          },
+          {
+            "value": "lesson",
+            "description": "a finding, an opinion formed, a lesson learnt or a plan for next time"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "records",
+        "choice": "event",
+        "probabilities": [
+          {
+            "value": "job",
+            "probability": 0.1917
+          },
+          {
+            "value": "trait",
+            "probability": 0.2172
+          },
+          {
+            "value": "event",
+            "probability": 0.5903
+          },
+          {
+            "value": "lesson",
+            "probability": 0.0008
+          }
+        ],
+        "confidence": 0.4538
+      }
+    ],
+    "usage": {
+      "input_tokens": 157,
+      "output_tokens": 0
+    }
+  }
+}

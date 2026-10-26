@@ -1,0 +1,103 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Senior Data Engineer at Northwind Labs\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "instructions": "What kind of thing is \"Data Platform\" in the text?",
+        "choices": [
+          {
+            "value": "person"
+          },
+          {
+            "value": "org",
+            "description": "organisation: company, university, school or club"
+          },
+          {
+            "value": "team",
+            "description": "team or department"
+          },
+          {
+            "value": "project",
+            "description": "work the person builds, leads or takes part in, including their own app or library"
+          },
+          {
+            "value": "place"
+          },
+          {
+            "value": "event"
+          },
+          {
+            "value": "tool",
+            "description": "tool, product, dataset or technology the person uses"
+          },
+          {
+            "value": "topic",
+            "description": "topic or field"
+          },
+          {
+            "value": "activity",
+            "description": "activity, hobby or sport"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "choice": "team",
+        "probabilities": [
+          {
+            "value": "person",
+            "probability": 0.0013
+          },
+          {
+            "value": "org",
+            "probability": 0.1641
+          },
+          {
+            "value": "team",
+            "probability": 0.8333
+          },
+          {
+            "value": "project",
+            "probability": 0.0004
+          },
+          {
+            "value": "place",
+            "probability": 0.0001
+          },
+          {
+            "value": "event",
+            "probability": 0.0001
+          },
+          {
+            "value": "tool",
+            "probability": 0.0007
+          },
+          {
+            "value": "topic",
+            "probability": 0.0
+          },
+          {
+            "value": "activity",
+            "probability": 0.0
+          }
+        ],
+        "confidence": 0.8125
+      }
+    ],
+    "usage": {
+      "input_tokens": 175,
+      "output_tokens": 0
+    }
+  }
+}

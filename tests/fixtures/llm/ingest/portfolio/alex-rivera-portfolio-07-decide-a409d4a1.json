@@ -2,7 +2,7 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Senior Data Engineer at Northwind Labs\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.\nMy manager is Priya Raman.\n### Data Analyst at Fabrikam Retail\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, where I owned the weekly sales reporting.\n## Education & toolkit\nMSc in Data Science, Westbridge University, 2018–2019.\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online",
+    "input": "## Education & toolkit\nMSc in Data Science, Westbridge University, 2018–2019.\n- Data modelling and public speaking\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online",
     "questions": [
       {
         "type": "choice",
@@ -10,19 +10,19 @@
         "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
         "choices": [
           {
-            "value": "Atlas Migration"
+            "value": "MSc in Data Science"
           },
           {
-            "value": "Priya Raman"
+            "value": "Data modelling"
           },
           {
-            "value": "Fabrikam Retail"
-          },
-          {
-            "value": "Westbridge University"
+            "value": "public speaking"
           },
           {
             "value": "Bouldering"
+          },
+          {
+            "value": "sourdough baking"
           },
           {
             "value": "Chess"
@@ -42,42 +42,42 @@
       {
         "type": "choice",
         "name": "screen",
-        "choice": "Bouldering",
+        "choice": "Data modelling",
         "probabilities": [
           {
-            "value": "Atlas Migration",
-            "probability": 0.0806
+            "value": "MSc in Data Science",
+            "probability": 0.0546
           },
           {
-            "value": "Priya Raman",
-            "probability": 0.0109
+            "value": "Data modelling",
+            "probability": 0.5867
           },
           {
-            "value": "Fabrikam Retail",
-            "probability": 0.007
-          },
-          {
-            "value": "Westbridge University",
-            "probability": 0.0011
+            "value": "public speaking",
+            "probability": 0.0701
           },
           {
             "value": "Bouldering",
-            "probability": 0.464
+            "probability": 0.0482
+          },
+          {
+            "value": "sourdough baking",
+            "probability": 0.0177
           },
           {
             "value": "Chess",
-            "probability": 0.1173
+            "probability": 0.0546
           },
           {
             "value": "none of them",
-            "probability": 0.319
+            "probability": 0.1681
           }
         ],
-        "confidence": 0.3747
+        "confidence": 0.5179
       }
     ],
     "usage": {
-      "input_tokens": 283,
+      "input_tokens": 193,
       "output_tokens": 0
     }
   }

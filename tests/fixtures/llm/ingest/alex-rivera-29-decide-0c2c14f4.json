@@ -2,16 +2,13 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Tidepool\nIts code lives on CodeHarbor and its test suite runs on the public TripLog dataset (record TL4521).\n## Skills\n- Data modelling\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
+    "input": "### Tidepool\nIts code lives on CodeHarbor and its test suite runs on the public TripLog dataset (record TL4521).\n## Skills\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
     "questions": [
       {
         "type": "choice",
         "name": "screen",
-        "instructions": "Which of these is a hobby, a leisure activity or a subject of interest rather than a professional skill or tool?",
+        "instructions": "Which of these is a professional skill or tool used for work rather than a hobby, interest or habit?",
         "choices": [
-          {
-            "value": "Data modelling"
-          },
           {
             "value": "Pebble"
           },
@@ -23,7 +20,7 @@
           },
           {
             "value": "none of them",
-            "description": "all of them are professional skills or tools"
+            "description": "none of them is a professional skill or tool"
           }
         ]
       }
@@ -36,34 +33,30 @@
       {
         "type": "choice",
         "name": "screen",
-        "choice": "none of them",
+        "choice": "Pebble",
         "probabilities": [
           {
-            "value": "Data modelling",
-            "probability": 0.0737
-          },
-          {
             "value": "Pebble",
-            "probability": 0.0164
+            "probability": 0.4245
           },
           {
             "value": "CodeHarbor",
-            "probability": 0.0044
+            "probability": 0.3746
           },
           {
             "value": "Lumen",
-            "probability": 0.0073
+            "probability": 0.1562
           },
           {
             "value": "none of them",
-            "probability": 0.8981
+            "probability": 0.0447
           }
         ],
-        "confidence": 0.8726
+        "confidence": 0.2327
       }
     ],
     "usage": {
-      "input_tokens": 156,
+      "input_tokens": 146,
       "output_tokens": 0
     }
   }

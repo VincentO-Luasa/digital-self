@@ -1,0 +1,70 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## About me\nOutside work I go bouldering and bake sourdough bread.\nAlex has done calisthenics every morning for ten years: it is his longest-running habit.\nPython sits at the centre of his toolkit.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "Goes bouldering outside work"
+          },
+          {
+            "value": "Bakes sourdough bread outside work"
+          },
+          {
+            "value": "Does calisthenics every morning for ten years"
+          },
+          {
+            "value": "Uses Python at the centre of his toolkit"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "Goes bouldering outside work",
+            "probability": 0.0038
+          },
+          {
+            "value": "Bakes sourdough bread outside work",
+            "probability": 0.0017
+          },
+          {
+            "value": "Does calisthenics every morning for ten years",
+            "probability": 0.0014
+          },
+          {
+            "value": "Uses Python at the centre of his toolkit",
+            "probability": 0.0003
+          },
+          {
+            "value": "none of them",
+            "probability": 0.9928
+          }
+        ],
+        "confidence": 0.991
+      }
+    ],
+    "usage": {
+      "input_tokens": 197,
+      "output_tokens": 0
+    }
+  }
+}

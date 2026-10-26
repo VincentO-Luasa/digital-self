@@ -15,6 +15,13 @@ February in another), and include traps: a project inside a job, a side project,
 org, a tool (Wayfinder SDK) next to a project (Waypoint), past cities vs the current one, a holiday
 city, a friend's city, a hobby that sounds like a skill, other people's facts on the same page.
 
+Two more documents use a second fictional persona, **Theo Marchetti** (a machine learning
+engineer), for layouts and genres the Maya set lacks: a homepage whose experience and education
+timelines are CSS-grid rows (the date cell before the organisation's heading, CV-style dates such
+as "Sep 21 — Feb 23", two rows at one employer, project cards with a label above the heading),
+and a first-person write-up of an experiment where a few lasting facts sit inside a long story
+of events, results, lessons and plans (strict gold: story details are not facts).
+
 `ingest/gold/<doc stem>.yaml` lists what a careful human would extract from each document.
 
 ### What is measured

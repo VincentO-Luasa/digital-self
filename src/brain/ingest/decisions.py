@@ -37,7 +37,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from brain.ingest.extract import Extraction
+from brain.ingest.extract import ExtractedFact, Extraction
 from brain.ingest.normalise import (
     ENTITY_OBJECTS,
     LANGUAGES,
@@ -298,6 +298,37 @@ SCREEN_LEISURE = Screen(
 )
 
 
+# Story details: a write-up of an experiment, a trip or a project yields "duties" and "skills"
+# that are really one-off events, results, lessons and plans ("Quick evaluation underestimated
+# the full run", "Plans to point the AI at feature engineering next round", the mountains of
+# one hike as interests). Facts of these predicates about the person are screened and asked.
+STORY_PREDICATES = ("responsibility", "has_skill", "interest", "habit", "likes")
+STORY_ACTION = "drop"  # what a confident "story" answer does: "drop", "note" or "off" (no check)
+SCREEN_STORY = Screen(
+    "Which of these statements records one event or step of a story the text tells, a finding, "
+    "an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, "
+    "duties, achievements, skills, habits or interests?",
+    "each records the person's job, duties, achievements, skills, habits or interests",
+)
+# Measured on 29 statements from the fictional eval documents (13 story details, 16 facts), at
+# 0.8: these four options caught 9 story details and lost no fact; "duty / trait / story" caught
+# 8 and lost a CV achievement; "still true a year later?" and "would it belong in a profile?"
+# (yes/no) caught 3-5 and lost one fact; "a fact about the person or a story detail?" kept all.
+RECORDS = (
+    Choice(value="job", description="their job, role, duties or achievements at work"),
+    Choice(value="trait", description="a skill, habit, hobby or interest they have"),
+    Choice(
+        value="event",
+        description="one event or step of a story the text tells, or what happened in it",
+    ),
+    Choice(
+        value="lesson",
+        description="a finding, an opinion formed, a lesson learnt or a plan for next time",
+    ),
+)
+STORY = frozenset({"event", "lesson"})
+
+
 def _kind_question(name: str) -> ChoiceQuestion:
     return ChoiceQuestion(
         name="kind",
@@ -322,23 +353,28 @@ class _Asker:
 
     def __init__(self, llm: DecisionModel, text: str, context: str, checks: Checks) -> None:
         self.llm, self.text, self.context, self.checks = llm, text, context, checks
+        # item → the names its evidence is found by (a statement is found by its object's name)
+        self.names: dict[str, list[str]] = {}
 
-    def ask(self, items: Sequence[str], question: ChoiceQuestion) -> Decision:
+    def ask(self, items: Sequence[str], question: Question) -> Decision:
         start = time.perf_counter()
-        source = evidence(self.text, items)
+        source = evidence(self.text, [n for i in items for n in self.names.get(i, [i])])
         [decision] = self.llm.decide(decision_input(source, self.context), [question])
         self.checks.seconds += time.perf_counter() - start
         self.checks.asked += 1
         self.checks.decisions.append((", ".join(items), decision))
         return decision
 
-    def screen(self, items: Sequence[str], screen: Screen, label: str) -> list[str]:
-        """The items to ask about: those the excerpt never names, and those a screening flags
-        (at least ``SCREEN_FLAG``). Items are screened in groups of at most ``SCREEN_GROUP``; a
-        group of up to ``DIRECT_UP_TO`` items is not screened (as cheap to ask each)."""
+    def screen(
+        self, items: Sequence[str], screen: Screen, label: str, *, named: bool = True
+    ) -> list[str]:
+        """The items to ask about: those the excerpt never names (``named``: items are names, not
+        paraphrased statements), and those a screening flags (at least ``SCREEN_FLAG``). Items
+        are screened in groups of at most ``SCREEN_GROUP``; a group of up to ``DIRECT_UP_TO``
+        items is not screened (as cheap to ask each)."""
         remaining = [i for i in dict.fromkeys(items) if _fold(i) != _fold(NONE)]
         # a name the excerpt never contains has no evidence here: asked about, never screened
-        flagged = [i for i in remaining if not _mentions(self.text, i)]
+        flagged = [i for i in remaining if named and not _mentions(self.text, i)]
         if flagged:
             self.checks.notes.append(f"check: {label} not named in the part: {flagged}")
         remaining = [i for i in remaining if i not in flagged]
@@ -438,9 +474,11 @@ def check_part(
             )
 
     self_names = SELF_WORDS | {_fold(n) for n in owner}
-    # these two may remove facts: before the skill facts are indexed
+    # these may remove facts: before the skill facts are indexed
     _check_languages(asker, extraction, self_names)
     _check_employers(asker, extraction, self_names)
+    if STORY_ACTION != "off":
+        _check_stories(asker, extraction, self_names)
     facts: dict[str, list[int]] = {}  # folded value → indices of its facts
     names: dict[str, str] = {}
     for i, fact in enumerate(extraction.facts):
@@ -478,6 +516,64 @@ def check_part(
                 fact.text = ""  # rendered from the template of the new predicate
                 checks.rerouted += 1
     return checks
+
+
+def statement(fact: ExtractedFact) -> str:
+    """The fact as the extractor stated it ("Learns that an AI researcher needs clear
+    objectives"), or its predicate and value when it gave no text."""
+    text = " ".join(fact.text.split())
+    return text or f"{fact.predicate.replace('_', ' ')}: {' '.join(fact.object.split())}"
+
+
+def _check_stories(asker: _Asker, extraction: Extraction, self_names: set[str]) -> None:
+    """Duties, skills, interests, habits and likes that are details of a story (an event, a
+    result, a lesson, a plan): screen the statements, ask about the flagged ones and drop, or turn
+    into a ``note``, those confidently a story detail (``STORY_ACTION``)."""
+    checks = asker.checks
+    by_statement: dict[str, list[int]] = {}
+    shown: dict[str, str] = {}
+    for i, fact in enumerate(extraction.facts):
+        language = _fold(" ".join(fact.object.split())) in LANGUAGES  # routed to speaks later
+        if (
+            fact.predicate in STORY_PREDICATES
+            and _fold(fact.subject) in self_names
+            and not language
+        ):
+            said = statement(fact)
+            by_statement.setdefault(_fold(said), []).append(i)
+            if _fold(said) not in shown:
+                shown[_fold(said)] = said
+                value = " ".join(fact.object.split())
+                asker.names[said] = [n for n in (value, said) if n]
+    drop: set[int] = set()
+    for said in asker.screen(list(shown.values()), SCREEN_STORY, "statements", named=False):
+        question = ChoiceQuestion(
+            name="records",
+            instructions=f'What does this statement about the person record: "{said}"?',
+            choices=list(RECORDS),
+        )
+        decision = asker.ask([said], question)
+        p = sum(decision.probabilities.get(c, 0.0) for c in STORY)
+        if decision.refusal:
+            checks.notes.append(f"check: {said!r}: no answer: kept")
+            continue
+        if p < ACT_ABOVE:
+            under = f" under {ACT_ABOVE}" if decision.choice in STORY else ""
+            checks.notes.append(
+                f"check: {said!r} records {decision.choice} (p(story)={p:.2f}){under}: kept"
+            )
+            continue
+        for i in by_statement[_fold(said)]:
+            fact = extraction.facts[i]
+            if STORY_ACTION == "note":
+                fact.predicate, fact.object, fact.text = "note", said, said  # type: ignore[assignment]
+            else:
+                drop.add(i)
+            checks.rerouted += 1
+        then = "a note" if STORY_ACTION == "note" else "dropped"
+        checks.notes.append(f"check: {said!r} is a story detail (p={p:.2f}): {then}")
+    if drop:
+        extraction.facts[:] = [f for i, f in enumerate(extraction.facts) if i not in drop]
 
 
 def _check_languages(asker: _Asker, extraction: Extraction, self_names: set[str]) -> None:

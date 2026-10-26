@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
 from conftest import (  # type: ignore[import-not-found]
     DOCS,
     brief,
@@ -34,6 +35,7 @@ from brain.ingest.brief import (
     units,
 )
 from brain.ingest.chunking import Chunk
+from brain.ingest.dates import years_in
 from brain.ingest.extract import Extraction
 from brain.ingest.extract import build_messages as extract_messages
 from brain.ingest.normalise import build_changeset
@@ -152,6 +154,84 @@ def test_ground_blanks_dates_the_document_does_not_state() -> None:
         "Fabrikam Retail, Lisbon",
         "Data Analyst, Sep 2019",
     ]
+
+
+@pytest.mark.parametrize(
+    ("line", "years"),
+    [
+        ("Data Engineer  Northwind Labs  Lisbon  Sep 21 – July 22", {2021, 2022}),
+        ("Analyst, Fabrikam Retail, April 24 – Present", {2024}),
+        ("Nov 20 – Feb 21 · Fabrikam Retail", {2020, 2021}),
+        ("Sept. 21 to Aug. 23", {2021, 2023}),
+        ("Fabrikam Retail, 09/2021 – 03/2023", {2021, 2023}),
+        ("Fabrikam Retail, 09/21 – 03/23", {2021, 2023}),
+        ("Fabrikam Retail (2021-09 to 2023-03)", {2021, 2023}),
+        ("Fabrikam Retail, Sep '21 – ’23", {2021, 2023}),
+        ("Joined Fabrikam Retail on May 21, 2024", {2024}),  # a day of the month, not '21
+        ("Three of the 21 analysts at Fabrikam Retail", set()),
+    ],
+)
+def test_years_in_resume_date_forms(line: str, years: set[int]) -> None:
+    assert years_in(line, TODAY) == years
+
+
+def test_ground_keeps_resume_style_dates() -> None:
+    """A CV writes "Sep 21 – July 22" with the organisation on the same line; the brief's
+    "2021-09" is stated there. An end "now" is not checked."""
+    text = (
+        "EXPERIENCE\n"
+        "Data Engineer   Northwind Labs   Lisbon   April 24 – Present\n"
+        "Analyst   Fabrikam Retail   Porto   Sep 21 – July 22\n"
+        "Intern   Contoso Bank   Porto   Nov 20 – Feb 21\n"
+        "EDUCATION\n"
+        "MSc Data Science, Porto Business School, Porto, 09/2019 – 06/2021\n"
+        "Thesis: streaming joins at scale on a budget for small teams\n"
+        "BSc Mathematics, University of Coimbra, Coimbra, 2016 – 2019"
+    )
+    periods = [
+        ("job", "Data Engineer", "Northwind Labs", "2024-04", "now"),
+        ("job", "Analyst", "Fabrikam Retail", "2021-09", "2022-07"),
+        ("job", "Intern", "Contoso Bank", "2020-11", "2021-02"),
+        ("study", "MSc Data Science", "Porto Business School", "2019-09", "2021-06"),
+        ("study", "BSc Mathematics", "University of Coimbra", "2017", "2019"),  # 2017: wrong
+    ]
+    raw = Brief.model_validate(
+        brief(
+            periods=[
+                {"kind": k, "title": t, "org": o, "start": s, "end": e} for k, t, o, s, e in periods
+            ]
+        )
+    )
+    notes: list[str] = []
+    out = ground(raw, text, notes)
+    assert [(p.start, p.end) for p in out.periods] == [
+        ("2024-04", "now"),
+        ("2021-09", "2022-07"),
+        ("2020-11", "2021-02"),
+        ("2019-09", "2021-06"),
+        ("", "2019"),
+    ]
+    assert notes == [
+        "brief: BSc Mathematics at University of Coimbra: start 2017 not stated; dropped"
+    ]
+    # each CV line is its own unit: the MSc line is not joined with the thesis and the BSc line
+    assert "BSc Mathematics, University of Coimbra, Coimbra, 2016 – 2019" in units(text)
+    # a timeline row starting with a range is not joined to the line above it
+    assert units(
+        "Lead Product Designer at Northwind Labs in Lisbon, where I build\n"
+        "2019 – 2021 · Fabrikam Retail · Analyst"
+    ) == [
+        "Lead Product Designer at Northwind Labs in Lisbon, where I build",
+        "2019 – 2021 · Fabrikam Retail · Analyst",
+    ]
+    # a record line is one unit: its organisation and date stay together
+    assert units('Fabrikam Retail,Analyst,"Built reports. Ran the BI team.",Jan 2024,') == [
+        'Fabrikam Retail,Analyst,"Built reports. Ran the BI team.",Jan 2024,'
+    ]
+    # wrapped prose that goes on in lower case after a year is still one sentence
+    assert units(
+        "I joined Fabrikam Retail in Porto as an analyst in September 2019\nand left in 2021."
+    ) == ["I joined Fabrikam Retail in Porto as an analyst in September 2019 and left in 2021."]
 
 
 def test_homes_chain_ends_and_the_last_is_current() -> None:

@@ -1,0 +1,62 @@
+# Gold facts for docs/theo-marchetti-homepage.html (fictional persona; format: tests/eval/README.md).
+# A homepage whose experience and education timelines are CSS-grid rows: the date cell comes
+# before the organisation's heading, so a reader that emits cells as separate lines puts each
+# date on the line above the name it belongs to. Two rows share an employer. Job dates are
+# written CV-style with two-digit years ("Sep 21 — Feb 23").
+doc: theo-marchetti-homepage.html
+kind: stated
+owner: [Theo Marchetti, Theo]
+
+entities:
+  - {name: Corvane Bio, type: org, aliases: [Corvane]}
+  - {name: Mirelle Analytics, type: org, aliases: [Mirelle]}
+  - {name: Université de Valmont, type: org, aliases: [Valmont]}
+  - {name: Halvorsen Institute of Technology, type: org, aliases: [Halvorsen Institute, HIT]}
+  - {name: Lycée Arbelet, type: org, aliases: [Arbelet]}
+  - {name: Tessera, type: project}
+  - {name: Kitebird, type: project}
+  - {name: Lyon, type: place}
+  - {name: Trieste, type: place}
+  - {name: Grenoble, type: place}
+  - {name: Paris, type: place}
+
+literals: [Python, medicinal chemistry team]
+
+required:
+  - {s: self, p: name, o: Theo Marchetti}
+  - {s: self, p: works_at, o: Corvane Bio, from: 2021-09, current: true}
+  - {s: self, p: role, o: Senior Machine Learning Engineer, from: 2023-03, current: true}
+  - {s: self, p: role, o: Machine Learning Engineer, from: 2021-09, to: 2023-02}
+  - {s: self, p: works_at, o: Mirelle Analytics, from: 2021-02, to: 2021-08}
+  - {s: self, p: studied_at, o: Université de Valmont, from: 2019, to: 2020}
+  - {s: self, p: studied_at, o: Halvorsen Institute of Technology, from: 2016, to: 2019}
+  - {s: self, p: studied_at, o: Lycée Arbelet, from: 2014, to: 2016}
+  - {s: self, p: lives_in, o: Lyon, from: 2021, current: true}
+  - {s: self, p: hometown, o: Trieste}
+  - {s: self, p: speaks, o: Italian}
+  - {s: self, p: speaks, o: French}
+  - {s: self, p: speaks, o: English}
+
+optional:
+  - {s: self, p: role, o: [Data Science Intern, data science intern], from: 2021-02, to: 2021-08}
+  - {s: self, p: degree, o: [MSc in Machine Learning, machine learning], from: 2019, to: 2020}
+  - {s: self, p: degree, o: [engineering degree in applied mathematics, applied mathematics], from: 2016, to: 2019}
+  - {s: self, p: worked_on, o: Tessera, from: 2022, alt: [{s: Tessera, p: owner, o: self}]}
+  - {s: Tessera, p: part_of, o: Corvane Bio}
+  - {s: Kitebird, p: owner, o: self, from: 2020, alt: [{s: self, p: worked_on, o: Kitebird}]}
+  - {s: self, p: [habit, interest, likes], o: [bouldering, climbing, boulder, boulders]}
+  - {s: self, p: [habit, interest, likes], o: [baking, focaccia, baking focaccia]}
+  - {s: self, p: responsibility, o: [property-prediction models, property prediction]}
+
+acceptable:
+  - {s: self, p: lives_in, o: [Grenoble, Paris], why: "studied there; no dates given"}
+  - {s: self, p: studied_at, o: [Grenoble, Paris]}
+  - {s: self, p: has_skill, o: [machine learning, property prediction, active learning, evaluation sets, Python, demand forecasting, forecasting]}
+  - {s: self, p: interest, o: [machine learning, chemistry, active learning]}
+  - {s: self, p: responsibility, o: [active-learning loop, assay planning, Tessera, demand forecasting, maintains Tessera, models that help medicinal chemists, evaluation sets]}
+  - {s: self, p: degree, o: [preparatory classes in mathematics and physics, mathematics and physics]}
+  - {s: Tessera, p: uses, o: [active learning]}
+  - {s: Kitebird, p: uses, o: Python}
+  - {s: Kitebird, p: status, o: [open source]}
+  - {s: Université de Valmont, p: located_in, o: [Paris, Grenoble]}
+  - {s: Halvorsen Institute of Technology, p: located_in, o: [Paris, Grenoble]}

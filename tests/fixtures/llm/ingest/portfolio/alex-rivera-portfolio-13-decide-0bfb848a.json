@@ -1,0 +1,84 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### A reading-list bot for the Porto library club\nI wrote it in Python over a few weekends and handed it over to the club in 2026.\n### Senior Data Engineer at Northwind Labs\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.\n### Data Analyst at Fabrikam Retail\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, where I owned the weekly sales reporting.\n## Education & toolkit\n- Python, SQL and Apache Spark\n- Data modelling and public speaking",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "leads the Atlas Migration"
+          },
+          {
+            "value": "owned the weekly sales reporting"
+          },
+          {
+            "value": "has skill: Python"
+          },
+          {
+            "value": "has skill: SQL"
+          },
+          {
+            "value": "has skill: Apache Spark"
+          },
+          {
+            "value": "has skill: Data modelling"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "leads the Atlas Migration",
+            "probability": 0.3672
+          },
+          {
+            "value": "owned the weekly sales reporting",
+            "probability": 0.0235
+          },
+          {
+            "value": "has skill: Python",
+            "probability": 0.0007
+          },
+          {
+            "value": "has skill: SQL",
+            "probability": 0.0007
+          },
+          {
+            "value": "has skill: Apache Spark",
+            "probability": 0.001
+          },
+          {
+            "value": "has skill: Data modelling",
+            "probability": 0.001
+          },
+          {
+            "value": "none of them",
+            "probability": 0.606
+          }
+        ],
+        "confidence": 0.5404
+      }
+    ],
+    "usage": {
+      "input_tokens": 291,
+      "output_tokens": 0
+    }
+  }
+}

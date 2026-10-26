@@ -1,0 +1,84 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "## What I am reading about\nLately I have been reading a lot about Causal Inference, mostly to understand why our dashboards disagree with each other.\n### A reading-list bot for the Porto library club\nIn 2025 I built a small chat bot that suggests the next book for the Porto library club I joined that year.\n## Education & toolkit\n- Data modelling and public speaking\n- Bouldering (V5) and sourdough baking\n- Chess, mostly online",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "has skill: public speaking"
+          },
+          {
+            "value": "interest: Bouldering"
+          },
+          {
+            "value": "interest: sourdough baking"
+          },
+          {
+            "value": "interest: Chess"
+          },
+          {
+            "value": "interest: Causal Inference"
+          },
+          {
+            "value": "built a small chat bot"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "built a small chat bot",
+        "probabilities": [
+          {
+            "value": "has skill: public speaking",
+            "probability": 0.0043
+          },
+          {
+            "value": "interest: Bouldering",
+            "probability": 0.0055
+          },
+          {
+            "value": "interest: sourdough baking",
+            "probability": 0.0012
+          },
+          {
+            "value": "interest: Chess",
+            "probability": 0.0009
+          },
+          {
+            "value": "interest: Causal Inference",
+            "probability": 0.0055
+          },
+          {
+            "value": "built a small chat bot",
+            "probability": 0.9804
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0023
+          }
+        ],
+        "confidence": 0.9771
+      }
+    ],
+    "usage": {
+      "input_tokens": 256,
+      "output_tokens": 0
+    }
+  }
+}

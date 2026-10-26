@@ -2,7 +2,7 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Atlas Migration\nIt uses Airflow for orchestration and dbt for transformations.\n## Skills\n- Python and SQL\n- Apache Spark\n- Airflow and dbt",
+    "input": "### Atlas Migration\nIt uses Airflow for orchestration and dbt for transformations.\n## Skills\n- Python and SQL\n- Apache Spark\n- Airflow and dbt\n- Data modelling",
     "questions": [
       {
         "type": "choice",
@@ -25,6 +25,9 @@
             "value": "dbt"
           },
           {
+            "value": "Data modelling"
+          },
+          {
             "value": "none of them",
             "description": "all of them are professional skills or tools"
           }
@@ -43,34 +46,38 @@
         "probabilities": [
           {
             "value": "Python",
-            "probability": 0.0033
+            "probability": 0.0018
           },
           {
             "value": "SQL",
-            "probability": 0.001
+            "probability": 0.0003
           },
           {
             "value": "Apache Spark",
-            "probability": 0.0002
+            "probability": 0.0003
           },
           {
             "value": "Airflow",
-            "probability": 0.0008
+            "probability": 0.0003
           },
           {
             "value": "dbt",
-            "probability": 0.0109
+            "probability": 0.0011
+          },
+          {
+            "value": "Data modelling",
+            "probability": 0.004
           },
           {
             "value": "none of them",
-            "probability": 0.9837
+            "probability": 0.9922
           }
         ],
-        "confidence": 0.9804
+        "confidence": 0.9909
       }
     ],
     "usage": {
-      "input_tokens": 128,
+      "input_tokens": 137,
       "output_tokens": 0
     }
   }

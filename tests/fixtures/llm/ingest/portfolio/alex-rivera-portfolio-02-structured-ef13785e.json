@@ -216,24 +216,24 @@
     }
   },
   "response": {
-    "id": "chatcmpl-fd4bd8f5",
+    "id": "chatcmpl-be9f2b94",
     "choices": [
       {
         "finish_reason": "stop",
         "index": 0,
         "message": {
-          "content": "{\"reasoning\":\"The document is a fictional portfolio and notes page for data engineer Alex Rivera detailing his career, education, side projects, and technical notes.\",\"subject\":\"Alex Rivera\",\"kind\":\"notes\",\"voice\":\"first\",\"periods\":[{\"kind\":\"study\",\"title\":\"MSc in Data Science\",\"org\":\"Westbridge University\",\"start\":\"2018\",\"end\":\"2019\"},{\"kind\":\"job\",\"title\":\"Data Analyst\",\"org\":\"Fabrikam Retail\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"kind\":\"job\",\"title\":\"Senior Data Engineer\",\"org\":\"Northwind Labs\",\"start\":\"2025-03\",\"end\":\"now\"}],\"homes\":[{\"city\":\"Lisbon\",\"start\":\"2019\",\"end\":\"2025\"},{\"city\":\"Porto\",\"start\":\"2025\",\"end\":\"now\"}],\"names\":[{\"name\":\"Sam Okafor\",\"type\":\"person\",\"aliases\":[],\"parent\":\"\",\"role\":\"friend\"},{\"name\":\"Tidepool\",\"type\":\"project\",\"aliases\":[],\"parent\":\"\",\"role\":\"side project\"},{\"name\":\"Porto library club\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"member\"},{\"name\":\"Northwind Labs\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"employer\"},{\"name\":\"Data Platform\",\"type\":\"team\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"member\"},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"project\"},{\"name\":\"Lakehouse Cloud\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"other\"},{\"name\":\"Priya Raman\",\"type\":\"person\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"colleague\"},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Lisbon\",\"role\":\"employer\"},{\"name\":\"Westbridge University\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"school\"}]}",
+          "content": "{\"reasoning\":\"The document is a fictional portfolio and notes page for data engineer Alex Rivera, detailing his career, education, side projects, and technical notes.\",\"subject\":\"Alex Rivera\",\"kind\":\"notes\",\"voice\":\"first\",\"periods\":[{\"kind\":\"study\",\"title\":\"MSc in Data Science\",\"org\":\"Westbridge University\",\"start\":\"2018\",\"end\":\"2019\"},{\"kind\":\"job\",\"title\":\"Data Analyst\",\"org\":\"Fabrikam Retail\",\"start\":\"2019-09\",\"end\":\"2023-01\"},{\"kind\":\"job\",\"title\":\"Senior Data Engineer\",\"org\":\"Northwind Labs\",\"start\":\"2025-03\",\"end\":\"now\"}],\"homes\":[{\"city\":\"Lisbon\",\"start\":\"2019\",\"end\":\"2023\"},{\"city\":\"Porto\",\"start\":\"2023\",\"end\":\"now\"}],\"names\":[{\"name\":\"Sam Okafor\",\"type\":\"person\",\"aliases\":[],\"parent\":\"\",\"role\":\"friend\"},{\"name\":\"Tidepool\",\"type\":\"project\",\"aliases\":[],\"parent\":\"\",\"role\":\"side project\"},{\"name\":\"Porto library club\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"member\"},{\"name\":\"Northwind Labs\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Porto\",\"role\":\"employer\"},{\"name\":\"Data Platform\",\"type\":\"team\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"member\"},{\"name\":\"Atlas Migration\",\"type\":\"project\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"project\"},{\"name\":\"Lakehouse Cloud\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"other\"},{\"name\":\"Priya Raman\",\"type\":\"person\",\"aliases\":[],\"parent\":\"Northwind Labs\",\"role\":\"colleague\"},{\"name\":\"Fabrikam Retail\",\"type\":\"org\",\"aliases\":[],\"parent\":\"Lisbon\",\"role\":\"employer\"},{\"name\":\"Westbridge University\",\"type\":\"org\",\"aliases\":[],\"parent\":\"\",\"role\":\"school\"}]}",
           "role": "assistant"
         }
       }
     ],
-    "created": 1792962999,
+    "created": 1793013319,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
-      "completion_tokens": 404,
+      "completion_tokens": 405,
       "prompt_tokens": 1472,
-      "total_tokens": 1876,
+      "total_tokens": 1877,
       "completion_tokens_details": {
         "reasoning_tokens": 0
       },
@@ -241,13 +241,13 @@
         "cached_tokens": 0
       },
       "input_tokens": 1472,
-      "output_tokens": 404,
-      "time_to_first_token": 3.46,
-      "total_time": 13.23,
-      "prompt_eval_duration": 3.46,
-      "generation_duration": 9.77,
-      "prompt_tokens_per_second": 425.07,
-      "generation_tokens_per_second": 41.36
+      "output_tokens": 405,
+      "time_to_first_token": 3.25,
+      "total_time": 13.05,
+      "prompt_eval_duration": 3.25,
+      "generation_duration": 9.79,
+      "prompt_tokens_per_second": 452.48,
+      "generation_tokens_per_second": 41.35
     }
   }
 }

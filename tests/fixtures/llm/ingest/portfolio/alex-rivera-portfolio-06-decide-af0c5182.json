@@ -2,7 +2,7 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Northwind Labs — Porto\nI lead the Atlas Migration and run the platform team's on-call rotation. - **Data Engineer**, February 2023 – March 2025.\nBuilt the ingestion framework for the product analytics team.\n### Fabrikam Retail — Lisbon\nOwned the weekly sales reporting and moved it from spreadsheets to SQL models.",
+    "input": "### Senior Data Engineer at Northwind Labs\nI am part of Data Platform, the group that owns the company warehouse, and I lead the Atlas Migration, which moves our nightly batch jobs to Lakehouse Cloud.\nMy manager is Priya Raman.\n### Data Analyst at Fabrikam Retail\nFrom September 2019 to January 2023 I was a data analyst at Fabrikam Retail in Lisbon, where I owned the weekly sales reporting.\n## Education & toolkit\nMSc in Data Science, Westbridge University, 2018–2019.",
     "questions": [
       {
         "type": "choice",
@@ -10,16 +10,22 @@
         "instructions": "Which of these names is a team or department, a tool or technology the person uses, a topic or field, or an activity or hobby, rather than a person, an organisation, a project (including the person's own app or library), a place or an event?",
         "choices": [
           {
+            "value": "Data Platform"
+          },
+          {
             "value": "Atlas Migration"
+          },
+          {
+            "value": "Priya Raman"
           },
           {
             "value": "Fabrikam Retail"
           },
           {
-            "value": "ingestion framework"
+            "value": "Lisbon"
           },
           {
-            "value": "weekly sales reporting"
+            "value": "Westbridge University"
           },
           {
             "value": "none of them",
@@ -36,34 +42,42 @@
       {
         "type": "choice",
         "name": "screen",
-        "choice": "Atlas Migration",
+        "choice": "Data Platform",
         "probabilities": [
           {
+            "value": "Data Platform",
+            "probability": 0.9753
+          },
+          {
             "value": "Atlas Migration",
-            "probability": 0.544
+            "probability": 0.0066
+          },
+          {
+            "value": "Priya Raman",
+            "probability": 0.0008
           },
           {
             "value": "Fabrikam Retail",
-            "probability": 0.0145
+            "probability": 0.0007
           },
           {
-            "value": "ingestion framework",
-            "probability": 0.33
+            "value": "Lisbon",
+            "probability": 0.0002
           },
           {
-            "value": "weekly sales reporting",
-            "probability": 0.1071
+            "value": "Westbridge University",
+            "probability": 0.0007
           },
           {
             "value": "none of them",
-            "probability": 0.0044
+            "probability": 0.0158
           }
         ],
-        "confidence": 0.43
+        "confidence": 0.9711
       }
     ],
     "usage": {
-      "input_tokens": 204,
+      "input_tokens": 262,
       "output_tokens": 0
     }
   }

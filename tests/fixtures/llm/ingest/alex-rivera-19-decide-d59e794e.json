@@ -1,0 +1,84 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Northwind Labs — Porto\nWorks on pipelines that help analysts trust their numbers.\nExperiments with streaming ingestion.\n### Fabrikam Retail — Lisbon\nOwned the weekly sales reporting and moved it from spreadsheets to SQL models.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "Leads the Atlas Migration"
+          },
+          {
+            "value": "Runs the platform team's on-call rotation"
+          },
+          {
+            "value": "Owned the weekly sales reporting"
+          },
+          {
+            "value": "Moved weekly sales reporting from spreadsheets to SQL models"
+          },
+          {
+            "value": "Works on pipelines that help analysts trust their numbers"
+          },
+          {
+            "value": "Experiments with streaming ingestion"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "Moved weekly sales reporting from spreadsheets to SQL models",
+        "probabilities": [
+          {
+            "value": "Leads the Atlas Migration",
+            "probability": 0.0031
+          },
+          {
+            "value": "Runs the platform team's on-call rotation",
+            "probability": 0.0066
+          },
+          {
+            "value": "Owned the weekly sales reporting",
+            "probability": 0.1417
+          },
+          {
+            "value": "Moved weekly sales reporting from spreadsheets to SQL models",
+            "probability": 0.8155
+          },
+          {
+            "value": "Works on pipelines that help analysts trust their numbers",
+            "probability": 0.0033
+          },
+          {
+            "value": "Experiments with streaming ingestion",
+            "probability": 0.0018
+          },
+          {
+            "value": "none of them",
+            "probability": 0.0279
+          }
+        ],
+        "confidence": 0.7848
+      }
+    ],
+    "usage": {
+      "input_tokens": 211,
+      "output_tokens": 0
+    }
+  }
+}

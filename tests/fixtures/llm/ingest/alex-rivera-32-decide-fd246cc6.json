@@ -2,12 +2,12 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "## Get in touch\nPress and speaking requests are welcome.",
+    "input": "## Skills\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
     "questions": [
       {
         "type": "choice",
         "name": "use",
-        "instructions": "In the text, is \"press and speaking requests\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
+        "instructions": "In the text, is \"Lumen\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
         "choices": [
           {
             "value": "skill",
@@ -40,26 +40,26 @@
         "probabilities": [
           {
             "value": "skill",
-            "probability": 0.4674
+            "probability": 0.9962
           },
           {
             "value": "hobby",
-            "probability": 0.0493
+            "probability": 0.0025
           },
           {
             "value": "interest",
-            "probability": 0.016
+            "probability": 0.001
           },
           {
             "value": "other",
-            "probability": 0.4673
+            "probability": 0.0004
           }
         ],
-        "confidence": 0.2899
+        "confidence": 0.9949
       }
     ],
     "usage": {
-      "input_tokens": 138,
+      "input_tokens": 155,
       "output_tokens": 0
     }
   }

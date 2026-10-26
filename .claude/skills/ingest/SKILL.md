@@ -46,8 +46,12 @@ description: How `brain ingest` turns a file or web page into vault facts — re
    parent and the subject's role), temperature 0. It reads the whole text up to
    `FULL_TEXT_TOKENS` (6k), else each part's heading and first ~150 tokens. Code then cleans it
    (`clean_brief`: descriptions are not aliases, the subject is not a name) and **grounds** it
-   (`ground`): a date is kept only if a sentence names its city / organisation / title and gives
-   that year; a home needs a sentence naming the city with a residence word (lives, moved,
+   (`ground`): a date is kept only if a sentence or line names its city / organisation / title
+   and gives that year, in any form `dates.years_in` reads (2021, Sep 21, Sept. '21, 09/2021,
+   09/21, 2021-09, ’21; not "May 21, 2024"'s day). `brief.units`: wrapped prose is joined into
+   sentences, but a line ending with a date (no full stop) or starting with a date range is a
+   CV/timeline line, never joined to its neighbours, and a record line (`_record`) is one unit,
+   never cut into sentences (a CSV row "Org,Title,"Did X. Did Y.",Jan 2024," kept its date); a home needs a sentence naming the city with a residence word (lives, moved,
    based…), else it is dropped (the model takes an employer's city, or a job's start, for a
    move). Every drop is a `brief:` note. A failed call → `brief=None`, ingest goes on.
    Where it is used is `pipeline.BRIEF_USES` (default `{"normalise"}`). Measured (two extraction
@@ -89,6 +93,16 @@ description: How `brain ingest` turns a file or web page into vault facts — re
        (screened for work skills) → "a skill, a hobby, a subject of interest, or none of these?";
        skill → has_skill, hobby/interest listed as a skill → interest, other → kept.
      - `speaks` values outside `LANGUAGES` → "is X a language?"; a confident no drops the fact.
+     - **story details** (`_check_stories`, before the skill routing): the owner's
+       responsibility / has_skill / interest / habit / likes facts (not languages) are screened as
+       statements (the fact's text, else "predicate: value"; `SCREEN_STORY`, no "not named"
+       shortcut: statements are paraphrases) and a flagged one is asked "What does this
+       statement about the person record?" job / trait / event / lesson; p(event) + p(lesson)
+       ≥ 0.8 drops the fact (`STORY_ACTION`: "drop", "note" or "off"). A write-up's "Came out of
+       the experiment less sceptical about agents", "Had best holiday in Lisbon" go; CV
+       achievements ("Redesigned the booking flow; drop-off fell…") stay. ~1.2 s per part.
+       Goals, values and team facts are not asked. Wording chosen on 29 labelled statements
+       (docs/decisions.md).
    A change needs `confidence ≥ ACT_ABOVE` (0.8); otherwise the extractor's choice stays and a
    note says so. Every screen and answer is a `check:` note (first in `Normalised.notes`).
    Why screens: the runtime answers questions one at a time and re-reads the input for each
@@ -111,6 +125,13 @@ description: How `brain ingest` turns a file or web page into vault facts — re
 - Drop boilerplate in the reader, not in the prompt (navigation, cookie banners, contact
   details): every input token costs prefill and invites junk facts. What the reader cannot
   recognise structurally is left to the gate.
+- Rows (`html.join_rows`): an innermost repeated block (div / li / article with a sibling of
+  the same tag and classes) holding 2–8 short text cells (≤ 80 words, ≤ 1 heading, no h1)
+  becomes one list item, cells joined by " · " ("- Sep 21 — Feb 23 · Northwind Labs · Data
+  Engineer. Built …"); `<dl>` term + definitions likewise. Read cell by cell, a grid timeline
+  puts each date on the line above the name it belongs to. A series where any cell is a write-up
+  (> `CELL_LONG` 30 words: project cards) is left alone; sections, tables and lone blocks are
+  never rows.
 - Keep fixes structural, never per site: the HTML reader puts a space between adjacent inline
   elements whose texts would touch (`<span>02</span><span>Lab</span>` read "02Lab", which the
   model took for a name) and drops decorative ordinals (a bare 1–2 digit element right before a

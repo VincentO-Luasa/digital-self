@@ -2,12 +2,12 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "### Fabrikam Retail — Lisbon\nOwned the weekly sales reporting and moved it from spreadsheets to SQL models.",
+    "input": "### Tidepool\nIts code lives on CodeHarbor and its test suite runs on the public TripLog dataset (record TL4521).\n## Skills\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
     "questions": [
       {
         "type": "choice",
         "name": "use",
-        "instructions": "In the text, is \"SQL\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
+        "instructions": "In the text, is \"CodeHarbor\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
         "choices": [
           {
             "value": "skill",
@@ -40,26 +40,26 @@
         "probabilities": [
           {
             "value": "skill",
-            "probability": 0.9995
+            "probability": 0.9818
           },
           {
             "value": "hobby",
-            "probability": 0.0003
+            "probability": 0.0016
           },
           {
             "value": "interest",
-            "probability": 0.0002
+            "probability": 0.0007
           },
           {
             "value": "other",
-            "probability": 0.0
+            "probability": 0.0159
           }
         ],
-        "confidence": 0.9994
+        "confidence": 0.9758
       }
     ],
     "usage": {
-      "input_tokens": 146,
+      "input_tokens": 187,
       "output_tokens": 0
     }
   }

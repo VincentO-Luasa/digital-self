@@ -71,7 +71,7 @@
     }
   },
   "response": {
-    "id": "chatcmpl-7dae283f",
+    "id": "chatcmpl-80e381cb",
     "choices": [
       {
         "finish_reason": "stop",
@@ -82,7 +82,7 @@
         }
       }
     ],
-    "created": 1792962986,
+    "created": 1793013306,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
@@ -97,12 +97,12 @@
       },
       "input_tokens": 986,
       "output_tokens": 211,
-      "time_to_first_token": 2.63,
-      "total_time": 7.69,
-      "prompt_eval_duration": 2.63,
-      "generation_duration": 5.06,
-      "prompt_tokens_per_second": 374.26,
-      "generation_tokens_per_second": 41.71
+      "time_to_first_token": 7.87,
+      "total_time": 12.89,
+      "prompt_eval_duration": 7.87,
+      "generation_duration": 5.03,
+      "prompt_tokens_per_second": 125.33,
+      "generation_tokens_per_second": 41.99
     }
   }
 }

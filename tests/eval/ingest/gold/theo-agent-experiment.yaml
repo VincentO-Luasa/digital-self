@@ -1,0 +1,39 @@
+# Gold facts for docs/theo-agent-experiment.md (fictional persona; format: tests/eval/README.md).
+# A first-person write-up of a two-week experiment. A few lasting facts (job, role, a project of
+# the employer, a tool, a skill, a colleague, a habit) sit inside a long story: what the agent
+# did, what went wrong, lessons learnt and plans for the next round. Those story details, the
+# hike's mountain names and the topic of the post are not facts about the person: strict gold.
+doc: theo-agent-experiment.md
+kind: stated
+owner: [Theo Marchetti, Theo]
+
+entities:
+  - {name: Corvane Bio, type: org, aliases: [Corvane]}
+  - {name: Lodestar, type: project}
+  - {name: Ines Dubois, type: person, aliases: [Ines]}
+
+literals: [MLflow, assay team]
+
+required:
+  - {s: self, p: works_at, o: Corvane Bio, current: true}
+  - {s: self, p: role, o: [Senior Machine Learning Engineer, senior machine learning engineer], current: true}
+
+optional:
+  - s: self
+    p: worked_on
+    o: Lodestar
+    alt: [{s: Lodestar, p: owner, o: self}, {s: self, p: responsibility, o: Lodestar}]
+  - {s: Lodestar, p: part_of, o: Corvane Bio}
+  - {s: Lodestar, p: uses, o: MLflow, alt: [{s: self, p: has_skill, o: MLflow}]}
+  - {s: self, p: has_skill, o: [model evaluation, careful model evaluation]}
+  - {s: Ines Dubois, p: [colleague_of, knows], o: self}
+  - {s: self, p: [habit, interest, likes], o: [hiking, Sunday hike, hike]}
+
+acceptable:
+  - {s: Ines Dubois, p: works_at, o: Corvane Bio}
+  - {s: Ines Dubois, p: [role, has_skill], o: [medicinal chemist, medicinal chemistry]}
+  - {s: Ines Dubois, p: team, o: [assay team]}
+  - {s: self, p: interest, o: [AI agents, research agents, AI research agents, agents]}
+  - {s: self, p: has_skill, o: [machine learning, model research]}
+  - {s: self, p: responsibility, o: [solubility and permeability models, Lodestar, solubility models]}
+  - {s: Lodestar, p: [status, note], o: [solubility and permeability models, solubility, permeability]}

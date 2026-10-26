@@ -2,12 +2,12 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "## Get in touch\nThe best way to reach me is by email at alex@example.com.",
+    "input": "## Skills\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
     "questions": [
       {
         "type": "choice",
         "name": "use",
-        "instructions": "In the text, is \"email\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
+        "instructions": "In the text, is \"Pebble\" a skill the person has, a hobby or leisure activity, or a subject the person is interested in?",
         "choices": [
           {
             "value": "skill",
@@ -40,26 +40,26 @@
         "probabilities": [
           {
             "value": "skill",
-            "probability": 0.5221
+            "probability": 0.9991
           },
           {
             "value": "hobby",
-            "probability": 0.0139
+            "probability": 0.0007
           },
           {
             "value": "interest",
-            "probability": 0.0033
+            "probability": 0.0002
           },
           {
             "value": "other",
-            "probability": 0.4607
+            "probability": 0.0001
           }
         ],
-        "confidence": 0.3628
+        "confidence": 0.9987
       }
     ],
     "usage": {
-      "input_tokens": 142,
+      "input_tokens": 156,
       "output_tokens": 0
     }
   }

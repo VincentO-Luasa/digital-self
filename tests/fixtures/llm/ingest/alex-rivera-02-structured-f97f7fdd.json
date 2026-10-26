@@ -216,7 +216,7 @@
     }
   },
   "response": {
-    "id": "chatcmpl-b8213784",
+    "id": "chatcmpl-7af374fe",
     "choices": [
       {
         "finish_reason": "stop",
@@ -227,7 +227,7 @@
         }
       }
     ],
-    "created": 1792962836,
+    "created": 1793013077,
     "model": "Qwen3.6-35B-A3B-4bit",
     "object": "chat.completion",
     "usage": {
@@ -242,12 +242,12 @@
       },
       "input_tokens": 1297,
       "output_tokens": 492,
-      "time_to_first_token": 2.61,
-      "total_time": 13.97,
-      "prompt_eval_duration": 2.61,
-      "generation_duration": 11.36,
-      "prompt_tokens_per_second": 496.13,
-      "generation_tokens_per_second": 43.32
+      "time_to_first_token": 2.54,
+      "total_time": 13.89,
+      "prompt_eval_duration": 2.54,
+      "generation_duration": 11.34,
+      "prompt_tokens_per_second": 510.06,
+      "generation_tokens_per_second": 43.37
     }
   }
 }

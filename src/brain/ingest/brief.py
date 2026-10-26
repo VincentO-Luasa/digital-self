@@ -34,6 +34,7 @@ import httpx
 from pydantic import BaseModel
 
 from brain.ingest.chunking import Chunk
+from brain.ingest.dates import ends_with_date, starts_with_range, years_in
 from brain.ingest.extract import StructuredModel
 from brain.llm.base import StructuredOutputError
 from brain.prompts import load_prompt
@@ -209,9 +210,25 @@ RESIDENCE = re.compile(
 )
 
 
+def _wrapped(prev: str, line: str) -> bool:
+    """``line`` continues the prose of ``prev``: a long line without end punctuation, unless one
+    of them is a CV or timeline line (``prev`` ends with a date and ``line`` does not go on in
+    lower case; ``line`` starts with a date range, or starts with a capital and ends with a date
+    and no full stop) or ``line`` is a list item."""
+    if len(prev) < WRAPPED or re.search(r"[.!?:;]$", prev) or LIST_LINE.match(line):
+        return False
+    if ends_with_date(prev) and not line[:1].islower():
+        return False
+    if line[:1].isupper() and ends_with_date(line) and not line.endswith("."):
+        return False
+    return not starts_with_range(line)
+
+
 def units(text: str) -> list[str]:
-    """Sentences and short lines of ``text``: wrapped prose lines are joined into sentences;
-    short lines (a CV's "Org, City" above "Title, dates") and list lines stay apart."""
+    """Sentences and lines of ``text``: wrapped prose lines are joined into sentences; short
+    lines (a CV's "Org, City" above "Title, dates"), lines ending with a date ("MSc …, Stockholm,
+    2013 – 2015"), timeline rows and list lines stay apart, and a record line (``_record``) is
+    one unit, never cut into sentences."""
     out: list[str] = []
     for block in re.split(r"\n\s*\n", text):
         lines: list[str] = []
@@ -219,17 +236,23 @@ def units(text: str) -> list[str]:
             if not line:
                 continue
             prev = lines[-1] if lines else ""
-            if (
-                len(prev) >= WRAPPED
-                and not re.search(r"[.!?:;]$", prev)
-                and not LIST_LINE.match(line)
-            ):
+            if _wrapped(prev, line):
                 lines[-1] = f"{prev} {line}"
             else:
                 lines.append(line)
         for line in lines:
-            out += [s for s in re.split(r"(?<=[.!?])\s+", line) if s.strip()]
+            if _record(line):  # its "sentences" are fields of one entry
+                out.append(line)
+            else:
+                out += [s for s in re.split(r"(?<=[.!?])\s+", line) if s.strip()]
     return out
+
+
+def _record(line: str) -> bool:
+    """A CV, timeline or table line: it starts with a date range ("2019 – 2021 · School · MSc.
+    Thesis on …") or ends with a date and no full stop ("Org,Title,"Did X. Did Y.",Jan 2024,")."""
+    end = line.rstrip()
+    return starts_with_range(end) or (ends_with_date(end) and not end.endswith("."))
 
 
 def _named(unit: str, names: Sequence[str]) -> bool:
@@ -241,12 +264,13 @@ def _named(unit: str, names: Sequence[str]) -> bool:
 
 
 def stated(sentences: Sequence[str], names: Sequence[str], value: str) -> bool:
-    """A sentence names one of ``names`` and gives the year of ``value``."""
+    """A sentence or line names one of ``names`` and gives the year of ``value``, in any form
+    (2021, Sep 21, 09/2021, 2021-09, ’21)."""
     m = YEAR.match(value.strip())
     if not m:
         return False
-    year = re.compile(rf"(?<!\d){m.group(1)}(?!\d)")
-    return any(_named(u, names) and year.search(u) for u in sentences)
+    year = int(m.group(1))
+    return any(_named(u, names) and year in years_in(u) for u in sentences)
 
 
 def ground(brief: Brief, text: str, notes: list[str]) -> Brief:

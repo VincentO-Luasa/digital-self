@@ -1,0 +1,77 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Atlas Migration\nIt uses Airflow for orchestration and dbt for transformations.\n### Tidepool\nIts code lives on CodeHarbor and its test suite runs on the public TripLog dataset (record TL4521).\n## Skills\n- Airflow and dbt\n- Data modelling\nTools I use every day: Pebble, an AI coding assistant; CodeHarbor for code hosting; and the Lumen notebook app.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "instructions": "Which of these statements records one event or step of a story the text tells, a finding, an opinion formed, a lesson learnt or a plan for next time, rather than the person's job, duties, achievements, skills, habits or interests?",
+        "choices": [
+          {
+            "value": "has skill: dbt"
+          },
+          {
+            "value": "has skill: Data modelling"
+          },
+          {
+            "value": "Uses Pebble every day"
+          },
+          {
+            "value": "Uses CodeHarbor every day"
+          },
+          {
+            "value": "Uses Lumen notebook app every day"
+          },
+          {
+            "value": "none of them",
+            "description": "each records the person's job, duties, achievements, skills, habits or interests"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "screen",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "has skill: dbt",
+            "probability": 0.0074
+          },
+          {
+            "value": "has skill: Data modelling",
+            "probability": 0.0023
+          },
+          {
+            "value": "Uses Pebble every day",
+            "probability": 0.0048
+          },
+          {
+            "value": "Uses CodeHarbor every day",
+            "probability": 0.0013
+          },
+          {
+            "value": "Uses Lumen notebook app every day",
+            "probability": 0.0177
+          },
+          {
+            "value": "none of them",
+            "probability": 0.9666
+          }
+        ],
+        "confidence": 0.9599
+      }
+    ],
+    "usage": {
+      "input_tokens": 238,
+      "output_tokens": 0
+    }
+  }
+}

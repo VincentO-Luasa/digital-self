@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "### Atlas Migration\nSince 2026 I've been leading the Atlas Migration at Northwind Labs: we are moving all nightly batch pipelines from a legacy Hadoop cluster to a managed cloud warehouse.",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "records",
+        "instructions": "What does this statement about the person record: \"Leads the Atlas Migration at Northwind Labs\"?",
+        "choices": [
+          {
+            "value": "job",
+            "description": "their job, role, duties or achievements at work"
+          },
+          {
+            "value": "trait",
+            "description": "a skill, habit, hobby or interest they have"
+          },
+          {
+            "value": "event",
+            "description": "one event or step of a story the text tells, or what happened in it"
+          },
+          {
+            "value": "lesson",
+            "description": "a finding, an opinion formed, a lesson learnt or a plan for next time"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "records",
+        "choice": "job",
+        "probabilities": [
+          {
+            "value": "job",
+            "probability": 0.9983
+          },
+          {
+            "value": "trait",
+            "probability": 0.0009
+          },
+          {
+            "value": "event",
+            "probability": 0.0007
+          },
+          {
+            "value": "lesson",
+            "probability": 0.0001
+          }
+        ],
+        "confidence": 0.9977
+      }
+    ],
+    "usage": {
+      "input_tokens": 164,
+      "output_tokens": 0
+    }
+  }
+}
