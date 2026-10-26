@@ -70,6 +70,41 @@ class MergeEntities(BaseModel):
     merge: str
 
 
+class DemoteEntity(BaseModel):
+    """The page names a value, not an entity (a topic, tool or hobby made into a project or
+    organisation page): every link to it becomes the literal ``value`` (default: its title) and
+    the page is removed. Only a page without facts or notes of its own can be demoted (schema
+    v0.5). Always reviewed."""
+
+    op: Literal["demote_entity"] = "demote_entity"
+    id: str
+    value: str | None = None
+
+
+class RetypeEntity(BaseModel):
+    """The page has the wrong type: it moves to ``new_id`` (default: the type's folder + the
+    same slug) with ``type``, and every link is repointed, as in a merge. Always reviewed."""
+
+    op: Literal["retype_entity"] = "retype_entity"
+    id: str
+    type: EntityType
+    new_id: str | None = None
+
+
+class RefileFact(BaseModel):
+    """File a fact differently without changing what it says (schema v0.5): on another
+    ``subject``, under another predicate ``p``, with its literal object ``o`` linked to the page
+    it names, or with ``at`` (the ``[[orgs/…]]`` a duty, role or degree belongs to). Its text,
+    dates, kind and id stay; the change set's sources join ``src::``. Always reviewed."""
+
+    op: Literal["refile_fact"] = "refile_fact"
+    fact_id: str
+    subject: str | None = None
+    p: str | None = None
+    o: str | None = None
+    at: str | None = None
+
+
 class UpdateSummary(BaseModel):
     op: Literal["update_summary"] = "update_summary"
     id: str
@@ -145,6 +180,9 @@ Operation = Annotated[
     | AddFact
     | SupersedeFact
     | MergeEntities
+    | DemoteEntity
+    | RetypeEntity
+    | RefileFact
     | UpdateSummary
     | AddAlias
     | AddIntention

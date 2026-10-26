@@ -412,8 +412,12 @@ class _Card:
         self.self_all = [
             f for p in self.self_pages for f in (*p.facts, *p.history) if self.allowed(f)
         ]
+        self.ended_jobs = self._ended_jobs()
         self.current = [
-            f for p in self.self_pages for f in p.facts if self.allowed(f) and self.is_current(f)
+            f
+            for p in self.self_pages
+            for f in p.facts
+            if self.allowed(f) and self.is_current(f) and not self._at_ended_job(f)
         ]
         self.current_ids = {f.id for f in self.current}
 
@@ -450,6 +454,22 @@ class _Card:
             return valid_at(fact.valid_from, fact.valid_to, self.today)
         except ValueError:
             return True
+
+    def _ended_jobs(self) -> set[str]:
+        """Organisations the owner worked at whose every ``works_at`` has ended."""
+        jobs: dict[str, bool] = {}
+        for page in self.self_pages:
+            for section, current in ((page.facts, True), (page.history, False)):
+                for fact in section:
+                    if fact.p == "works_at" and (org := link_target(fact.o)):
+                        now = current and self.is_current(fact)
+                        jobs[org] = jobs.get(org, False) or now
+        return {org for org, now in jobs.items() if not now}
+
+    def _at_ended_job(self, fact: Fact) -> bool:
+        """A duty or role filed under a job that has ended (``at::``, schema v0.5)."""
+        at = link_target(fact.extra.get("at", "")) if fact.p != "degree" else None
+        return bool(at) and at in self.ended_jobs
 
     # -- wording ------------------------------------------------------------------------------
 

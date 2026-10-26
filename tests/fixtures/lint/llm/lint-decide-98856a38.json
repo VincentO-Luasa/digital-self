@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "A project in the owner's personal knowledge base.\n\nName: Kiln\nAbout: Kiln is Alex's open-source command-line tool for testing data pipelines, built on weekends.\nFacts:\n- Kiln is Alex's own project\n- Kiln is in active development\n- Kiln aims to make pipeline tests fast enough to run on every commit\n- Kiln is written in Rust\n\nWhat the owner's sources say about it:\n- Alex described Kiln, a weekend side project\n- Alex described Kiln, an open-source command-line tool for testing data pipelines that Alex builds on weekends.\n\nThe owner's jobs:\n- Northwind Labs (2023-02 to now)\n- Fabrikam Analytics (2019-06 to 2023-01)\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "part_of",
+        "instructions": "According to the text, where does the owner do this project?",
+        "choices": [
+          {
+            "value": "unclear",
+            "description": "the text does not say"
+          },
+          {
+            "value": "a side project",
+            "description": "on their own, as a side project outside any job"
+          },
+          {
+            "value": "Northwind Labs",
+            "description": "at Northwind Labs"
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "description": "at Fabrikam Analytics"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "part_of",
+        "choice": "a side project",
+        "probabilities": [
+          {
+            "value": "unclear",
+            "probability": 0.0419
+          },
+          {
+            "value": "a side project",
+            "probability": 0.9538
+          },
+          {
+            "value": "Northwind Labs",
+            "probability": 0.0039
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "probability": 0.0003
+          }
+        ],
+        "confidence": 0.9385
+      }
+    ],
+    "usage": {
+      "input_tokens": 268,
+      "output_tokens": 0
+    }
+  }
+}

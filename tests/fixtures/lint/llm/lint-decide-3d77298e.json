@@ -1,0 +1,58 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "One of the owner's work duties: \"Built demand forecasting dashboards\"\n\nWhere it was learned:\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023) › Built client reporting dashboards, including Atlas Reporting for a retail client (2021–2022), in Tableau.\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023) › Built demand forecasting dashboards for a grocery chain.\n- At Fabrikam Analytics, Alex built the demand forecasting dashboards for a grocery chain and worked closely with Theo Marchetti.\n\nThe owner's jobs:\n- Northwind Labs (2023-02 to now)\n- Fabrikam Analytics (2019-06 to 2023-01)\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "job",
+        "instructions": "At which job did the owner have this duty?",
+        "choices": [
+          {
+            "value": "unclear",
+            "description": "the text does not say"
+          },
+          {
+            "value": "Northwind Labs",
+            "description": "at Northwind Labs (2023-02 to now)"
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "description": "at Fabrikam Analytics (2019-06 to 2023-01)"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "job",
+        "choice": "Fabrikam Analytics",
+        "probabilities": [
+          {
+            "value": "unclear",
+            "probability": 0.0003
+          },
+          {
+            "value": "Northwind Labs",
+            "probability": 0.0014
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "probability": 0.9983
+          }
+        ],
+        "confidence": 0.9974
+      }
+    ],
+    "usage": {
+      "input_tokens": 289,
+      "output_tokens": 0
+    }
+  }
+}

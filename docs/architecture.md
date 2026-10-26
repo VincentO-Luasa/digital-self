@@ -39,7 +39,8 @@ big-model, flows back into memory.
 | `router` | pre-route rules, feeling-of-knowing gate, effort tiers (local fast → local thinking → big model), conflict monitor, answer validation |
 | `chat` | the conversation loop, prompt assembly (`core.md` + retrieved facts + recent turns), commands |
 | `interview` | coverage scoring over `life-map.yaml`, region selection, question planning |
-| `memory` | topic segmentation, extraction to operations, entity resolution, review queue, consolidation, lint, decay |
+| `memory` | topic segmentation, extraction to operations, entity resolution, review queue, consolidation, decay |
+| `lint` | graph cleaning: duplicate entities, doubtful page types, facts on the wrong subject, missing structural edges, consistency; proposes reviewed operations and interview questions |
 | `handoff` | build/preview/send handoff packets through the configured escalation provider (`claude-code`, `clipboard`, `openai-compatible`; Flow 4) |
 | `mcp_server` | stdio MCP server for any MCP-capable client, enforcing privacy |
 | `cli` | `brain init-vault | chat | interview | ingest | review | consolidate | lint | reindex | ask | capture | status` |
@@ -104,7 +105,7 @@ session (configurable).
 | resolve | with extract | embeddings + aliases → local LLM decides | ops target existing entities, or create new ones |
 | apply / queue | with extract | code | safe ops applied + git commit; others → `reviews/pending/` |
 | consolidate ("sleep") | **opportunistic**: idle ≥10 min on mains power, or when consolidation pressure is high; queue ordered by need × gain, checkpointed | local | page summaries, reflections (→ review), briefing cards for likely topics, slow `core.md` updates (≥3 episodes over ≥2 weeks, diff confirmed), `index.md`, edge downscaling, decay/archive, git commit |
-| lint | with consolidation | code + local | format errors, duplicates, orphans, drift, gaps → `questions.md` |
+| lint | `brain lint` on demand (incremental: pages changed since the last lint); with consolidation in Phase 4 | code + local (embeddings, reranker, typed decisions) | duplicates → `merge_entities`, topics/tools made into pages → `demote_entity`/`retype_entity`, misfiled facts → `refile_fact`, missing `part_of` / duty's job / `located_in` → inferred edges with evidence, consistency (two current values, orphans, literals naming a page, format, AGENTS.md drift); every repair is its own review, doubts → `questions.md` |
 
 The local model does all writes. The big model only *proposes* (through MCP or by its transcript
 being ingested), which keeps personal data local and avoids automated use of a seat that may be
@@ -179,9 +180,9 @@ and retrieved context under ~1.5k tokens.
 |---|---|---|
 | 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked | done |
 | 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` | done |
-| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`); graph-cleaning pass next |
+| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`), **graph cleaning** (`brain lint`, `brain eval lint`, schema v0.5) |
 | 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook | |
-| 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint, decay | |
+| 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint in the scheduler, decay | |
 | 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI | |
 | 6 | "graph of my life" visualisation (interactive, time slider, region filters) | |
 
@@ -195,16 +196,20 @@ and retrieved context under ~1.5k tokens.
 - The handoff packet format in `vault_template/AGENTS.md` is the target for the `handoff` module.
 - Documents ingested by the big model (`brain-ingest-doc`) cite its transcript as their source.
   Phase 3 decides whether a copy also goes to `raw/docs/`.
-- The predicate list is mirrored in `vault_template/AGENTS.md`. Keep it in sync when the schema
-  version changes (a `brain lint` check).
+- **Done** (`brain lint`, consistency check): the predicate list mirrored in
+  `vault_template/AGENTS.md` (and the vault's copy) is compared with `brain.vault.models`
+  (predicates and schema version), and a test keeps the template in sync.
 
 ## Open items (from the Phase 1 writer review)
 
-- Enforce `evidence::` on inferred facts (the schema requires it; `AGENTS.md` asks for at least two).
-- After `merge_entities`, reconcile clashing facts from the two pages and repoint pending reviews
-  that still name the merged id.
+- **Done** (schema v0.5): the writer refuses an inferred fact without `evidence::` (two items from
+  the big model, as `AGENTS.md` asks; one otherwise).
+- **Done** (schema v0.5): after `merge_entities`, restatements are folded into one fact (sources
+  joined), self-references retired, clashes of single-valued facts queued as a review, and pending
+  reviews naming the merged id repointed (also by `retype_entity`).
 - Vault commits use `git add -A`, so uncommitted hand edits ride along in the brain's commit.
-  Commit only the paths the writer touched, and commit hand edits separately (`brain lint`).
+  Commit only the paths the writer touched. Half done: `brain lint` commits hand edits apart
+  before its own changes; the writer still adds everything.
 - `models.check_partial_date` should reject impossible calendar dates itself (the writer does it
   today); `gitops` needs a public helper to unstage paths (rollback uses a private one).
 - An approved fact's `rec::` is the approval date, while an observation keeps the change set's
@@ -238,3 +243,19 @@ v3, normalisation guards; see the `ingest` skill). Still open:
   the segmenter (no windowing yet).
 - A supersession the model hints at for a multi-valued predicate (works_at Contoso "contradicts"
   works_at Fabrikam) is queued even when the owner did not mean it; watch the review queue.
+
+## Open items (from the graph-cleaning pass)
+
+- `brain review` approves or rejects a whole review; lint therefore makes one review per finding.
+  A per-operation choice in `brain review` would let other pipelines group changes.
+- Duplicates are looked for within one page type; a project and an organisation page for the
+  same thing are only caught by the type audit.
+- A `retype_entity` keeps the page's regions; a project retyped as an organisation may need new
+  ones.
+- The card uses `at::` only to keep duties and roles of ended jobs out of "Now"; the life story
+  does not list duties per job yet.
+- Lint asks no question twice (keyed in `questions.md`), but a doubt the owner answered in an
+  interview is only settled once the answer reaches memory (a merge or edge the owner confirms
+  in words is not turned into an operation yet).
+- The eval is one persona (Alex Rivera) with seeded variants; a second persona would test the
+  name rules on other naming habits.

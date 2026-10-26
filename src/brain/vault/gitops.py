@@ -80,3 +80,19 @@ def remotes(root: Path) -> list[str]:
 
 def push(*_args: object, **_kwargs: object) -> NoReturn:
     raise GitError("the vault is local-only: brain never pushes it anywhere")
+
+
+def is_dirty(root: Path) -> bool:
+    """Uncommitted changes (tracked or untracked, minus ignored files)."""
+    if not is_repo(root):
+        return False
+    return bool(_git(root, "status", "--porcelain", check=False).stdout.strip())
+
+
+def changed_since(root: Path, rev: str, pathspec: str = ".") -> list[str]:
+    """Paths under ``pathspec`` that differ between ``rev`` and the working tree, plus untracked
+    ones (relative to the repository root). Raises GitError for an unknown revision."""
+    _git(root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    changed = _git(root, "diff", "--name-only", rev, "--", pathspec).stdout.split("\n")
+    untracked = _git(root, "ls-files", "--others", "--exclude-standard", "--", pathspec).stdout
+    return sorted({p for p in (*changed, *untracked.split("\n")) if p.strip()})

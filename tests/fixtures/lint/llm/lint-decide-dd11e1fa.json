@@ -1,0 +1,58 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "A page of a personal knowledge base about its owner's life describes one person.\n\nTHE PAGE\nName: Sam\nAbout: Sam is Alex's climbing partner from the bouldering gym.\nFacts:\n- Climbs with Alex twice a week\n- Met Alex at the bouldering gym\n\nOTHER PAGES WITH SIMILAR NAMES\n[Sam Okafor]\nName: Sam Okafor\nAlso called: Sam, Samuel Okafor\nAbout: Sam is one of Alex's closest friends.\nFacts:\n- Close friend of Alex since university\n- Met Alex at university in Bristol\n- Last caught up with Alex on 2026-10-19\n\n[Sam Brennan]\nName: Sam Brennan\nAlso called: Sam B.\nAbout: Sam Brennan is an analytics engineer on Alex's team at Northwind Labs.\nFacts:\n- Works with Alex on the data platform team\n- Works at Northwind Labs\n\nWhat the owner's sources say:\n- Alex goes bouldering twice a week with Sam, a climbing partner from the gym, and enjoys long-distance running.\n- Alex caught up with Sam after Thursday football\n- Alex talked about Sam Okafor, a close friend from university in Bristol.\n- Sam has just moved into a new flat.\n- Sam Brennan, an analytics engineer, joined Alex's team in 2023.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "which",
+        "instructions": "Which of the other pages is about the same person as the page?",
+        "choices": [
+          {
+            "value": "none of them",
+            "description": "none: each is a different person"
+          },
+          {
+            "value": "Sam Okafor",
+            "description": "the same person as Sam Okafor"
+          },
+          {
+            "value": "Sam Brennan",
+            "description": "the same person as Sam Brennan"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "which",
+        "choice": "none of them",
+        "probabilities": [
+          {
+            "value": "none of them",
+            "probability": 0.977
+          },
+          {
+            "value": "Sam Okafor",
+            "probability": 0.0203
+          },
+          {
+            "value": "Sam Brennan",
+            "probability": 0.0027
+          }
+        ],
+        "confidence": 0.9655
+      }
+    ],
+    "usage": {
+      "input_tokens": 382,
+      "output_tokens": 0
+    }
+  }
+}

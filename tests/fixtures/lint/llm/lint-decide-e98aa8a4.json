@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Two pages of a personal knowledge base about its owner's life. Each page describes one person.\n\nPAGE A\nName: Sam\nAbout: Sam is Alex's climbing partner from the bouldering gym.\nFacts:\n- Climbs with Alex twice a week\n- Met Alex at the bouldering gym\n\nPAGE B\nName: Sam Brennan\nAlso called: Sam B.\nAbout: Sam Brennan is an analytics engineer on Alex's team at Northwind Labs.\nFacts:\n- Works with Alex on the data platform team\n- Works at Northwind Labs\n- Works at Nortwind Labs\n\nWhat the owner's sources say:\n- Alex goes bouldering twice a week with Sam, a climbing partner from the gym, and enjoys long-distance running.\n- Sam Brennan, an analytics engineer, joined Alex's team in 2023.\n- Alex is building Tidepool, an internal alerting service at Northwind Labs that flags data-quality anomalies in the nightly pipelines, together with Sam Brennan.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "same",
+        "instructions": "Are page A and page B about the same person?",
+        "choices": [
+          {
+            "value": "same",
+            "description": "yes, one person: one name is another way of writing the other (a nickname, a misspelling, an abbreviation, a translation, a longer form)"
+          },
+          {
+            "value": "different",
+            "description": "no, two different persons that only look alike or are related"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "same",
+        "choice": "same",
+        "probabilities": [
+          {
+            "value": "same",
+            "probability": 0.7311
+          },
+          {
+            "value": "different",
+            "probability": 0.2689
+          }
+        ],
+        "confidence": 0.4621
+      }
+    ],
+    "usage": {
+      "input_tokens": 309,
+      "output_tokens": 0
+    }
+  }
+}

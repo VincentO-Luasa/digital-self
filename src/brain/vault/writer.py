@@ -7,6 +7,12 @@ instead of queued, but only when ``correction_problem`` finds nothing: origin ``
 about the owner, no relationship predicate, no private page or region, a ``stated`` replacement
 with the same predicate. Everything else stays in the review queue (docs/vault-schema.md,
 Reviews).
+
+Graph cleaning (schema v0.5): ``demote_entity``, ``retype_entity`` and ``refile_fact`` are always
+reviewed. A merge reconciles the facts it brings together: restatements are folded into one fact
+(sources joined), a self-reference is retired, a clash of single-valued facts is queued as a
+supersession, and pending reviews naming the merged page are repointed. An ``inferred`` fact needs
+``evidence::`` (two items from the big model).
 """
 
 from __future__ import annotations
@@ -47,10 +53,13 @@ from brain.vault.ops import (
     ChangeSet,
     ConfirmFact,
     CreateEntity,
+    DemoteEntity,
     FactSpec,
     MergeEntities,
     Operation,
     Origin,
+    RefileFact,
+    RetypeEntity,
     SupersedeFact,
     UpdateEpisode,
     UpdateSummary,
@@ -80,6 +89,8 @@ EPISODE_OPS = (AddEpisode, UpdateEpisode)  # written by the memory pipeline, nev
 SECTION_HEADING = re.compile(r"^##\s+\S")  # as parse._parse_page_body sees it
 REVIEW_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 SELF_REGION_PAGES = {"self.values_goals": "self/goals"}  # other self.* regions → self/<name>
+MIN_EVIDENCE = {"external": 2}  # evidence:: items an inferred fact needs, by origin (default 1)
+AT_PREDICATES = frozenset({"degree", "responsibility", "role"})  # facts that may carry at::
 _OPS = TypeAdapter(list[Operation])
 
 
@@ -110,6 +121,7 @@ class ApplyResult:
     corrected: list[str] = field(default_factory=list)  # fact ids superseded as owner corrections
     episodes: list[str] = field(default_factory=list)  # episode ids written or updated
     created: list[str] = field(default_factory=list)  # new page ids
+    notes: list[str] = field(default_factory=list)  # merge reconciliation, refiles (for log.md)
     new_ids: list[str] = field(default_factory=list)  # new fact / observation / intention ids
     changed: list[Path] = field(default_factory=list)
     commit: str | None = None
@@ -357,6 +369,8 @@ def _validate(
                 return f"unknown predicate {op.p!r}"
             if problem := _window_problem(op.valid_from, op.valid_to):
                 return problem
+            if problem := _evidence_problem(op, origin):
+                return problem
             if _subject(op) != SELF_ID and (need := _require_page(state, op.subject)):
                 return need
             if dup := _duplicate(state, _subject(op), op):
@@ -376,6 +390,8 @@ def _validate(
                 return "no source, no fact"
             if op.new and (problem := _window_problem(op.new.valid_from, op.new.valid_to)):
                 return problem
+            if op.new and (problem := _evidence_problem(op.new, origin)):
+                return problem
         case MergeEntities():
             if _entity(op.keep) == _entity(op.merge):
                 return "cannot merge an entity into itself"
@@ -384,6 +400,12 @@ def _validate(
                     return need
                 if _entity(entity) == SELF_ID or entity.startswith("self/"):
                     return "self pages cannot be merged"
+        case DemoteEntity():
+            return _demote_problem(op, state)
+        case RetypeEntity():
+            return _retype_problem(op, state)
+        case RefileFact():
+            return _refile_problem(op, state)
         case UpdateSummary():
             return _require_page(state, op.id) or _heading_problem(op.summary)
         case AddAlias():
@@ -425,6 +447,115 @@ def _validate(
     return None
 
 
+def _evidence_problem(spec: FactSpec, origin: Origin) -> str | None:
+    """An inferred fact must say what it was inferred from (docs/vault-schema.md)."""
+    need = MIN_EVIDENCE.get(origin, 1)
+    if spec.kind == "inferred" and len([e for e in spec.evidence if e.strip()]) < need:
+        return f"inferred fact without evidence:: (needs {need})"
+    return None
+
+
+def _not_self(entity: str) -> str | None:
+    entity = _entity(entity)
+    if entity == SELF_ID or entity.startswith("self/"):
+        return "self pages cannot be demoted, retyped or merged"
+    return None
+
+
+def _demote_problem(op: DemoteEntity, state: _State) -> _Depends | str | None:
+    if problem := _not_self(op.id) or _require_page(state, op.id):
+        return problem
+    page = state.page(op.id)
+    assert page
+    if own := len(page.facts) + len(page.history) + sum(map(len, page.unparsed.values())):
+        return f"{page.id} has {own} fact(s) of its own: merge or retype it instead"
+    if page.notes.strip():
+        return f"{page.id} has notes of its own"
+    if op.value is not None and not _clean(op.value):
+        return "empty value"
+    return None
+
+
+def _retype_target(op: RetypeEntity) -> str:
+    return op.new_id or f"{TYPE_DIRS[op.type]}/{_entity(op.id).split('/', 1)[-1]}"
+
+
+def _retype_problem(op: RetypeEntity, state: _State) -> _Depends | str | None:
+    if problem := _not_self(op.id) or _require_page(state, op.id):
+        return problem
+    page = state.page(op.id)
+    assert page
+    new_id = _retype_target(op)
+    if op.type == "self":
+        return "a page cannot become a self page"
+    if op.type == page.type:
+        return f"{page.id} is already a {op.type}"
+    if not ENTITY_ID.match(new_id) or new_id.split("/", 1)[0] != TYPE_DIRS[op.type]:
+        return f"bad id {new_id!r} for a {op.type}"
+    if new_id in state.pages or new_id in state.queued_entities:
+        return f"{new_id} already exists"
+    return None
+
+
+def _refile_problem(op: RefileFact, state: _State) -> _Depends | str | None:
+    found = state.find_fact(op.fact_id)
+    if not found:
+        return f"unknown fact ^{op.fact_id}"
+    page, fact, in_history = found
+    if in_history and fact.by:
+        return f"^{op.fact_id} is superseded"
+    if op.subject is None and op.p is None and op.o is None and op.at is None:
+        return "nothing to change"
+    p = op.p or fact.p
+    if p not in PREDICATES:
+        return f"unknown predicate {p!r}"
+    subject = _entity(op.subject) if op.subject is not None else page.subject
+    subject = SELF_ID if subject == SELF_PAGE else subject
+    if subject != SELF_ID and (need := _require_page(state, subject)):
+        return need
+    for link in (op.o, op.at):
+        if (
+            link is not None
+            and (target := link_target(link))
+            and (need := _require_page(state, target))
+        ):
+            return need
+    if op.at is not None:
+        if not link_target(op.at):
+            return "at:: must link to a page"
+        if p not in AT_PREDICATES:
+            return f"at:: does not qualify {p}"
+    o = _clean(op.o) if op.o is not None else fact.o
+    if not o:
+        return "empty object"
+    if (
+        subject == page.subject
+        and p == fact.p
+        and _norm(o) == _norm(fact.o)
+        and (op.at is None or _entity(op.at) == _entity(fact.extra.get("at", "")))
+    ):
+        return "nothing to change"
+    if not in_history:
+        moved = FactSpec(
+            p=p,
+            o=o,
+            text=fact.text,
+            kind=fact.kind,
+            **{"from": fact.valid_from, "to": fact.valid_to},
+        )
+        others = [f for f in state.facts_about(subject) if f.id != fact.id]
+        if clash := next(
+            (
+                f
+                for f in conflicts_in(others, subject, moved)
+                if duplicate_in([f], moved) is None and _norm(f.o) != _norm(o)
+            ),
+            None,
+        ):
+            return f"would contradict current fact ^{clash.id} ({clash.p}:: {clash.o})"
+    return None
+
+
 def _private_target(op: Operation, state: _State) -> str | None:
     """The private page an op touches, if any."""
     targets: list[tuple[str, str | None]] = []
@@ -441,6 +572,14 @@ def _private_target(op: Operation, state: _State) -> str | None:
                 targets.append((found[0].id, None))
         case MergeEntities():
             targets += [(Vault.page_id_for(_entity(e)), None) for e in (op.keep, op.merge)]
+        case DemoteEntity() | RetypeEntity():
+            targets.append((Vault.page_id_for(_entity(op.id)), None))
+        case RefileFact():
+            if found := state.find_fact(op.fact_id):
+                targets.append((found[0].id, None))
+            for entity in (op.subject, link_target(op.o or ""), link_target(op.at or "")):
+                if entity:
+                    targets.append((Vault.page_id_for(_entity(entity)), None))
         case UpdateSummary() | AddAlias():
             targets.append((Vault.page_id_for(_entity(op.id)), None))
         case AddIntention():
@@ -507,6 +646,12 @@ def _policy(
                 return f"supersession (not auto-applied as an owner correction: {problem})"
         case MergeEntities():
             return "entity merge"
+        case DemoteEntity():
+            return "entity demotion"
+        case RetypeEntity():
+            return "entity retype"
+        case RefileFact():
+            return "fact re-filed"
     return None
 
 
@@ -558,7 +703,11 @@ def _build_fact(state: _State, spec: FactSpec, src: list[str]) -> Fact:
 
 
 def _ensure_fact_page(state: _State, op: AddFact, result: ApplyResult) -> Page:
-    page_id, region = _fact_page_id(state, op)
+    return _ensure_page(state, *_fact_page_id(state, op), result)
+
+
+def _ensure_page(state: _State, page_id: str, region: str | None, result: ApplyResult) -> Page:
+    """The page facts go to; a missing ``self/*`` page is created."""
     if page := state.pages.get(page_id):
         return page
     if not page_id.startswith("self/"):
@@ -690,9 +839,78 @@ def _repoint_files(state: _State, old: str, new: str) -> None:
         state.journal_lines[month] = [pattern.sub("[[" + new, x) for x in lines]
 
 
-def _apply_merge(op: MergeEntities, state: _State) -> None:
+def _says_all(a: Fact, b: Fact) -> bool:
+    """``a`` says everything ``b`` says: same predicate and value, ``b``'s dates missing, equal
+    or coarser, and no qualifier of ``b`` that ``a`` contradicts."""
+    if a.p != b.p or _norm(a.o) != _norm(b.o):
+        return False
+    if any(_norm(a.extra[k]) != _norm(v) for k, v in b.extra.items() if k in a.extra):
+        return False
+    return _adds_nothing(b.valid_from, a.valid_from) and _adds_nothing(b.valid_to, a.valid_to)
+
+
+def _absorb(state: _State, into: Fact, other: Fact) -> None:
+    """``into`` takes ``other``'s sources, evidence and missing qualifiers; references to
+    ``other`` (``by::``, evidence) now name ``into``."""
+    into.src = [*into.src, *(s for s in other.src if s not in into.src)]
+    into.evidence = [*into.evidence, *(e for e in other.evidence if e not in into.evidence)]
+    into.extra = {**other.extra, **into.extra}
+    for page in state.pages.values():
+        for fact in (*page.facts, *page.history):
+            if fact.by == other.id:
+                fact.by = into.id
+                state.touch(page)
+            if other.id in fact.evidence:
+                fact.evidence = [into.id if e == other.id else e for e in fact.evidence]
+                state.touch(page)
+
+
+def _reconcile(state: _State, page: Page, result: ApplyResult, why: str) -> None:
+    """After a merge, demotion or retype brought facts together on ``page``: fold restatements
+    into one fact and retire facts that now point at their own page."""
+    kept: list[Fact] = []
+    for fact in list(page.facts):
+        if page.subject != SELF_ID and link_target(fact.o) == page.subject:
+            _retire(state, page, fact, None, None, result)
+            result.notes.append(f"self-reference retired after {why}: ^{fact.id}")
+            continue
+        twin = next((k for k in kept if _says_all(k, fact) or _says_all(fact, k)), None)
+        if twin is None:
+            kept.append(fact)
+            continue
+        into, other = (twin, fact) if _says_all(twin, fact) else (fact, twin)
+        _absorb(state, into, other)
+        page.facts.remove(other)
+        if other is twin:
+            kept[kept.index(twin)] = fact
+        state.touch(page)
+        result.notes.append(f"^{other.id} restates ^{into.id} after {why}: folded into it")
+
+
+def _queue_clashes(
+    state: _State, keep: Page, merged: set[str], result: ApplyResult, why: str
+) -> None:
+    """Single-valued facts of the merged page that contradict the kept page's: the owner
+    chooses (the older one is proposed for retirement, in a review)."""
+    ours = [f for f in keep.facts if f.id not in merged]
+    for fact in [f for f in keep.facts if f.id in merged]:
+        if is_multi_valued(fact.p, keep.subject):
+            continue
+        for other in ours:
+            if other.p != fact.p or _norm(other.o) == _norm(fact.o) or not _overlaps(fact, other):
+                continue
+            old = min((fact, other), key=lambda f: (f.rec, f.id not in merged))
+            new = other if old is fact else fact
+            reason = (
+                f"clash after {why}: ^{old.id} ({old.p}:: {old.o}) vs ^{new.id} ({new.p}:: {new.o})"
+            )
+            result.queued.append((SupersedeFact(fact_id=old.id), reason))
+
+
+def _apply_merge(op: MergeEntities, state: _State, result: ApplyResult) -> None:
     keep, gone = state.page(op.keep), state.page(op.merge)
     assert keep and gone
+    merged = {f.id for f in gone.facts}
     keep.facts += gone.facts
     keep.history += gone.history
     for section, lines in gone.unparsed.items():
@@ -710,10 +928,152 @@ def _apply_merge(op: MergeEntities, state: _State) -> None:
     state.deleted.add(gone.id)
     state.dirty.discard(gone.id)
     state.touch(keep)
+    why = f"merging {gone.id} into {keep.id}"
+    touched = _repoint_everywhere(state, gone.subject, keep.subject)
+    for page in [keep, *(p for p in touched if p is not keep)]:
+        _reconcile(state, page, result, why)
+    _queue_clashes(state, keep, merged, result, why)
+
+
+def _repoint_everywhere(state: _State, old: str, new: str) -> list[Page]:
+    """Links to ``old`` now point at ``new``: pages, generated and text files, pending
+    reviews. Returns the pages that changed."""
+    touched = []
     for page in state.pages.values():
-        if _repoint_page(page, gone.subject, keep.subject):
+        if _repoint_page(page, old, new):
             state.touch(page)
-    _repoint_files(state, gone.subject, keep.subject)
+            touched.append(page)
+    _repoint_files(state, old, new)
+    _repoint_reviews(state, old, new)
+    return touched
+
+
+def _repoint_reviews(state: _State, old: str, new: str) -> None:
+    """Pending reviews that name ``old`` (as a link, an op's id or a diff subject) name ``new``."""
+    base = state.vault.reviews_pending_dir
+    pattern = re.compile(r"(?<![\w/.-])" + re.escape(old) + r"(?![\w/.-])")  # the whole id
+    for path in sorted(base.glob("*.md")) if base.is_dir() else []:
+        text = state.read_text(path)
+        if text is None:
+            continue
+        updated = pattern.sub(new, text)
+        if updated != text:
+            state.text_files[path] = updated
+
+
+def _full_link(entity: str) -> re.Pattern[str]:
+    return re.compile(r"\[\[" + re.escape(entity) + r"(?:[#^][^\]|]*)?(?:\|([^\]]*))?\]\]")
+
+
+def _apply_demote(op: DemoteEntity, state: _State, result: ApplyResult) -> None:
+    page = state.page(op.id)
+    assert page
+    value = _clean(op.value or page.title)
+    link = _full_link(page.subject)
+
+    def plain(text: str) -> str:
+        return link.sub(lambda m: (m.group(1) or value).strip(), text)
+
+    del state.pages[page.id]
+    state.deleted.add(page.id)
+    state.dirty.discard(page.id)
+    why = f"demoting {page.id} to {value!r}"
+    for other in state.pages.values():
+        before = other.model_dump()
+        for fact in (*other.facts, *other.history):
+            fact.o = plain(fact.o)
+            if link_target(fact.extra.get("at", "")) == page.subject:
+                fact.extra = {k: v for k, v in fact.extra.items() if k != "at"}
+            fact.extra = {k: plain(v) for k, v in fact.extra.items()}
+        other.summary, other.notes = plain(other.summary), plain(other.notes)
+        other.unparsed = {k: [plain(x) for x in v] for k, v in other.unparsed.items()}
+        if other.model_dump() != before:
+            state.touch(other)
+            _reconcile(state, other, result, why)
+    for episode in state.episodes.values():
+        if page.subject in episode.entities or link.search(episode.summary + episode.gist):
+            episode.entities = [e for e in episode.entities if e != page.subject]
+            episode.summary, episode.gist = plain(episode.summary), plain(episode.gist)
+            state.dirty_episodes.add(episode.id)
+    vault = state.vault
+    paths = [vault.intentions_path, vault.questions_path, vault.core_path, vault.index_path]
+    paths += sorted(vault.journal_dir.rglob("*.md")) if vault.journal_dir.is_dir() else []
+    for path in paths:
+        text = state.read_text(path)
+        if text is not None and (updated := plain(text)) != text:
+            state.text_files[path] = updated
+    state.intention_lines = [plain(x) for x in state.intention_lines]
+    for month, lines in state.journal_lines.items():
+        state.journal_lines[month] = [plain(x) for x in lines]
+    result.notes.append(f"demoted {page.id}: links became {value!r}")
+
+
+def _apply_retype(op: RetypeEntity, state: _State, result: ApplyResult) -> None:
+    page = state.page(op.id)
+    assert page
+    new_id = _retype_target(op)
+    moved = page.model_copy(update={"id": new_id, "type": op.type, "subject": new_id})
+    del state.pages[page.id]
+    state.deleted.add(page.id)
+    state.dirty.discard(page.id)
+    state.pages[new_id] = moved
+    state.deleted.discard(new_id)
+    state.touch(moved)
+    why = f"retyping {page.id} as {new_id}"
+    for other in _repoint_everywhere(state, page.subject, new_id):
+        _reconcile(state, other, result, why)
+    result.notes.append(f"retyped {page.id} as {new_id} ({op.type})")
+
+
+def _apply_refile(op: RefileFact, state: _State, src: list[str], result: ApplyResult) -> None:
+    found = state.find_fact(op.fact_id)
+    assert found
+    page, fact, in_history = found
+    subject = _entity(op.subject) if op.subject is not None else page.subject
+    subject = SELF_ID if subject == SELF_PAGE else subject
+    p = op.p or fact.p
+    o = _clean(op.o) if op.o is not None else fact.o
+    if not link_target(o) and (o in state.pages or o == SELF_ID):
+        o = f"[[{o}]]"
+    extra = dict(fact.extra)
+    if op.at is not None:
+        extra["at"] = f"[[{_entity(op.at)}]]"
+    moved = fact.model_copy(
+        update={
+            "p": p,
+            "o": o,
+            "extra": extra,
+            "src": [*fact.src, *(s for s in src if s not in fact.src)],
+        }
+    )
+    try:
+        if parse_fact_line(render_fact(moved)) != moved:
+            raise _Skip("cannot be written as a fact line without loss")
+    except ValueError as exc:
+        raise _Skip(f"cannot be written as a fact line: {exc}") from exc
+    if subject == SELF_ID:
+        target = _ensure_page(state, *_self_page_id(state, p), result)
+    else:
+        target = state.page(subject)
+        assert target
+    section = page.history if in_history else page.facts
+    index = section.index(fact)
+    section.remove(fact)
+    state.touch(page)
+    twin = None
+    if not in_history:
+        others = [f for f in state.facts_about(subject) if f.id != fact.id]
+        twin = next((f for f in others if _says_all(f, moved)), None)
+    if twin is not None:
+        _absorb(state, twin, moved)
+        result.notes.append(f"refiled ^{fact.id} restates ^{twin.id}: folded into it")
+    elif target is page:  # same page: the line keeps its place
+        section.insert(index, moved)
+        result.notes.append(f"refiled ^{fact.id} ({p}:: {o})")
+    else:
+        (target.history if in_history else target.facts).append(moved)
+        result.notes.append(f"refiled ^{fact.id} on {target.id} ({p}:: {o})")
+    state.touch(target)
 
 
 def _apply_intention(op: AddIntention, state: _State, src: list[str]) -> str:
@@ -797,7 +1157,13 @@ def _apply_op(op: Operation, state: _State, cs: ChangeSet, result: ApplyResult) 
         case SupersedeFact():
             _apply_supersede(op, state, cs.src, result)
         case MergeEntities():
-            _apply_merge(op, state)
+            _apply_merge(op, state, result)
+        case DemoteEntity():
+            _apply_demote(op, state, result)
+        case RetypeEntity():
+            _apply_retype(op, state, result)
+        case RefileFact():
+            _apply_refile(op, state, cs.src, result)
         case UpdateSummary():
             page = state.page(op.id)
             assert page
@@ -846,6 +1212,17 @@ def _diff(op: Operation, state: _State) -> list[str]:
             return lines + ([f"+ {_preview(op.new)}"] if op.new else [])
         case MergeEntities():
             return [f"- [[{_entity(op.merge)}]]", f"+ [[{_entity(op.keep)}]]"]
+        case DemoteEntity():
+            page = state.page(op.id)
+            value = op.value or (page.title if page else op.id)
+            return [f"- wiki/{_entity(op.id)}.md", f"~ links to [[{_entity(op.id)}]] → {value!r}"]
+        case RetypeEntity():
+            return [f"- [[{_entity(op.id)}]]", f"+ [[{_retype_target(op)}]] ({op.type})"]
+        case RefileFact():
+            found = state.find_fact(op.fact_id)
+            lines = [f"- {render_fact(found[1]) if found else '^' + op.fact_id}"]
+            changes = [("subject", op.subject), ("p", op.p), ("o", op.o), ("at", op.at)]
+            return lines + ["+ " + ", ".join(f"{k}:: {v}" for k, v in changes if v is not None)]
         case UpdateSummary():
             page = state.page(op.id)
             old = page.summary.splitlines() if page else []
@@ -868,11 +1245,11 @@ def _diff(op: Operation, state: _State) -> list[str]:
 
 def _target(op: Operation) -> str:
     match op:
-        case CreateEntity() | UpdateSummary() | AddAlias():
+        case CreateEntity() | UpdateSummary() | AddAlias() | DemoteEntity() | RetypeEntity():
             return op.id
         case AddFact():
             return _subject(op)
-        case SupersedeFact() | ConfirmFact():
+        case SupersedeFact() | ConfirmFact() | RefileFact():
             return f"^{op.fact_id}"
         case MergeEntities():
             return f"{op.merge} → {op.keep}"
@@ -982,6 +1359,7 @@ def _log_entry(cs: ChangeSet, result: ApplyResult, now: datetime) -> list[str]:
     lines = [f"## [{now:%Y-%m-%d %H:%M}] {cs.origin} | {src} | {counts}"]
     lines += [f"- created {page_id}" for page_id in result.created]
     lines += [f"- owner correction applied: ^{fact_id}" for fact_id in result.corrected]
+    lines += [f"- {_clean(note)}" for note in result.notes]
     lines += [f"- episode {episode_id}" for episode_id in dict.fromkeys(result.episodes)]
     if result.review_id:
         lines.append(f"- queued for review: {result.review_id}")

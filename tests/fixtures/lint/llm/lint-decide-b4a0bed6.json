@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Two pages of a personal knowledge base about its owner's life. Each page describes one organisation.\n\nPAGE A\nName: Northwind Labs\nAlso called: Northwind\nAbout: Northwind Labs is a mid-sized analytics company.\nFacts:\n- Northwind Labs is based in Porto\nMentioned in:\n- Maya Lindqvist: Works at Northwind Labs\n- Sam Brennan: Works at Northwind Labs\n- Atlas Migration: Northwind Labs sponsors Atlas\n- Atlas Migration: Part of Alex's work at Northwind Labs\n- Tidepool: Part of Alex's work at Northwind Labs\n- the owner: Works at Northwind Labs as data engineer\n\nPAGE B\nName: Northwind Traders\nAbout: Northwind Traders is a wholesale distributor where Maya Lindqvist worked before Northwind Labs.\nFacts:\n- Northwind Traders is based in Oslo\nMentioned in:\n- Maya Lindqvist: Worked at Northwind Traders (ended)\n\nWhat the owner's sources say:\n- Alex has worked at Northwind Labs since February 2023 and became a senior data engineer in March\n- Alex has worked at Northwind Labs since February 2023 and became a senior data engineer in March › Alex leads the Atlas Migration, which moves nightly batch pipelines to a managed warehouse\n- Northwind Labs, Porto — Data engineer, then senior data engineer (Feb 2023 – present)\n- Northwind Labs, Porto — Data engineer, then senior data engineer (Feb 2023 – present) › Keep the nightly batch pipelines running on the data platform team.\n- Northwind Labs, Porto — Data engineer, then senior data engineer (Feb 2023 – present) › Lead the Atlas Migration of batch pipelines to a managed warehouse.\n- Maya Lindqvist, the head of data at Northwind Labs, became Alex's manager in March 2025.\n- Before joining Northwind Labs, Maya worked at Northwind Traders, a wholesale distributor based in Oslo.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "same",
+        "instructions": "Are page A and page B about the same organisation?",
+        "choices": [
+          {
+            "value": "same",
+            "description": "yes, one organisation: one name is another way of writing the other (a nickname, a misspelling, an abbreviation, a translation, a longer form)"
+          },
+          {
+            "value": "different",
+            "description": "no, two different organisations that only look alike or are related"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "same",
+        "choice": "different",
+        "probabilities": [
+          {
+            "value": "same",
+            "probability": 0.0086
+          },
+          {
+            "value": "different",
+            "probability": 0.9914
+          }
+        ],
+        "confidence": 0.9828
+      }
+    ],
+    "usage": {
+      "input_tokens": 529,
+      "output_tokens": 0
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Two pages of a personal knowledge base about its owner's life. Each page describes one organisation.\n\nPAGE A\nName: K.D.C.\nAbout: K.D.C. is a data community Alex goes to.\nMentioned in:\n- the owner: Member of K.D.C.\n\nPAGE B\nName: Kestrel Data Cooperative\nAlso called: Kestrel\nAbout: A community of data engineers that meets once a month; Alex gave a talk there on data contracts.\nFacts:\n- Kestrel Data Cooperative is based in Lisbon\nMentioned in:\n- the owner: Member of the Kestrel Data Cooperative\n\nWhat the owner's sources say:\n- Alex joined the Kestrel Data Cooperative in 2024.\n- The Kestrel Data Cooperative is a community of data engineers based in Lisbon that meets once a month, and Alex gave a talk there on data contracts.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "same",
+        "instructions": "Are page A and page B about the same organisation?",
+        "choices": [
+          {
+            "value": "same",
+            "description": "yes, one organisation: one name is another way of writing the other (a nickname, a misspelling, an abbreviation, a translation, a longer form)"
+          },
+          {
+            "value": "different",
+            "description": "no, two different organisations that only look alike or are related"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "same",
+        "choice": "same",
+        "probabilities": [
+          {
+            "value": "same",
+            "probability": 0.9968
+          },
+          {
+            "value": "different",
+            "probability": 0.0032
+          }
+        ],
+        "confidence": 0.9937
+      }
+    ],
+    "usage": {
+      "input_tokens": 291,
+      "output_tokens": 0
+    }
+  }
+}

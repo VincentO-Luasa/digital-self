@@ -1,4 +1,4 @@
-# Vault schema (v0.4)
+# Vault schema (v0.5)
 
 The vault is the brain's long-term memory and the **single source of truth**. It is a folder of
 Obsidian-compatible markdown, versioned with a *local-only* git repo, living **outside** this code
@@ -88,9 +88,9 @@ Body sections, in order:
 | `rec::` | yes | **record time** — when the brain learned it |
 | `src::` | yes | provenance: episode, raw doc, or review id. **No source, no fact.** |
 | `kind::` | yes | `stated` (you said it), `observed` (in a document), `inferred` (the brain concluded it) |
-| `evidence::` | inferred only | list of sources supporting an inference (no fake confidence numbers) |
+| `evidence::` | inferred only | list of sources supporting an inference (no fake confidence numbers). Required: the writer refuses an inferred fact without it (v0.5; two items from the big model) |
 | `by::` | history only | block id of the superseding fact; absent when a fact simply ended |
-| `level::`, `rel::`, `at::` | no | qualifiers of some predicates (see the vocabulary): a skill's level, a relation's kind, the school a degree is from |
+| `level::`, `rel::`, `at::` | no | qualifiers of some predicates (see the vocabulary): a skill's level, a relation's kind, the school a degree is from, the job a duty or role belongs to (v0.5) |
 | `privacy::` | no | `private` (v0.4): the fact comes from an answer the owner marked private; it is private whatever its page's privacy (see Privacy) |
 | `^f-xxxxxx` | yes | block id: `f-` + 6 lowercase base32 chars; Obsidian can link to it |
 
@@ -112,15 +112,16 @@ Rules:
   they don't clash.
 - **Contradiction checks are scoped** to the same `subject` + `p` (+ `o` for multi-valued
   predicates). Unscoped invalidation is a known failure mode (Graphiti #1728).
-- **Inferred facts** (traits, patterns, flaws) always go through the review queue.
+- **Inferred facts** (traits, patterns, flaws, edges `brain lint` infers) always go through the
+  review queue and must carry `evidence::`.
 - Hand-edits in Obsidian are allowed; `brain lint` validates and normalises the format.
 
-### Predicate vocabulary (v0.4)
+### Predicate vocabulary (v0.5)
 
 Single-valued per subject unless marked *(multi)*:
 
 - identity: `name`, `born`, `hometown`, `lives_in`, `nationality` *(multi)*, `speaks` *(multi)*
-- work: `works_at` *(multi)*, `role`, `team`, `manager`, `responsibility` *(multi)*, `worked_on` *(multi)*
+- work: `works_at` *(multi)*, `role` *(optional `at::`)*, `team`, `manager`, `responsibility` *(multi; optional `at::` = wikilink to the employer's org page, v0.5)*, `worked_on` *(multi)*
 - education: `studied_at` *(multi)*, `degree` *(multi; optional `at::` = wikilink to the school's org page, e.g. `(at:: [[orgs/westbridge-university]])`)*, `certification` *(multi)*
 - skills: `has_skill` *(multi, o = topic page or literal; optional `level::`)*
 - relationships: `family_of`, `partner_of`, `friend_of`, `colleague_of`, `mentor_of`, `knows` *(all multi; optional `rel::` e.g. sister)*; `met_at`, `last_seen`
@@ -135,6 +136,11 @@ of the document that names both; the profile card pairs a degree with its school
 and never by overlapping dates alone. A degree without it (older vaults, hand edits) still
 works: the card falls back to equal or clearly overlapping study periods. Entity merges repoint
 it like `o::`.
+
+`at::` on `responsibility` and `role` (v0.5) names the job (the employer's org page) a duty or
+role belongs to, when dates alone don't say it (an undated duty, two overlapping jobs). `brain
+lint` sets it after asking; the profile card does not list a duty or role whose `at::` job has
+ended (every `works_at` of that organisation is over) as a current one.
 
 ## Episodes (episodes/)
 
@@ -226,12 +232,14 @@ are never silently dropped.
 
 Every change the pipeline is not allowed to auto-apply becomes a review file: a JSON block of
 operations (`create_entity`, `add_fact`, `supersede_fact`, `merge_entities`, `update_summary`,
-`add_alias`, `add_intention`, `add_observation`, `confirm_fact`). The canonical JSON shape of each
+`add_alias`, `add_intention`, `add_observation`, `confirm_fact`, and since v0.5 `demote_entity`,
+`retype_entity`, `refile_fact`). The canonical JSON shape of each
 operation is the Pydantic model in `brain.vault.ops`; `vault_template/AGENTS.md` mirrors it.
 `add_episode` and `update_episode` exist for the memory pipeline only (refused from the big
 model) and are never queued. Each review also carries a human-readable diff. Auto-applied: plain
 stated/observed facts with no contradiction, confirmations, journal lines, intentions. Queued:
-inferred facts, relationship changes, contradictions, supersessions, merges, and any change from
+inferred facts, relationship changes, contradictions, supersessions, merges, demotions, retypes,
+re-filed facts, and any change from
 the big model that touches a `private` page (as subject, as the object of a fact, or through a
 region the life map marks private).
 
@@ -251,6 +259,32 @@ Implicit contradictions (the owner talks as if a fact had changed without saying
 about other people, projects or organisations, and relationship changes stay in the queue. The
 change is one vault commit, and `log.md` says `owner correction applied: ^f-…`, so it can be
 reverted with git like any other.
+
+## Graph cleaning operations (v0.5)
+
+`brain lint` repairs the graph with ordinary, always-reviewed operations; nothing is deleted
+that a fact or a note still needs.
+
+- `merge_entities {keep, merge}`: facts, history, names, regions and notes of `merge` move to
+  `keep`; every link, `at::`, episode, journal line, intention, generated file and **pending
+  review** naming `merge` is repointed. Then the facts it brought together are reconciled: a fact
+  that says no more than another current fact of the same subject (same `p`, value and
+  qualifiers; dates missing, equal or coarser) is folded into it (its `src::` and `evidence::`
+  join the survivor's, and `by::`/evidence references follow); a fact that now points at its own
+  page is retired to History; two current values of a single-valued predicate (one from each
+  page, overlapping) are a clash: the change commits a new review proposing to retire the
+  older-recorded one, and the owner decides.
+- `demote_entity {id, value?}`: the page names a value, not an entity (a topic, tool or hobby
+  filed as a project or organisation). Every link to it becomes the literal `value` (default its
+  title; an aliased link keeps its alias), an `at::` to it is dropped, and the page is removed.
+  Only a page without facts or notes of its own can be demoted (re-file them first).
+- `retype_entity {id, type, new_id?}`: the page moves to `new_id` (default: the type's folder,
+  same slug) and every link is repointed, as in a merge.
+- `refile_fact {fact_id, subject?, p?, o?, at?}`: the same statement filed differently: on
+  another subject (a project's goal filed as the owner's), under another predicate, with its
+  literal object linked to the page it names, or with `at::`. Text, dates, kind and block id stay;
+  the change set's sources join `src::`. A re-filed current fact that would contradict a current
+  fact of its new subject is refused; one that restates it is folded into it.
 
 ## Privacy
 

@@ -1,0 +1,58 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "An organisation in the owner's personal knowledge base.\n\nName: Fabrikam Analytics\nAlso called: Fabrikam\nAbout: Fabrikam Analytics is an analytics consultancy where Alex worked from 2019 to 2023.\nMentioned in:\n- Atlas Reporting: Part of Alex's work at Fabrikam Analytics\n- the owner: Built client reporting dashboards\n\nWhat the owner's sources say about it:\n- Alex looked back on the years at Fabrikam Analytics\n- Alex worked at Fabrikam Analytics in Lisbon from 2019 to 2023 as an analytics engineer.\n- At Fabrikam Analytics, Alex built the demand forecasting dashboards for a grocery chain and worked closely with Theo Marchetti.\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023)\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023) › Built client reporting dashboards, including Atlas Reporting for a retail client (2021–2022), in Tableau.\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023) › Built demand forecasting dashboards for a grocery chain.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "located",
+        "instructions": "According to the text, where is Fabrikam Analytics based?",
+        "choices": [
+          {
+            "value": "another place",
+            "description": "a place these options do not list"
+          },
+          {
+            "value": "not stated",
+            "description": "the text does not say where it is based"
+          },
+          {
+            "value": "Lisbon",
+            "description": "Fabrikam Analytics is based in Lisbon"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "located",
+        "choice": "Lisbon",
+        "probabilities": [
+          {
+            "value": "another place",
+            "probability": 0.0019
+          },
+          {
+            "value": "not stated",
+            "probability": 0.001
+          },
+          {
+            "value": "Lisbon",
+            "probability": 0.9971
+          }
+        ],
+        "confidence": 0.9957
+      }
+    ],
+    "usage": {
+      "input_tokens": 362,
+      "output_tokens": 0
+    }
+  }
+}

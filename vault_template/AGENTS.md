@@ -91,7 +91,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
   "Proposed 2 updates (review r-…), approve with `brain review`."
 - Leave out `rec`, `src` and block ids. The pipeline sets them, and `src` becomes the review id.
 
-### Operations (fact fields follow vault schema v0.4, see `SCHEMA.md`)
+### Operations (fact fields follow vault schema v0.5, see `SCHEMA.md`)
 
 ```json
 {"op": "create_entity", "id": "projects/atlas-migration", "type": "project", "title": "Atlas Migration", "aliases": ["Atlas"], "regions": ["projects"]}
@@ -103,7 +103,15 @@ or a hypothetical. Search first so you don't propose what memory already holds.
 {"op": "add_alias", "id": "people/sam-okafor", "alias": "Sammy"}
 {"op": "add_intention", "text": "Ask how the Atlas go-live went", "when": "[[projects/atlas-migration]]", "after": "2026-11-15"}
 {"op": "confirm_fact", "fact_id": "f-9w2mtd"}
+{"op": "refile_fact", "fact_id": "f-2kq7mx", "subject": "projects/atlas-migration"}
+{"op": "demote_entity", "id": "projects/stream-processing", "value": "Stream processing"}
+{"op": "retype_entity", "id": "projects/kestrel-data-cooperative", "type": "org"}
 ```
+
+`refile_fact` files the same statement differently (another `subject`, `p`, a literal `o` linked
+to its page, or `at`: the job a duty belongs to); `demote_entity` turns a page that names a topic,
+tool or hobby back into a plain value (only pages without facts of their own);
+`retype_entity` moves a page to the right type. Like merges, these always go to review.
 
 `confirm_fact` records that the owner restated a fact (this conversation is added to its sources;
 nothing else changes). `add_episode` and `update_episode` exist but are refused from you: only
@@ -114,10 +122,10 @@ confirmed sharing them.
 `subject` is an entity id or `self`. Dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. If the
 `brain_propose` tool schema differs from these examples, the tool schema wins.
 
-### Predicates (v0.4). Use only these, never invent new ones
+### Predicates (v0.5). Use only these, never invent new ones
 
 - identity: `name` `born` `hometown` `lives_in` `nationality`* `speaks`*
-- work: `works_at`* `role` `team` `manager` `responsibility`* `worked_on`*
+- work: `works_at`* `role` `team` `manager` `responsibility`* `worked_on`* (`role` and `responsibility` take an optional `at`: the employer's `[[orgs/…]]` link)
 - education: `studied_at`* `degree`* (optional `at`: the school's `[[orgs/…]]` link) `certification`*; skills: `has_skill`* (optional `level`)
 - relationships: `family_of` `partner_of` `friend_of` `colleague_of` `mentor_of` `knows` (all *, optional `rel`); `met_at` `last_seen`
 - projects: `owner` `status` `goal` `stakeholder`* `deadline` `uses`*

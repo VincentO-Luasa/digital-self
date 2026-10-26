@@ -1,0 +1,66 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "A project in the owner's personal knowledge base.\n\nName: Tidepool\nAbout: Tidepool is an internal alerting service that flags data-quality anomalies in the nightly pipelines.\nFacts:\n- Alex builds Tidepool's alert rules\n- Tidepool is a prototype\n- Tidepool runs on Kafka\n\nWhat the owner's sources say about it:\n- Alex is building Tidepool, an internal alerting service\n- Alex is building Tidepool, an internal alerting service at Northwind Labs that flags data-quality anomalies in the nightly pipelines, together with Sam Brennan.\n- Tidepool's target is to ship real-time alerting by March 2027.\n\nThe owner's jobs:\n- Northwind Labs (2023-02 to now)\n- Fabrikam Analytics (2019-06 to 2023-01)\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "part_of",
+        "instructions": "According to the text, where does the owner do this project?",
+        "choices": [
+          {
+            "value": "unclear",
+            "description": "the text does not say"
+          },
+          {
+            "value": "a side project",
+            "description": "on their own, as a side project outside any job"
+          },
+          {
+            "value": "Northwind Labs",
+            "description": "at Northwind Labs"
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "description": "at Fabrikam Analytics"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "part_of",
+        "choice": "Northwind Labs",
+        "probabilities": [
+          {
+            "value": "unclear",
+            "probability": 0.0052
+          },
+          {
+            "value": "a side project",
+            "probability": 0.0034
+          },
+          {
+            "value": "Northwind Labs",
+            "probability": 0.9913
+          },
+          {
+            "value": "Fabrikam Analytics",
+            "probability": 0.0002
+          }
+        ],
+        "confidence": 0.9883
+      }
+    ],
+    "usage": {
+      "input_tokens": 281,
+      "output_tokens": 0
+    }
+  }
+}

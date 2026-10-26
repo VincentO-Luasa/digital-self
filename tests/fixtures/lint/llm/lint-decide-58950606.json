@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Two pages of a personal knowledge base about its owner's life. Each page describes one project.\n\nPAGE A\nName: Atlas Migration\nAlso called: Atlas\nAbout: Atlas Migration moves Northwind Labs' nightly batch pipelines from a legacy cluster to a managed warehouse.\nFacts:\n- Atlas Migration is owned by Alex\n- Atlas moves nightly batch pipelines to a managed warehouse\n- Atlas is in the testing phase\n- Atlas go-live is planned for 2026-11-15\n- Northwind Labs sponsors Atlas\n- Part of Alex's work at Northwind Labs\n\nPAGE B\nName: Atlas Reporting\nAbout: Atlas Reporting was a client reporting suite Alex built at Fabrikam Analytics for a retail client.\nFacts:\n- Alex built Atlas Reporting\n- Atlas Reporting is finished\n- Part of Alex's work at Fabrikam Analytics\n- Atlas Reporting uses Tableau\n\nWhat the owner's sources say:\n- Alex worries the Atlas migration deadline is unrealistic\n- Alex has worked at Northwind Labs since February 2023 and became a senior data engineer in March › Alex leads the Atlas Migration, which moves nightly batch pipelines to a managed warehouse\n- Planning the Atlas cut-over: dbt models first, then Airflow DAGs\n- Alex asked the big model how to sequence the Atlas cut-over.\n- Northwind Labs, Porto — Data engineer, then senior data engineer (Feb 2023 – present) › Lead the Atlas Migration of batch pipelines to a managed warehouse.\n- Fabrikam Analytics, Lisbon — Analytics engineer (Jun 2019 – Jan 2023) › Built client reporting dashboards, including Atlas Reporting for a retail client (2021–2022), in Tableau.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "same",
+        "instructions": "Are page A and page B about the same project?",
+        "choices": [
+          {
+            "value": "same",
+            "description": "yes, one project: one name is another way of writing the other (a nickname, a misspelling, an abbreviation, a translation, a longer form)"
+          },
+          {
+            "value": "different",
+            "description": "no, two different projects that only look alike or are related"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "same",
+        "choice": "different",
+        "probabilities": [
+          {
+            "value": "same",
+            "probability": 0.0067
+          },
+          {
+            "value": "different",
+            "probability": 0.9933
+          }
+        ],
+        "confidence": 0.9866
+      }
+    ],
+    "usage": {
+      "input_tokens": 466,
+      "output_tokens": 0
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Something the owner's personal knowledge base has a page for.\n\nName: Data Contracts\nAbout: Alex is interested in data contracts.\nMentioned in:\n- the owner: Is interested in Data Contracts\n\nWhat the owner's sources say about it:\n(nothing more)\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "instructions": "What is it?",
+        "choices": [
+          {
+            "value": "person"
+          },
+          {
+            "value": "org",
+            "description": "an organisation: company, university, school, club or community"
+          },
+          {
+            "value": "project",
+            "description": "work someone builds, leads or takes part in, including their own app or library"
+          },
+          {
+            "value": "place",
+            "description": "a city, region, country or address"
+          },
+          {
+            "value": "event",
+            "description": "something that happened at a time: a conference, a trip, a wedding"
+          },
+          {
+            "value": "topic",
+            "description": "a field, subject or technique"
+          },
+          {
+            "value": "tool",
+            "description": "a tool, product, language or technology someone uses"
+          },
+          {
+            "value": "activity",
+            "description": "a hobby, sport or pastime"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "kind",
+        "choice": "topic",
+        "probabilities": [
+          {
+            "value": "person",
+            "probability": 0.0077
+          },
+          {
+            "value": "org",
+            "probability": 0.0018
+          },
+          {
+            "value": "project",
+            "probability": 0.0087
+          },
+          {
+            "value": "place",
+            "probability": 0.0012
+          },
+          {
+            "value": "event",
+            "probability": 0.0015
+          },
+          {
+            "value": "topic",
+            "probability": 0.8855
+          },
+          {
+            "value": "tool",
+            "probability": 0.0934
+          },
+          {
+            "value": "activity",
+            "probability": 0.0003
+          }
+        ],
+        "confidence": 0.8691
+      }
+    ],
+    "usage": {
+      "input_tokens": 206,
+      "output_tokens": 0
+    }
+  }
+}

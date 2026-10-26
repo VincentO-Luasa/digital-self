@@ -554,3 +554,89 @@ mostly reasonable but outside the gold (a planned project "uses Rust", a goal "t
 Lisbon office"); systematic misses: "moving in January" dated to the past January (5 of 6 runs over all
 samples), the implicit contradiction never extracted as `lives_in` (so nothing queued: the safe
 side), a self `goal` linking to the project page.
+
+## 2026-10-26 — `brain lint`: graph cleaning by reviewed operations and owner questions (schema v0.5)
+`brain lint` (`brain.lint`, the `lint` skill has the flow) finds five kinds of dirt and proposes
+ordinary operations, one review per finding, so the owner approves or rejects each repair alone
+(a review is all-or-nothing). Nothing it proposes auto-applies; every doubt between 0.5 and the
+acting threshold becomes a `questions.md` item (origin `lint`, never asked twice: the key before
+`:` in its reason), because the owner is the oracle.
+1. **Duplicates**: same-type pairs proposed by name signals in code (same words without generic
+   ones such as "University of" / "École", acronym, typo by Damerau-Levenshtein, one name inside
+   the other, shared first name or first word) or by profile embeddings (cosine ≥ 0.75; on the
+   eval vaults duplicates scored 0.50–0.95, acronyms lowest, different pages ≤ 0.65), ordered by
+   the reranker (≤ 3 per page); never two people with different surnames, never two pages linked
+   by a fact. A typed choice same/different on both profiles and the source sentences naming them;
+   p(same) ≥ 0.9 → `merge_entities` (the older page is kept). A page with several look-alikes gets
+   one exclusive choice "which one, or none?" (a pairwise rule blocked a right merge when a
+   weaker look-alike, Atlas Reporting, reached 0.53; "Sam" next to two Sams now answers "none",
+   0.96–0.98, and nothing is asked).
+2. **Doubtful types**: only pages used as values (`has_skill`, `interest`, `uses`…) or with
+   nothing that fits their type are asked about (person / org / project / place / event / topic /
+   tool / activity; the current type is never shown). Demotion uses the value kinds' summed mass
+   ("Data Contracts": topic 0.89 + tool 0.09) at ≥ 0.9 and only for a page without facts of its
+   own; any type change needs a fact or link that says so (`works_at` X makes X an organisation).
+   A synthetic 100-page vault showed why: made-up place names linked by `related_to` were
+   retyped as people at 0.91–1.00 from the name alone. Without support and without a source
+   sentence a verdict is a report line, not a question.
+3. **Facts on the wrong subject**: the owner's `goal` / `deadline` / `status` / `uses` whose text
+   or source sentences name a project; "whose goal is this?" at ≥ 0.8 → `refile_fact`.
+4. **Missing edges**: project → job (`part_of`), undated duty → job (`at::`, new in v0.5 for
+   `responsibility` and `role`; the card no longer lists a duty of an ended job as current),
+   organisation → place (`located_in`, only places the vault knows that the org's source sentences
+   name). Inferred, with `evidence::` (sources, the `works_at` fact, a quote).
+5. **Consistency** in code: two current single-valued values or two open-ended jobs (asked),
+   end before start, orphans (no facts *and* no links: with "≤ 1 link" every employer page ingest
+   makes was reported), literal objects naming exactly one page of a fitting type (`refile_fact`
+   with the link), parse warnings, inferred facts without evidence, and the AGENTS.md predicate
+   list and version against `models.py` (closes the Phase 0 open item; a test keeps the template
+   in sync).
+
+Writer (schema v0.5): `demote_entity`, `retype_entity`, `refile_fact` (always reviewed); a merge
+folds restatements into one fact (sources joined), retires self-references, queues clashing
+single-valued facts as a new review and repoints pending reviews; inferred facts need
+`evidence::` (two from the big model). `brain lint` commits uncommitted hand edits apart first.
+Incremental by default: pages changed since the last lint (`.brain/lint.json`) and their
+neighbours; `--all`, `--since REV`.
+
+**Option order matters for one-token decisions.** With the listed cities first and "another
+place / not stated" last, "Brightwater Studio, a Stockholm design agency, I moved to Rotterdam…"
+gave Rotterdam 0.98 (Stockholm was not a place the vault knew); with the escape options first,
+"another place" 0.91 while every true location stayed ≥ 0.97. The same order turned a project no
+source names from "side project" 0.91 into "unclear" 0.53, and a client job from 2021 from "side
+project" 0.86 into "unclear" 0.48; clear cases kept 0.95–1.00. Every lint choice now lists
+"unclear" / "none" / "another place" first, and employers without a page are options too (acting
+needs a page). The part_of wording was chosen on eight fictional projects ("According to the
+text, where does the owner do this project?": Tidepool 0.99 vs 0.71 for "Is this project part
+of the owner's work at one of their jobs?").
+
+Other things tried and dropped: duty evidence as "sentences naming a job" (the employer header
+lines filled the budget, "unclear" 0.58; now sentences sharing the duty's words, a list item
+carrying the line above it); jobs offered only with an org link (a literal "Fabrikam Analytics"
+could not be chosen; a literal naming exactly one org page now counts as that page); a
+different-people guard on the last word only ("Marchetti, Theo" was never compared); marking
+both sides of a merge busy (a literal "Northwind Labs" could not be linked to the kept page).
+
+Measured with `brain eval lint` (`src/brain/eval/lint_eval.py`): the fixture vault + a richer
+fictional persona (20 pages), and per seed a dirty copy with 12 noise items (variants by seed:
+org typo, "University of" prefix, acronym, accent / "Last, First", a project's other name, a
+topic page, a project goal on the owner, a missing `part_of`, a duty under the wrong job or
+none, literal employers, two current cities, an org that lost its location) next to near misses
+that must stay untouched (three Sams, Atlas Migration / Atlas Reporting, Northwind Labs /
+Northwind Traders, a side project, personal goals, a university whose location no source
+states). Every lint review is approved, then the vault is checked. Seeds 1–3 were used while
+building; 4–6 only at the end (same variant pool). `--no-cache`:
+
+| sample | runs | noise fixed | wrong changes | wrong on the clean vault | questions (expected matched) | ops | decisions | s |
+|---|---|---|---|---|---|---|---|---|
+| 1 | clean + seeds 1–3 | 36/36 | **0** | **0** (0 questions) | 3 (3/3) | 36 | 55 | 80 |
+| 2 | clean + seeds 4–6 | 36/36 | **0** | **0** (0 questions) | 3 (3/3) | 36 | 54 | 73 |
+
+Acting decisions ranged 0.92–1.00 (the typo merges lowest, 0.92–0.95). Six vaults produced by
+`brain eval ingest` on the Maya and Theo documents (real ingest output, other personas): two
+`located_in` proposals (both supported by the text), no wrong change after the order fix, and
+real dirt asked about (three current jobs on one homepage). Cost: a full run is ~0.5 s per page
+on the base M4 (a synthetic 100-page vault: 51 decisions, 100 texts embedded, 18 reranks, 56 s;
+200 pages: 96 decisions, 112 s; no change proposed on either); incremental runs check only what
+changed. Known gaps: duplicates across page types; one persona in the eval; a doubt answered in
+an interview is settled only through what the memory pipeline makes of the answer.

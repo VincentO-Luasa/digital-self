@@ -1,0 +1,58 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "A statement in the owner's personal knowledge base: \"Tidepool should ship real-time alerting by March 2027\"\n\nWhere it was learned:\n- Alex is building Tidepool, an internal alerting service\n- Alex is building Tidepool, an internal alerting service at Northwind Labs that flags data-quality anomalies in the nightly pipelines, together with Sam Brennan.\n- Tidepool's target is to ship real-time alerting by March 2027.\n\nProjects the owner is involved in:\n- Tidepool: Tidepool is an internal alerting service that flags data-quality anomalies in the nightly pipelines.\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "whose",
+        "instructions": "Whose goal is this?",
+        "choices": [
+          {
+            "value": "unclear",
+            "description": "the text does not say"
+          },
+          {
+            "value": "the owner",
+            "description": "a personal goal of the owner, not one project's"
+          },
+          {
+            "value": "Tidepool",
+            "description": "the goal of the project Tidepool"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "whose",
+        "choice": "Tidepool",
+        "probabilities": [
+          {
+            "value": "unclear",
+            "probability": 0.0038
+          },
+          {
+            "value": "the owner",
+            "probability": 0.0075
+          },
+          {
+            "value": "Tidepool",
+            "probability": 0.9887
+          }
+        ],
+        "confidence": 0.983
+      }
+    ],
+    "usage": {
+      "input_tokens": 208,
+      "output_tokens": 0
+    }
+  }
+}

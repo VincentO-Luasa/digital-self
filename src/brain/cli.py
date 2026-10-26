@@ -583,6 +583,83 @@ def memory_process_cmd(
         db.close()
 
 
+# --- lint (graph cleaning) -----------------------------------------------------------------------
+
+
+def _print_lint(report: Any) -> None:
+    scope = f"{report.scope} of {report.pages} pages"
+    if report.since:
+        scope += f" (changed since {report.since[:12]} and their neighbours)"
+    console.print(f"lint: {scope} · {len(report.findings)} finding(s)")
+    if report.findings:
+        table = Table("check", "finding", "action", "decision")
+        for f in report.findings:
+            action = f.action
+            if f.ask and not f.ops:
+                action = f"ask: {f.ask.text}"
+            table.add_row(f.check, escape(f.summary), escape(action), escape(f.decision))
+        console.print(table)
+    for note in report.notes:
+        console.print(f"[dim]{escape(note)}[/]")
+    c = report.costs
+    console.print(
+        f"[dim]{c.decisions} decisions · {c.embedded} embedded · {c.reranked} reranks · "
+        f"{report.seconds:.1f}s[/]"
+    )
+
+
+@app.command("lint")
+def lint_cmd(
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Report only: no reviews, questions or commits.")
+    ] = False,
+    only: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--only",
+            help="Run only this check (repeatable): duplicates, types, subjects, edges, "
+            "consistency.",
+        ),
+    ] = None,
+    since: Annotated[
+        str | None,
+        typer.Option("--since", help="Check pages changed since this vault git revision."),
+    ] = None,
+    whole: Annotated[
+        bool, typer.Option("--all", help="Check the whole vault, not just what changed.")
+    ] = False,
+) -> None:
+    """Clean the knowledge graph: duplicates, doubtful page types, facts on the wrong subject,
+    missing edges, inconsistencies. Repairs go to the review queue; doubts become interview
+    questions (questions.md). By default only pages changed since the last lint are checked."""
+    from brain.lint import LintOptions, apply_lint, run_lint
+
+    settings = get_settings()
+    vault = _vault(settings)
+    llm = make_llm(settings)
+    if not llm.health():
+        console.print("[yellow]model server down: only the code checks run[/]")
+        llm = None
+    try:
+        options = LintOptions(only=only or (), since=since, full=whole)
+        report = run_lint(vault, llm, options)
+    except ValueError as err:
+        raise _fail(str(err)) from err
+    _print_lint(report)
+    if dry_run:
+        console.print("dry run: nothing written")
+        return
+    apply_lint(vault, report)
+    reviews = [r.review_id for r in report.applied if r.review_id]
+    console.print(
+        f"{len(reviews)} review(s) queued"
+        + (f" ({', '.join(reviews)}): `brain review`" if reviews else "")
+        + f" · {len(report.questions)} question(s) added to questions.md"
+    )
+    if reviews or report.questions:
+        _refresh(vault, settings, llm)
+
+
 # --- eval (measure pipelines on the fictional set in tests/eval/) -------------------------------
 
 eval_app = typer.Typer(
@@ -802,6 +879,103 @@ def eval_memory_cmd(
         else:
             shutil.rmtree(workdir, ignore_errors=True)
     _print_memory_eval(scores, ev)
+    if json_out:
+        meta = {
+            "run_at": datetime.now().isoformat(timespec="seconds"),
+            "today": ev.EVAL_TODAY.isoformat(),
+            "model": settings.llm.chat_model,
+            "cache": None if cache is None else str(cache.directory),
+            "cache_hits": None if cache is None else cache.hits,
+        }
+        data = ev.report_json(scores, meta)
+        json_out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        console.print(f"details: {json_out}")
+
+
+def _print_lint_eval(scores: list[Any]) -> None:
+    table = Table("run", "fixed", "wrong", "questions", "expected asks", "ops", "decisions", "s")
+    for s in scores:
+        c = s.counts()
+        wrong = c["wrong"]
+        table.add_row(
+            s.name,
+            _frac(c["fixed"], c["noise"]),
+            f"[red]{wrong}[/]" if wrong else "0",
+            str(c["questions"]),
+            _frac(c["asks_matched"], c["asks"]),
+            str(c["ops"]),
+            str(c["decisions"]),
+            f"{s.seconds:.0f}",
+        )
+    console.print(table)
+    for s in scores:
+        for item in s.wrong:
+            console.print(f"[red]{escape(s.name)}: wrong: {escape(item)}[/]")
+        for item in s.missed + s.proposed_not_verified:
+            console.print(f"[yellow]{escape(s.name)}: not fixed: {escape(item)}[/]")
+        if s.error:
+            console.print(f"[red]{escape(s.name)}: {escape(s.error)}[/]")
+
+
+@eval_app.command("lint")
+def eval_lint_cmd(
+    seeds: Annotated[
+        list[int] | None,
+        typer.Option("--seed", help="Noise seed (repeatable; default 1). Each is one dirty vault."),
+    ] = None,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Ask the model again even for inputs it has seen.")
+    ] = False,
+    clean: Annotated[
+        bool, typer.Option("--clean/--no-clean", help="Also lint the clean vault (expect 0 ops).")
+    ] = True,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Write every finding, fix and miss here.")
+    ] = None,
+    keep: Annotated[
+        bool, typer.Option("--keep", help="Keep the scratch vaults and print where they are.")
+    ] = False,
+) -> None:
+    """Score `brain lint` on a dirty fictional vault (never touches your vault).
+
+    Known noise is injected into a clean fictional vault; every lint review is then approved and
+    the vault checked. Wrong changes must be 0. See src/brain/eval/lint_eval.py.
+    """
+    import json
+    import shutil
+    import tempfile
+    from datetime import datetime
+
+    from brain.eval import lint_eval as ev
+
+    settings = get_settings()
+    llm = _model(settings)
+    cache = None
+    if not no_cache:
+        from brain.llm.cache import StructuredCache
+
+        llm = cache = StructuredCache(llm, ev.default_cache_dir())
+    workdir = Path(tempfile.mkdtemp(prefix="brain-eval-lint-"))
+    runs: list[tuple[str, int | None]] = [("clean", None)] if clean else []
+    runs += [(f"seed-{n}", n) for n in seeds or [1]]
+    scores = []
+    try:
+        for name, seed in runs:
+            console.print(f"[bold]{name}[/] …")
+            score = ev.run_one(name, llm, workdir, seed)
+            c = score.counts()
+            console.print(
+                f"  fixed {c['fixed']}/{c['noise']} · wrong {c['wrong']} · "
+                f"{c['questions']} questions · {score.seconds:.0f}s"
+                + (f" · [red]{escape(score.error)}[/]" if score.error else "")
+            )
+            scores.append(score)
+    finally:
+        if keep:
+            console.print(f"scratch vaults: {workdir}")
+        else:
+            shutil.rmtree(workdir, ignore_errors=True)
+    _print_lint_eval(scores)
     if json_out:
         meta = {
             "run_at": datetime.now().isoformat(timespec="seconds"),

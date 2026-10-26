@@ -38,7 +38,7 @@ If the document is in the vault (`raw/docs/…`), you can't read it here. Ask th
 
 ## 2. Extract facts
 
-Map statements to predicates from the v0.4 vocabulary in `AGENTS.md`. Typical CV mapping:
+Map statements to predicates from the v0.5 vocabulary in `AGENTS.md`. Typical CV mapping:
 
 | document says | operation |
 |---|---|

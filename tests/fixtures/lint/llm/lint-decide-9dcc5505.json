@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "Two pages of a personal knowledge base about its owner's life. Each page describes one organisation.\n\nPAGE A\nName: University of Westbridge\nAbout: Where Alex took a computer science degree.\nMentioned in:\n- the owner: Holds a BSc in Computer Science\n\nPAGE B\nName: Westbridge University\nAbout: Westbridge University is where Alex studied computer science.\nMentioned in:\n- the owner: Studied at Westbridge University (ended)\n\nWhat the owner's sources say:\n- Westbridge University — BSc Computer Science (2014 – 2018)\n",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "same",
+        "instructions": "Are page A and page B about the same organisation?",
+        "choices": [
+          {
+            "value": "same",
+            "description": "yes, one organisation: one name is another way of writing the other (a nickname, a misspelling, an abbreviation, a translation, a longer form)"
+          },
+          {
+            "value": "different",
+            "description": "no, two different organisations that only look alike or are related"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "same",
+        "choice": "same",
+        "probabilities": [
+          {
+            "value": "same",
+            "probability": 0.9669
+          },
+          {
+            "value": "different",
+            "probability": 0.0331
+          }
+        ],
+        "confidence": 0.9338
+      }
+    ],
+    "usage": {
+      "input_tokens": 227,
+      "output_tokens": 0
+    }
+  }
+}
