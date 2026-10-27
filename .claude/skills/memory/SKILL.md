@@ -6,7 +6,8 @@ description: How the memory pipeline turns a finished chat or interview transcri
 # Memory pipeline
 
 Entry point: `brain.memory.process_session(vault, llm, transcript, *, channel, regions_hint=None,
-today=None, db=None, refresh=True, core_max_tokens=1500, private_turns=None) -> SessionReport`.
+today=None, db=None, refresh=True, core_max_tokens=1500, private_turns=None, turns=None) ->
+SessionReport`.
 The interview calls exactly this; keep the positional arguments and add keyword-only ones with
 defaults. `brain chat` runs it when the session closes (`--no-memory` skips);
 `brain memory process [TRANSCRIPT|--pending]` runs it on saved transcripts.
@@ -62,6 +63,19 @@ defaults. `brain chat` runs it when the session closes (`--no-memory` skips);
 
 Idempotent: a session with episodes is not re-segmented; extracted episodes are skipped; a failed
 episode stays `pending` and is resumed by the next run (`--pending`).
+
+**Parts** (`turns=`: the turns of a session still running, read by the caller; the interview saves
+each finished block this way, `refresh=False`): only the turns after the last
+`extract | <transcript> | segmented turns A-B: …` line in log.md are segmented, and the part's
+line is committed **with** its episodes (`apply(..., event=…)` in brain.vault.writer: one commit,
+so a crash cannot leave episodes without their record or the reverse); a part with nothing
+personal logs `segmented turns A-B: no episode (…)`. A tail without an owner turn waits for the
+next part. Once a session has part lines, `segmented_through` is the end of the last one and
+`is_processed` needs no owner turn after it and no pending episode; the run at close (no
+`turns`) segments what is left. Sessions without part lines keep the old rule (episodes or a
+"no episode" line = segmented as a whole). Only pending episodes ending within the given turns
+are extracted. An interview transcript processed without `regions_hint` gets its frontmatter
+`region` as the hint (`--pending`).
 
 ## Decisions and thresholds (see docs/decisions.md)
 

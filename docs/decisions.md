@@ -724,3 +724,84 @@ Latency on the base M4: a reply that was 5.9 s (classify + compose) on the old c
 2.4–2.8 s warm on the recorded check; in the long scripted sessions a turn averages 6.4–8.5 s
 (classify 1.15 s, linking 0.9–1.5 s, compose 4.9–5.2 s; a dropped follow-up costs a second
 compose, max ~16 s).
+
+## 2026-10-27 — Interviews end on content
+
+An interview ran until the plan or the clock ran out, whatever the owner said; only three
+declines in a row stopped it. Now an answer is **dry** when the answer label (`classify`, already
+computed) is declined, refused or unclear, when the owner says `skip`, or when it is partial and
+made only of filler words ("not much really", "same as before"; code, no model call). A dry
+partial gets no "tell me more?" follow-up. Three dry answers in a row, or four of the last five,
+end the session ("I think I've got what I need on projects for now. Thanks!"; "Let's leave …
+there for today" when they were all declines or skips); two dry answers in a row inside an
+entity block skip the rest of that block. The CLI then suggests the next least covered
+non-private region ("Next time: `brain interview career.current_job`"). A short answer that
+names something or confirms ("Theo.", "Yes, still right") is labelled answered and never dry.
+Alternatives: a typed "did this add anything new?" question per answer (+~0.5 s a turn for what
+the label mostly says already); checking whether the block moved coverage (only known after
+extraction, which now runs in the background and late).
+
+Measured on the local model with scripted fictional owners (`test_interview_saving_live.py`,
+an 11-step "Projects" plan in three entity blocks): a terse owner ("Fine.", "Dunno.", "Not much
+really." …) was stopped after 6, 7 and 7 answers ("Fine." and "Same as before." to confirm
+questions count as confirmations); a talkative owner was never stopped on content in 24 runs
+(3 stopping runs and 21 saving runs: the plan's end after 22–30 answers, or the 30-question
+limit), so no false stop.
+
+## 2026-10-27 — Interviews save as they go
+
+All of an interview's memory work ran at close: 111–184 s for a 24–30 answer session on the
+base M4, while the owner waited, and a crash left only a transcript. Now (`brain.interview.saver`)
+when an entity block is finished and at least 3 answers wait, a worker thread settles the
+block's lint doubts and runs `process_session(..., turns=<the turns so far>, refresh=False)`; the
+close does only what is left. Choices:
+
+1. **Parts in the pipeline.** `process_session` segments only the turns after the last
+   `segmented turns A-B` line of the transcript in log.md and writes that line **in the same
+   commit** as the part's episodes (`writer.apply(..., event=…)`), so a crash cannot leave
+   episodes without their record (which would segment them again) or a record without episodes.
+   An episode per block, not one 80-turn episode. Extraction stays per episode and idempotent;
+   `is_processed` needs every owner turn after the last line to be segmented, so
+   `brain memory process --pending` resumes a crashed interview from its last saved block.
+   Sessions without part lines keep the old rule (episodes = segmented as a whole). Private
+   answers: the job carries the private turn numbers and the markers are in the turns; the
+   episode holding them is private as before.
+2. **One worker thread, one writer.** The interview only appends to its transcript (it reads the
+   turns on its own thread and hands them over: the worker never reads a file being written);
+   the worker is the only vault writer while the interview runs; `close()` waits for it.
+3. **Out of the owner's way.** oMLX does not serialise requests here (`max_concurrent_requests`
+   8): it runs them side by side, and the interview's calls slow down next to the worker's (a
+   short call +0.1–0.3 s during another's decode, +4–5 s during a ~3k-token prefill). Measured
+   with a talkative owner, 2 samples per row (turn = the owner's wait for the next question;
+   the server's speed varied between runs, so compare within a run):
+
+   | policy | owner answers | s per turn, mean / p90 (same-run close-only) | turns meeting a worker call: s vs others | close s (close-only) |
+   |---|---|---|---|---|
+   | worker calls whenever the interview is idle | at once | 9.8 / 13.0 (≈7.3 / 8.1), max 23.6 | — | 78 (111) |
+   | same | 10–20 s | 9.1 / 15.8 (7.4 / 8.1) | — | 25, 34 (111, 122) |
+   | + wait 2 s of idleness, long calls only ≤ 8 s into a pause | at once | 7.4 / 8.4 (7.4 / 8.1) | none | 128, 200 (111, 122) |
+   | same | 10–20 s | 9.1 / 14.1 (7.4 / 8.1); 10.4 / 15.1 (9.9 / 10.7) | 13.6 vs 9.0 (8 of 26) | 22, 80; 42 (168) |
+   | + long calls streamed and cancelled when the owner answers, repeated in the next pause | 10–20 s | 9.9 / 11.6 (9.1 / 10.3) | 9.8 vs 9.5, 10.2 vs 10.5 | 74, 116 (162, 184) |
+   | same, cancelled at most twice per call | 10–20 s | 10.6 / 16.2 (8.7 / 10.5) | 12.3 vs 9.3, 11.5 vs 10.0 | 84, 67 (178, 161) |
+   | + the close drops queued blocks and one that never got a pause | at once | 8.6 / 10.9 (9.1 / 10.3) | none | 151, 107 (162, 184) |
+
+   Chosen: a call starts only after the owner has been idle for 2 s (an owner who answers at
+   once never meets the worker: everything is done at close, as before, in one run), a long
+   call (structured output) only up to 8 s into a pause, and every long call is streamed with a
+   cancel event that the interview sets when it gets busy (`LLM.structured(..., cancel=)`; oMLX
+   stops generating when the stream closes), then repeated in the next pause. That removed the
+   cost of meeting the worker. Without a cap one extraction window longer than the owner's
+   pauses was restarted 11 times (one block saved, close 116 s); a cap of 2 brought collisions
+   back, so the cap is 5, a guard against endless restarts. At close the gate opens, the block
+   under way finishes at full speed, and queued blocks are dropped to the close's own run.
+   Result for an owner who types 10–20 s: close 67–116 s instead of 161–184 s; for one who
+   answers at once: as today. The memory written is the same kind (3–4 episodes, 13–20 facts per
+   run either way; one episode per block instead of per topic run).
+4. **Dropped**: processing a block synchronously at its boundary (the owner waits 30–90 s in the
+   middle of the interview); processing only long blocks (the boundary rule with ≥ 3 answers
+   already carries short blocks over); smaller extraction windows for background calls so each
+   fits in a pause (would change extraction, which `brain eval memory` must judge first).
+
+Open: a prefill under way cannot be cancelled (the first chunk ends it), so an answer that
+arrives during a worker prefill still waits up to a few seconds; the worker's settling and
+pipeline `decide` calls are not cancellable (short).

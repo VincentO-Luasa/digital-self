@@ -146,6 +146,8 @@ def run_interview(
             out.print("[bold cyan]you ›[/] " + escape(text), highlight=False)
         reply = session.reply(text)
         _say(out, reply)
+    if reply.next_region:
+        out.print(f"[dim]Next time: `brain interview {escape(reply.next_region)}`[/]")
 
 
 # --- the command -------------------------------------------------------------------------------
@@ -231,13 +233,26 @@ def interview(
                 console.print(escape(line), highlight=False)
             return
         session = InterviewSession(
-            vault, llm, report, choice.id, plan, settings, minutes=minutes, infos=infos
+            vault,
+            llm,
+            report,
+            choice.id,
+            plan,
+            settings,
+            minutes=minutes,
+            infos=infos,
+            process=_process_or_none(),
         )
         read = _reader(answers) if answers else None
-        run_interview(session, console, read=read, echo=answers is not None)
+        try:
+            run_interview(session, console, read=read, echo=answers is not None)
+        except BaseException:
+            session.abandon()  # the blocks saved so far stay; --pending does the rest
+            raise
         if session.answers:
-            console.print("[dim]saving to memory…[/]")
-        result = session.close(process=_process_or_none(), db=db)
+            saved = session.saver is not None and session.saved_answers > 0
+            console.print(f"[dim]saving {'the last part ' if saved else ''}to memory…[/]")
+        result = session.close(db=db)
     finally:
         db.close()
     if result.transcript:

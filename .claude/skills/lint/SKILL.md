@@ -74,7 +74,7 @@ Inferred facts need `evidence::` (two from the big model).
 ## Evaluation
 
 `uv run brain eval lint [--seed N ...] [--no-cache] [--json out.json] [--keep]`: a clean
-fictional vault (`tests/fixtures/vault` + `tests/eval/lint/vault`) linted as is (any op is
+fictional vault (`tests/fixtures/vault` + `tests/fixtures/lint/eval-vault`) linted as is (any op is
 wrong), and per seed a dirty copy (`lint_eval.inject`: 12 noise items, variants by seed, plus
 near misses that must stay untouched). Every lint review is approved and the vault verified.
 Report: fixes, **wrong changes (must be 0)**, questions, expected questions, ops, decisions,

@@ -43,6 +43,14 @@ Model ids come from config (`~/.config/digital-self/config.toml`). Never hard-co
 - **Keep prompt prefixes byte-stable**: system prompt, then L0 card, then history, then per-turn
   memory, then the user turn. Anything that changes early in the prompt invalidates the cache.
 - Cold model load ~20 s; the server keeps it resident.
+- **Concurrency** (`max_concurrent_requests` 8, measured 2026-10-27): requests run side by side,
+  not queued. A short call during another request's decode costs +0.1–0.3 s; during its
+  (unchunked) prefill of ~3k tokens +4–5 s; a 2.5k-token compose next to a long decode +3 s.
+  Background work must stay out of the owner's way (`brain.interview.saver`).
+- **Cancellable structured calls**: `structured(..., cancel=threading.Event())` streams the
+  reply and raises `CallCancelled` (not a `ValueError`) once the event is set; oMLX stops
+  generating when the stream closes (a short call right after an aborted stream ran at its
+  normal 0.5 s). A prefill under way finishes first (no chunk to check before it).
 - Memory: ~21 GB with all three models loaded. Don't load extra models.
 
 ## Testing

@@ -30,6 +30,11 @@ class OutputTruncated(StructuredOutputError):
     """The reply hit ``max_tokens`` before the JSON was complete; retrying won't help."""
 
 
+class CallCancelled(Exception):  # noqa: N818 - not an error: the caller asked for it
+    """A cancellable call was stopped by its ``cancel`` event (the server stops generating when
+    the stream closes). Not a ValueError: no caller may mistake it for a bad reply."""
+
+
 @dataclass(frozen=True)
 class ToolCall:
     id: str

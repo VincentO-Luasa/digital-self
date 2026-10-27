@@ -21,7 +21,7 @@ import contextlib
 import json
 import os
 import re
-from collections.abc import Collection, Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -1469,6 +1469,7 @@ def _run(
     now: datetime,
     extra_files: dict[Path, str | None] | None = None,
     corrections: Collection[str] = (),
+    event: str | None = None,
 ) -> ApplyResult:
     state = _State(vault, now)
     result = ApplyResult()
@@ -1503,9 +1504,12 @@ def _run(
         path = vault.reviews_pending_dir / f"{result.review_id}.md"
         files[path] = _render_review(result.review_id, cs, result.queued, state)
     files.update(extra_files or {})
-    if not files:  # nothing applied or queued: no log entry, no commit
+    if not files and not event:  # nothing applied or queued: no log entry, no commit
         return result
-    _append_log(vault, files, _log_entry(cs, result, now))
+    if event:
+        _append_log(vault, files, [_event_line(cs.origin, cs.src, event, now)])
+    if files.keys() - {vault.log_path} or not event:
+        _append_log(vault, files, _log_entry(cs, result, now))
     result.commit = _write_and_commit(
         vault, files, f"brain: {cs.origin} {', '.join(cs.src) or '-'}"
     )
@@ -1520,13 +1524,23 @@ def apply(
     review: bool | None = None,
     now: datetime | None = None,
     corrections: Collection[str] = (),
+    event: str | None = None,
 ) -> ApplyResult:
     """Apply a change set: ``review=None`` follows the policy, True queues every valid op,
     False applies every valid op (used by ``approve``).
 
     ``corrections``: ids of facts the owner explicitly corrected (decided by the caller); a
-    ``supersede_fact`` of one of them is applied when ``correction_problem`` allows it."""
-    return _run(changeset, vault, review=review, now=now or datetime.now(), corrections=corrections)
+    ``supersede_fact`` of one of them is applied when ``correction_problem`` allows it.
+    ``event``: a log.md entry ``origin | src | event`` written in the same commit (a record
+    that must not exist without the change, or the change without it)."""
+    return _run(
+        changeset,
+        vault,
+        review=review,
+        now=now or datetime.now(),
+        corrections=corrections,
+        event=event,
+    )
 
 
 def log_event(
@@ -1536,9 +1550,12 @@ def log_event(
     conversation with nothing to remember)."""
     now = now or datetime.now()
     files: dict[Path, str | None] = {}
-    entry = f"## [{now:%Y-%m-%d %H:%M}] {origin} | {', '.join(src) or '-'} | {_clean(message)}"
-    _append_log(vault, files, [entry])
+    _append_log(vault, files, [_event_line(origin, src, message, now)])
     return _write_and_commit(vault, files, f"brain: {origin} {', '.join(src) or '-'}")
+
+
+def _event_line(origin: str, src: Sequence[str], message: str, now: datetime) -> str:
+    return f"## [{now:%Y-%m-%d %H:%M}] {origin} | {', '.join(src) or '-'} | {_clean(message)}"
 
 
 def log_has(vault: Vault, origin: Origin, src: str, message_start: str) -> bool:
@@ -1550,6 +1567,17 @@ def log_has(vault: Vault, origin: Origin, src: str, message_start: str) -> bool:
         re.M,
     )
     return bool(pattern.search(vault.log_path.read_text(encoding="utf-8")))
+
+
+def log_messages(vault: Vault, origin: Origin, src: str) -> list[str]:
+    """The messages of the log.md entries ``origin | src | message``, oldest first."""
+    if not vault.log_path.exists():
+        return []
+    pattern = re.compile(
+        rf"^## \[[^\]]+\] {re.escape(origin)} \| {re.escape(src)} \| (.*)$",
+        re.M,
+    )
+    return pattern.findall(vault.log_path.read_text(encoding="utf-8"))
 
 
 def approve(review_id: str, vault: Vault, *, now: datetime | None = None) -> ApplyResult:

@@ -1,16 +1,16 @@
 """``brain eval lint``: the graph-cleaning pass on a "dirty graph".
 
 A clean fictional vault (``tests/fixtures/vault`` + the richer persona in
-``tests/eval/lint/vault``: Alex Rivera, Northwind Labs, Fabrikam Analytics, Westbridge University,
-Kestrel Data Cooperative, Sam Okafor and Sam Brennan, Maya Lindqvist, Theo Marchetti, projects
-Atlas Migration, Atlas Reporting, Tidepool and Kiln) gets known noise from a seeded script
+``tests/fixtures/lint/eval-vault``: Alex Rivera, Northwind Labs, Fabrikam Analytics, Westbridge
+University, Kestrel Data Cooperative, Sam Okafor and Sam Brennan, Maya Lindqvist, Theo Marchetti,
+projects Atlas Migration, Atlas Reporting, Tidepool and Kiln) gets known noise from a seeded script
 (``inject``): duplicate pages (a typo, a "University of" prefix, an acronym, an accent or name
 order, a project's other name), a topic made into a project page, a project's goal filed on the
 owner, a missing ``part_of``, a duty filed under the wrong job (or none), literal employers that
-name a page, two current cities, an organisation without its location. The seed picks each
-noise's variant. Near misses stay in the clean vault and must not be touched: two different
-people called Sam, two projects called Atlas…, a side project with no employer, personal goals,
-a university whose location no source states.
+name a page, two current cities, an organisation without its location. The seed picks each noise's
+variant. Near misses stay in the clean vault and must not be touched: two different people called
+Sam, two projects called Atlas…, a side project with no employer, personal goals, a university whose
+location no source states.
 
 Each run: ``run_lint`` on the dirty vault, ``apply_lint`` (questions + one review per finding),
 then every lint review is approved in order (the owner saying yes to everything) and the vault
@@ -50,7 +50,7 @@ from brain.vault.writer import approve
 
 EVAL_DIR = REPO_DIR / "tests" / "eval" / "lint"
 SEED_VAULT = REPO_DIR / "tests" / "fixtures" / "vault"
-OVERLAY = EVAL_DIR / "vault"
+OVERLAY = REPO_DIR / "tests" / "fixtures" / "lint" / "eval-vault"
 EVAL_TODAY = date(2026, 10, 27)
 EVAL_NOW = datetime(2026, 10, 27, 12, 0)
 NOISE_REC = date(2026, 10, 26)

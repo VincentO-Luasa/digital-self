@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 from collections.abc import Iterator, Sequence
 from typing import Any, Literal, TypeVar, overload
@@ -22,6 +23,7 @@ from brain.config import LLMSettings
 from brain.llm.base import (
     EMBED_BATCH,
     QUERY_INSTRUCT,
+    CallCancelled,
     ChatResult,
     Messages,
     OutputTruncated,
@@ -267,6 +269,31 @@ class LLM:
             pieces,
         )
 
+    def _cancellable(self, kwargs: dict[str, Any], cancel: threading.Event) -> tuple[str, Any]:
+        """A streamed completion: (text, finish reason); ``CallCancelled`` once ``cancel`` is
+        set (closing the stream makes the server stop generating)."""
+        if cancel.is_set():
+            raise CallCancelled
+        start = time.perf_counter()
+        stream = self._client.chat.completions.create(**kwargs, stream=True)
+        pieces: list[str] = []
+        finish = None
+        try:
+            for chunk in stream:
+                if cancel.is_set():
+                    log.debug("structured stream cancelled: %.2fs", time.perf_counter() - start)
+                    raise CallCancelled
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                if choice.delta.content:
+                    pieces.append(choice.delta.content)
+                finish = choice.finish_reason or finish
+        finally:
+            stream.close()
+        log.debug("structured stream %s: %.2fs", kwargs["model"], time.perf_counter() - start)
+        return "".join(pieces), finish
+
     # -- structured --------------------------------------------------------------------------
 
     def structured(
@@ -276,19 +303,27 @@ class LLM:
         *,
         temperature: float | None = None,
         max_tokens: int = 2048,
+        cancel: threading.Event | None = None,
     ) -> T:
         """Grammar-enforced JSON parsed into ``schema``; one retry with the validation error.
 
-        Raises ``OutputTruncated`` at once when the reply hits ``max_tokens``.
+        Raises ``OutputTruncated`` at once when the reply hits ``max_tokens``. With ``cancel``
+        the reply is streamed and the call raises ``CallCancelled`` as soon as the event is set
+        (checked per chunk: a prefill under way finishes first); background work uses it to
+        get out of the way of the owner.
         """
         temp = self.settings.extract_temperature if temperature is None else temperature
         kwargs = self._chat_kwargs(messages, temp, None, max_tokens)
         kwargs["response_format"] = response_format(schema)
         raw = ""
         for attempt in range(2):
-            resp = self._complete("structured", kwargs)
-            raw = resp.choices[0].message.content or ""
-            if resp.choices[0].finish_reason == "length":
+            if cancel is not None:
+                raw, finish = self._cancellable(kwargs, cancel)
+            else:
+                resp = self._complete("structured", kwargs)
+                raw = resp.choices[0].message.content or ""
+                finish = resp.choices[0].finish_reason
+            if finish == "length":
                 raise OutputTruncated(
                     f"{schema.__name__}: reply cut off at max_tokens={max_tokens}", raw
                 )

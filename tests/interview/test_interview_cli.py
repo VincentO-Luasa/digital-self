@@ -112,3 +112,16 @@ def test_missing_pipeline_keeps_the_transcript(cli_env, tmp_path: Path, monkeypa
     assert result.exit_code == 0, result.output
     assert "memory pipeline failed" in result.output and "retries it" in result.output
     assert len(conversations(cli_env["env"])) == 1
+
+
+def test_a_dry_interview_ends_and_suggests_the_next_region(cli_env, tmp_path: Path) -> None:
+    cli_env["llm"] = ScriptedLLM(
+        structured_responses=[{"reasoning": "r", "message": f"And {w}?"} for w in "abcdef"],
+        decisions=[decision("declined")] * 3,
+    )
+    answers = tmp_path / "answers.txt"
+    answers.write_text("No idea.\nNot sure.\nNo clue.\n", encoding="utf-8")
+    result = runner.invoke(app, ["interview", "current job", "--answers", str(answers)])
+    assert result.exit_code == 0, result.output
+    assert "Let's leave current job there for today" in result.output
+    assert "Next time: `brain interview " in result.output

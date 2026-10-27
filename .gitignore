@@ -48,3 +48,6 @@ build/
 
 # Claude Code machine-local files
 .claude/settings.local.json
+
+# agent worktrees
+.claude/worktrees/

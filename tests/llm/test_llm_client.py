@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -12,7 +13,7 @@ import pytest
 from pydantic import BaseModel
 
 from brain.config import LLMSettings
-from brain.llm import LLM, ChatResult, OutputTruncated, StructuredOutputError
+from brain.llm import LLM, CallCancelled, ChatResult, OutputTruncated, StructuredOutputError
 from brain.llm.base import QUERY_INSTRUCT
 from brain.llm.recorder import Recorder, load_exchange
 
@@ -260,3 +261,37 @@ def test_recorder_saves_exchanges(tmp_path):
     assert exchange.kind == "structured"
     assert exchange.request["response_format"]["json_schema"]["name"] == "Answer"
     assert exchange.content == '{"reasoning": "r", "answer": "a"}'
+
+
+def _sse(pieces: list[str], finish: str = "stop") -> Handler:
+    def reply(_: httpx.Request) -> httpx.Response:
+        base = {"id": "c", "object": "chat.completion.chunk", "created": 0, "model": "m"}
+        chunks = [
+            {"choices": [{"index": 0, "delta": {"content": p}, "finish_reason": None}]}
+            for p in pieces
+        ]
+        chunks[-1]["choices"][0]["finish_reason"] = finish
+        lines = [f"data: {json.dumps(base | c)}\n\n" for c in chunks] + ["data: [DONE]\n\n"]
+        return httpx.Response(
+            200, content="".join(lines).encode(), headers={"content-type": "text/event-stream"}
+        )
+
+    return reply
+
+
+def test_structured_with_cancel_streams_and_can_be_cancelled():
+    server = Server(_sse(['{"reasoning": "r", ', '"answer": "yes"}']))
+    llm = make_llm(server)
+    cancel = threading.Event()
+    out = llm.structured([{"role": "user", "content": "x"}], Answer, cancel=cancel)
+    assert out == Answer(reasoning="r", answer="yes")
+    assert server.body()["stream"] is True and "response_format" in server.body()
+
+    truncated = make_llm(Server(_sse(['{"reasoning": '], finish="length")))
+    with pytest.raises(OutputTruncated):
+        truncated.structured([{"role": "user", "content": "x"}], Answer, cancel=cancel)
+
+    cancel.set()
+    with pytest.raises(CallCancelled):
+        llm.structured([{"role": "user", "content": "x"}], Answer, cancel=cancel)
+    assert not issubclass(CallCancelled, ValueError)  # never mistaken for a bad reply

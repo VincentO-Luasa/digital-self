@@ -199,6 +199,11 @@ class Transcript:
         """Frontmatter and turns as written so far."""
         return parse_transcript(self.path.read_text(encoding="utf-8"))
 
+    def frontmatter(self) -> dict[str, Any]:
+        """The frontmatter alone (safe to read while another thread appends turns)."""
+        fm, _, _ = split_frontmatter(self.path.read_text(encoding="utf-8"))
+        return fm or {}
+
     @property
     def rel(self) -> str:
         return rel_path(self.vault, self.path)

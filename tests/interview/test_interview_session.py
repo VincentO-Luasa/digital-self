@@ -244,6 +244,17 @@ def test_unclear_is_clarified_once_and_declines_end_the_region(make) -> None:
     session.opening()
     assert session.reply("banana").event == "clarify"
     assert session.reply("banana again").event == "question"
+    # a third answer in a row that adds nothing: the session ends on content
+    last = session.reply("no idea")
+    assert last.done and last.event == "content"
+    assert last.message == "I think I've got what I need on current job for now. Thanks!"
+
+    llm = ScriptedLLM(decisions=[dec("answered"), *[dec("declined")] * 3])
+    llm.structured_queue.extend(msg(f"Question {n}?") for n in range(5))
+    session = make(llm)
+    session.plan = session.plan * 2
+    session.opening()
+    assert session.reply("Theo Marchetti.").event == "question"
     assert session.reply("no idea").event == "question"
     assert session.reply("rather not").event == "question"
     last = session.reply("pass on that")

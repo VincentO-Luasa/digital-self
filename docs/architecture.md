@@ -100,13 +100,23 @@ Populating the brain should feel like a conversation, not writing an autobiograp
    refused to tell, or the same kind of thing → skipped. Follow-ups see what the owner already
    said and refused. An owner asking back ("can you tell me more?") gets what the vault has
    (one-liners and sources, no model call) and the question again, once.
-6. **Time is soft**: at `--minutes` the current entity block is finished, then "We've covered
-   X and Y. Keep going, or stop here?" (a yes adds half the time). Lint doubts get the first 40%.
-7. **Close the session**: answered lint doubts are settled (a typed choice maps the answer onto
-   the doubt's options: p ≥ 0.9 applies the change, the owner said it; 0.5–0.9 queues it as a
-   review; otherwise the item stays open), then the transcript is segmented into topic episodes
-   (usually one per region touched) and extraction runs per episode → many small, reviewable
-   updates.
+6. **Stop on content, not only on time**: the plan is done, or the answers stopped adding
+   anything (3 dry answers in a row, or 4 of the last 5: declined, refused, unclear, skipped,
+   or vague filler such as "not much really") → "I think I've got what I need on X for now",
+   and the CLI suggests the next least covered region ("Next time: `brain interview Y`"). Two
+   dry answers inside an entity block leave the rest of that block. **Time is soft**: at
+   `--minutes` the current entity block is finished, then "We've covered X and Y. Keep going, or
+   stop here?" (a yes adds half the time). Lint doubts get the first 40%.
+7. **Save as it goes**: when an entity block is finished and at least 3 answers wait, a worker
+   thread settles the block's lint doubts (a typed choice maps the answer onto the doubt's
+   options: p ≥ 0.9 applies the change, the owner said it; 0.5–0.9 queues it as a review;
+   otherwise the item stays open) and runs the memory pipeline on the turns so far: only the part
+   not segmented yet becomes topic episodes, extracted per episode → many small, reviewable
+   updates. The worker yields to the interview before every model call (it runs while the owner
+   reads and types) and is the only vault writer meanwhile.
+8. **Close the session**: wait for the worker, then do the same for what is left (the last
+   block). A crash leaves the saved blocks in memory and the rest to
+   `brain memory process --pending`.
 
 Free chat also gets topic-segmented the same way, and may surface at most one gap question per
 session (configurable).
@@ -116,8 +126,8 @@ session (configurable).
 | stage | when | model | output |
 |---|---|---|---|
 | capture | every turn | — | `raw/conversations/...` transcript |
-| segment | session end | local | episodes with regions, entities, gist, importance *labels* (emotion, goal link, future-dated, "remember this") → composite importance computed in code |
-| extract | session end, per episode | local, JSON-schema, reasoning-field-first, **predict-calibrate**: sees current facts of the resolved entities and emits only `new` / `contradicts` / `confirms` / `noop` | journal observations + candidate operations; congruent updates auto-apply, surprises go to review |
+| segment | session end (an interview: each finished block, then the rest at close; `segmented turns A-B` in log.md records each part) | local | episodes with regions, entities, gist, importance *labels* (emotion, goal link, future-dated, "remember this") → composite importance computed in code |
+| extract | after segmentation, per episode | local, JSON-schema, reasoning-field-first, **predict-calibrate**: sees current facts of the resolved entities and emits only `new` / `contradicts` / `confirms` / `noop` | journal observations + candidate operations; congruent updates auto-apply, surprises go to review |
 | resolve | with extract | embeddings + aliases → local LLM decides | ops target existing entities, or create new ones |
 | apply / queue | with extract | code | safe ops applied + git commit; others → `reviews/pending/` |
 | consolidate ("sleep") | **opportunistic**: idle ≥10 min on mains power, or when consolidation pressure is high; queue ordered by need × gain, checkpointed | local | page summaries, reflections (→ review), briefing cards for likely topics, slow `core.md` updates (≥3 episodes over ≥2 weeks, diff confirmed), `index.md`, edge downscaling, decay/archive, git commit |
@@ -196,7 +206,7 @@ and retrieved context under ~1.5k tokens.
 |---|---|---|
 | 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked | done |
 | 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` | done |
-| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`), **graph cleaning** (`brain lint`, `brain eval lint`, schema v0.5), interviews that group, link and settle lint doubts (schema v0.6) |
+| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`), **graph cleaning** (`brain lint`, `brain eval lint`, schema v0.5), interviews that group, link and settle lint doubts (schema v0.6), end on content and save each finished block as they go |
 | 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook | |
 | 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint in the scheduler, decay | |
 | 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI | |
@@ -255,8 +265,8 @@ v3, normalisation guards; see the `ingest` skill). Still open:
   confirmed" from the newest episode in `src::` instead of `rec::`.
 - Embedding candidates for resolution embed every compatible page name per session (a few seconds
   on a large vault): cache name vectors in the index.
-- Episodes are written per session at its close; long interviews (> ~6k tokens) are sent whole to
-  the segmenter (no windowing yet).
+- Chats write their episodes at close; interviews per finished block (a part of ~3+ answers is
+  segmented alone). A chat longer than ~6k tokens is still sent whole to the segmenter.
 - A supersession the model hints at for a multi-valued predicate (works_at Contoso "contradicts"
   works_at Fabrikam) is queued even when the owner did not mean it; watch the review queue.
 

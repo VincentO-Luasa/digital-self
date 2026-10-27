@@ -14,11 +14,20 @@
 
 Idempotent: a session with episodes, or with a "no episode" log line, is not segmented again;
 extracted episodes are not extracted again.
+
+**Parts of a running session** (``turns=``: an interview saves each finished block): only the
+turns not segmented yet are segmented, and a ``segmented turns A-B`` log line, committed with the
+part's episodes, records how far segmentation got. The next part, the run at close or
+``brain memory process --pending`` after a crash starts after it. A session with such lines is
+processed once no episode is pending and every owner turn after the last line is segmented.
+Without them, a session with episodes or a "no episode" line is segmented as a whole (as before).
 """
 
 from __future__ import annotations
 
 import logging
+import math
+import re
 import sqlite3
 import time
 from collections.abc import Sequence
@@ -28,7 +37,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from brain.index.reindex import ReindexStats, reindex
-from brain.memory.conversation import in_range, marker_hints, render
+from brain.memory.conversation import in_range, marker_hints, owner_turns, render
 from brain.memory.conversation import private_turns as find_private_turns
 from brain.memory.extract import ERRORS, extract_episode
 from brain.memory.resolve import Resolution, resolve_mentions
@@ -38,12 +47,14 @@ from brain.vault.models import SELF_ID, Episode
 from brain.vault.ops import AddEpisode, ChangeSet, UpdateEpisode
 from brain.vault.raw import Transcript, Turn, slugify
 from brain.vault.store import SELF_PAGE, Vault
-from brain.vault.writer import ApplyResult, apply, log_event, log_has
+from brain.vault.writer import ApplyResult, apply, log_event, log_has, log_messages
 
 log = logging.getLogger(__name__)
 
 SessionChannel = Literal["chat", "interview", "import"]
 NO_EPISODE = "no episode"  # log.md message of a session with nothing to remember
+SEGMENTED = "segmented turns"  # log.md message of a segmented part: "segmented turns 1-23: …"
+_SEGMENTED = re.compile(rf"^{SEGMENTED} (\d+)-(\d+)\b")
 TOPIC_CHARS = 32  # the slug of an episode id
 
 
@@ -125,12 +136,33 @@ def session_episodes(vault: Vault, session: str) -> list[Episode]:
     return [e for e in vault.episodes() if e.session == session]
 
 
+def segmented_through(vault: Vault, transcript: Transcript) -> float:
+    """The last turn segmented so far: the end of the latest ``segmented turns A-B`` line;
+    ``inf`` for a session segmented as a whole (episodes or a "no episode" line, no part
+    lines); 0 when nothing is segmented yet."""
+    ends = [
+        int(m.group(2))
+        for message in log_messages(vault, "extract", transcript.rel)
+        if (m := _SEGMENTED.match(message))
+    ]
+    if ends:
+        return float(max(ends))
+    if session_episodes(vault, transcript.session_id):
+        return math.inf
+    return math.inf if log_has(vault, "extract", transcript.rel, NO_EPISODE) else 0.0
+
+
 def is_processed(vault: Vault, transcript: Transcript) -> bool:
-    """Segmented (episodes exist, or nothing to remember was logged) and nothing pending."""
+    """Segmented (episodes exist, nothing to remember was logged, or every owner turn is in a
+    segmented part) and nothing pending."""
     episodes = session_episodes(vault, transcript.session_id)
-    if episodes:
-        return all(e.status != "pending" for e in episodes)
-    return log_has(vault, "extract", transcript.rel, NO_EPISODE)
+    if any(e.status == "pending" for e in episodes):
+        return False
+    covered = segmented_through(vault, transcript)
+    if covered in (0, math.inf):
+        return covered == math.inf
+    _, turns = transcript.read()
+    return not owner_turns([t for t in turns if t.n > covered])
 
 
 def transcripts(vault: Vault) -> list[Path]:
@@ -189,9 +221,11 @@ def write_episodes(
     started: datetime,
     now: datetime,
     private: set[int] | frozenset[int] = frozenset(),
+    event: str | None = None,
 ) -> list[Episode]:
     """Write the episodes ``pending``. An episode holding a private answer is ``private``; the
-    regions and entities the interview markers in its range name are added to its own."""
+    regions and entities the interview markers in its range name are added to its own.
+    ``event``: a log line committed with them (the ``segmented turns`` record of a part)."""
     taken = {e.id for e in vault.episodes()}
     ops = []
     for seg, resolved in zip(segments, resolutions, strict=True):
@@ -223,7 +257,7 @@ def write_episodes(
         src=[transcript.rel],
         rationale=f"{len(ops)} episode(s) from {transcript.session_id}.",
     )
-    result = apply(cs, vault, now=now)
+    result = apply(cs, vault, now=now, event=event)
     for op, reason in result.skipped:
         log.warning("episode not written (%s): %s", reason, getattr(op, "id", op))
     written = set(result.episodes)
@@ -306,6 +340,7 @@ def process_session(
     refresh: bool = True,
     core_max_tokens: int = 1500,
     private_turns: list[int] | None = None,
+    turns: Sequence[Turn] | None = None,
 ) -> SessionReport:
     """Turn a finished transcript into memory (see the module docstring). ``today`` fixes the
     date the model resolves relative dates against (and the record date); ``db`` is the index
@@ -316,30 +351,43 @@ def process_session(
     the transcript with ``[interview] privacy:: private``; both are honoured). An episode
     holding one is ``privacy: private`` and every fact, page and journal line from it is
     private (``privacy:: private`` on facts, private new pages), so none reaches the big
-    model."""
+    model.
+
+    ``turns``: the turns written so far, read by the caller while the session still runs (an
+    interview saving a finished block). Only those not segmented yet are segmented, as a part
+    (see the module docstring); None reads the whole transcript."""
     start = time.perf_counter()
     if not isinstance(transcript, Transcript):
         transcript = Transcript.open(vault, transcript)
     report = SessionReport(transcript.session_id, transcript.rel, channel)
-    fm, turns = transcript.read()
+    partial = turns is not None
+    if turns is not None:  # the session still runs: its turns may be being appended
+        fm, turns = transcript.frontmatter(), list(turns)
+    else:
+        fm, turns = transcript.read()
     today_ = _today(today)
     now = _now(today)
     started = fm.get("started")
     started_at = started if isinstance(started, datetime) else (turns[0].at if turns else now)
+    if regions_hint is None and channel == "interview" and fm.get("region"):
+        regions_hint = [str(fm["region"])]  # `--pending` on an interview transcript
     names = owner_names(vault)
     owner = names[0] if names else "the owner"
     private = find_private_turns(turns, private_turns or ())
 
-    episodes = session_episodes(vault, transcript.session_id)
+    covered = segmented_through(vault, transcript)
     resolved: dict[str, list[Resolution]] = {}
-    if not episodes:
-        if log_has(vault, "extract", transcript.rel, NO_EPISODE):
-            report.status = "already processed"
-            return _finish(report, start)
+    tail = [t for t in turns if t.n > covered]
+    parts = partial or covered > 0  # record the part (a whole session is recorded as before)
+    if covered == math.inf and not session_episodes(vault, transcript.session_id):
+        report.status = "already processed"  # "no episode" logged
+        return _finish(report, start)
+    if not parts or owner_turns(tail):
+        span = f"{SEGMENTED} {tail[0].n}-{tail[-1].n}" if tail else SEGMENTED
         try:
             seg = segment(
                 llm,
-                turns,
+                tail,
                 lifemap=vault.lifemap,
                 owner=owner,
                 channel=channel,
@@ -353,39 +401,52 @@ def process_session(
         report.segment_seconds = seg.gate_seconds + seg.seconds
         report.notes += seg.notes
         if not seg.segments:
-            said = any(t.role == "user" and t.text.strip() for t in turns)
-            report.status = NO_EPISODE if said else "nothing said"
+            report.status = NO_EPISODE if owner_turns(tail) else "nothing said"
             reason = "; ".join(n for n in seg.notes if n.startswith(("gate", "segment")))
-            log_event(vault, "extract", [transcript.rel], f"{NO_EPISODE}: {reason}", now=now)
-            return _finish(report, start)
-        resolutions = [
-            resolve_mentions(
-                vault, llm, s.mentions, render(in_range(turns, s.first, s.last)), owner_names=names
+            message = f"{span}: {NO_EPISODE} ({reason})" if parts else f"{NO_EPISODE}: {reason}"
+            log_event(vault, "extract", [transcript.rel], message, now=now)
+        else:
+            resolutions = [
+                resolve_mentions(
+                    vault,
+                    llm,
+                    s.mentions,
+                    render(in_range(turns, s.first, s.last)),
+                    owner_names=names,
+                )
+                for s in seg.segments
+            ]
+            for r in resolutions:
+                report.notes += r.notes
+            written = write_episodes(
+                vault,
+                transcript,
+                turns,
+                seg.segments,
+                [r.resolved for r in resolutions],
+                channel=channel,
+                started=started_at,
+                now=now,
+                private=private,
+                event=f"{span}: {len(seg.segments)} episode(s)" if parts else None,
             )
-            for s in seg.segments
-        ]
-        for r in resolutions:
-            report.notes += r.notes
-        episodes = write_episodes(
-            vault,
-            transcript,
-            turns,
-            seg.segments,
-            [r.resolved for r in resolutions],
-            channel=channel,
-            started=started_at,
-            now=now,
-            private=private,
-        )
-        by_turns = {
-            (s.first, s.last): r.resolved for s, r in zip(seg.segments, resolutions, strict=True)
-        }
-        resolved = {e.id: by_turns.get(e.turns, []) for e in episodes}
+            by_turns = {
+                (s.first, s.last): r.resolved
+                for s, r in zip(seg.segments, resolutions, strict=True)
+            }
+            resolved = {e.id: by_turns.get(e.turns, []) for e in written}
 
-    pending = [e for e in episodes if e.status == "pending"]
+    last = turns[-1].n if turns else 0
+    pending = [
+        e
+        for e in session_episodes(vault, transcript.session_id)
+        if e.status == "pending" and e.turns[1] <= last
+    ]
     if not pending:
-        report.status = "already processed"
+        if report.status == "processed":
+            report.status = "already processed"
         return _finish(report, start)
+    report.status = "processed"  # this part may have had nothing; an earlier episode resumes
     for episode in pending:
         report.episodes.append(
             process_episode(

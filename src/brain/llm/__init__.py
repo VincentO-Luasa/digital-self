@@ -1,6 +1,7 @@
 """Model access. Only this package talks to the model server."""
 
 from brain.llm.base import (
+    CallCancelled,
     ChatResult,
     OutputTruncated,
     RetrievalModel,
@@ -13,6 +14,7 @@ from brain.llm.fake import FakeLLM
 
 __all__ = [
     "LLM",
+    "CallCancelled",
     "ChatResult",
     "ChoiceQuestion",
     "Decision",

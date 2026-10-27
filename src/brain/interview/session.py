@@ -7,8 +7,8 @@ Per owner answer, a few model calls:
    asked back) and asks whether it opened something worth a follow-up (``NEW_THREAD``). Code then
    decides: follow up (partial, or a new thread, at most ``MAX_FOLLOW_UPS`` per step), clarify
    once (unclear), answer a question back once with what the vault has (``asked``: the item's
-   one-line descriptions and sources, then the question again), or move on. ``MAX_DECLINES``
-   declines in a row, the end of the plan or ``max_questions`` end the session.
+   one-line descriptions and sources, then the question again), or move on. A vague answer
+   made of filler words ("not much really") gets no follow-up.
 2. **Answer linking**: before the next planned step (and a few after it that share its entity or
    words) one ``LLM.decide`` call asks, per step, whether the session so far already answers it,
    or the owner declined it (or the same kind of thing) earlier. Answered or declined steps are
@@ -20,10 +20,20 @@ Per owner answer, a few model calls:
    grounded (every name and number in it appears in what the brain knows or was told) and asks
    one thing; otherwise a template built from the hint is used.
 
+The session ends on content as well as on time: the plan is done; ``MAX_DECLINES`` answers in
+a row added nothing (``is_dry``: declined, refused, unclear, skipped, or vague filler), or
+``DRY_WINDOW`` of the last few did ("I think I've got what I need on …", with the next least
+covered region for the CLI to suggest); ``DRY_BLOCK`` dry answers in an entity block leave the
+rest of that block. ``max_questions`` caps it.
+
 Time is soft: at ``minutes`` the current entity block is finished, then the brain asks whether
 to go on (a yes adds half the time; anything else stops). Lint doubts get at most
-``DOUBT_SHARE`` of the time. At close, answered lint doubts are settled
-(``brain.interview.settle``) before the memory pipeline runs.
+``DOUBT_SHARE`` of the time.
+
+Saving as it goes (``brain.interview.saver``, when the pipeline takes ``turns``): at a block
+boundary with at least ``SAVE_MIN_ANSWERS`` answers waiting, the block's lint doubts are settled
+and its turns become memory on one worker thread, which waits while the interview handles an
+answer. Close waits for the worker, then settles and processes only what is left.
 
 Owner commands: ``skip`` (next step), ``private`` or ``private: <answer>`` (the answers of this
 step are private: never shared with the big model, never quoted in later questions, never used to
@@ -36,6 +46,7 @@ each question and ``[interview] privacy:: private …`` before each private answ
 
 from __future__ import annotations
 
+import copy
 import inspect
 import logging
 import re
@@ -52,8 +63,9 @@ from brain.chat.session import core_for_prompt
 from brain.config import Settings
 from brain.interview.coverage import CoverageReport
 from brain.interview.doubts import Doubt, EntityInfo
-from brain.interview.planner import PlanItem, context_lines
+from brain.interview.planner import PlanItem, context_lines, region_scores
 from brain.interview.questions import refresh_questions, resolve_question
+from brain.interview.saver import BlockSaver, Cancelled, Gate, Job, JobResult, Yielding
 from brain.interview.settle import Settlement, Settler
 from brain.llm.decide import Choice, ChoiceQuestion, PredicateQuestion
 from brain.prompts import load_prompt
@@ -64,8 +76,21 @@ from brain.vault.store import Vault
 log = logging.getLogger(__name__)
 
 MAX_FOLLOW_UPS = 2  # per plan step
-MAX_DECLINES = 3  # in a row: the owner has had enough of this region
+# Ending on content (docs/decisions.md "Interviews end on content"): an answer is "dry" when it
+# adds nothing (declined, refused, unclear, a skip, or a vague answer made only of filler words).
+MAX_DECLINES = 3  # dry answers in a row end the session
+DRY_BLOCK = 2  # dry answers in a row inside one entity block skip the rest of the block
+DRY_WINDOW = (5, 4)  # at least 4 dry answers among the last 5 end the session
+_FILLER = (
+    "a about always as before bit can't cannot don't dunno eh fine good guess hmm honestly i "
+    "i'm idk it it's its just kinda know maybe meh much nah no nope not nothing ok okay really "
+    "same so sort sure that the think this usual well whatever yeah yep yes"
+)
+FILLER = frozenset(_FILLER.split())
 MAX_QUESTIONS = 30
+SAVE_MIN_ANSWERS = 3  # a finished block is saved once this many answers wait (else carried on)
+SAVE_GRACE = 2.0  # s: the worker starts a model call only after the owner is idle this long
+SAVE_LONG_LATEST = 8.0  # s: ... and a long one (structured output) only up to this far into it
 FOLLOW_ABOVE = 0.5  # p(new thread) at or above which an answered step gets a follow-up
 HISTORY_MAX_TURNS = 12  # question/answer exchanges kept in the prompt
 HISTORY_TRIM = 4  # dropped at once, so the cached prefix survives between trims
@@ -100,8 +125,10 @@ CLOSING = {
     "time": "We've been at it for about {minutes}, so let's stop here. Thanks!",
     "stop": "Okay, stopping here. Thanks, I'll file this away.",
     "declined": "Let's leave {label} there for today. Thanks!",
+    "content": "I think I've got what I need on {label} for now. Thanks!",
     "limit": "That's plenty for one session. Thanks, I'll file this away.",
 }
+NEXT_TIME = ("end", "declined", "content")  # endings that suggest the next region
 CONTINUE = "We've covered {topics}. Keep going, or stop here?"
 CONTEXT = "Here's what I have: {lines}. {question}"
 NO_CONTEXT = "I don't have anything on that yet, that's why I'm asking. {question}"
@@ -189,10 +216,13 @@ Event = Literal[
     "time",
     "stop",
     "declined",
+    "content",
     "limit",
     "empty",
 ]
 ProcessSession = Callable[..., Any]
+# a step to settle: (questions.md id, doubt key) pairs, (question, answer) exchanges, its brief
+SettleInput = tuple[list[tuple[str, str]], list[tuple[str, str]], tuple[str, ...]]
 
 
 class InterviewMessage(BaseModel):
@@ -205,6 +235,7 @@ class Reply:
     message: str
     done: bool = False
     event: Event = "question"
+    next_region: str | None = None  # at the end: the least covered region to interview next
 
 
 @dataclass
@@ -227,6 +258,28 @@ class CloseResult:
     answered: list[str] = field(default_factory=list)  # questions.md items ticked
     questions_changed: bool = False
     settled: list[Settlement] = field(default_factory=list)  # lint doubts mapped from answers
+    parts: list[JobResult] = field(default_factory=list)  # blocks saved during the interview
+    seconds: float = 0.0  # what the owner waited at close
+
+
+def merge_reports(parts: Sequence[Any], final: Any) -> Any:
+    """One report for the session: the blocks saved during the interview and the run at close
+    (episodes by id, the latest run wins; the close's seconds: what the owner waited)."""
+    reports = [p for p in parts if p is not None]
+    if not reports or not all(
+        isinstance(getattr(r, "episodes", None), list) for r in [*reports, final]
+    ):
+        return final
+    episodes: dict[str, Any] = {}
+    for r in [*reports, final]:
+        for e in r.episodes:
+            episodes[e.id] = e
+    merged = copy.copy(final)
+    merged.episodes = list(episodes.values())
+    merged.notes = [n for r in [*reports, final] for n in r.notes]
+    if merged.status != "failed" and any(r.status == "processed" for r in reports):
+        merged.status = "processed"
+    return merged
 
 
 def incomplete(report: Any) -> bool:
@@ -438,6 +491,16 @@ def content_words(text: str) -> set[str]:
     return {w for w in re.findall(r"\w+", text.casefold()) if len(w) > 3 and w not in STOP_LIST}
 
 
+def is_dry(label: str, answer: str) -> bool:
+    """The answer adds nothing: declined, refused, unclear, or vague and made only of filler
+    words ("not much really", "it's fine"). A short answer that names something ("Theo.") or
+    confirms ("Yes, still right") is labelled answered and is never dry."""
+    if label in ("declined", "refused", "unclear", "skip"):
+        return True
+    words = re.findall(r"[\w']+", answer.casefold().replace("’", "'"))
+    return label == "partial" and all(w in FILLER for w in words)
+
+
 def wants_more(text: str) -> bool:
     """A clear yes to "keep going?" (anything else stops)."""
     return bool(_YES.match(text)) and not _NO.match(text)
@@ -482,6 +545,10 @@ class InterviewSession:
         record: bool = True,
         clock: Callable[[], datetime] = datetime.now,
         infos: Mapping[str, EntityInfo] | None = None,
+        process: ProcessSession | None = None,
+        save_blocks: bool = True,
+        background: bool = True,
+        memory_llm: Any = None,
     ) -> None:
         self.vault = vault
         self.llm = llm
@@ -514,7 +581,11 @@ class InterviewSession:
         self.idx = 0
         self.mode: str = self.plan[0].mode if self.plan else "ask"
         self.follow_ups = 0
-        self.declines = 0
+        self.declines = 0  # declined or refused answers in a row
+        self.dry = 0  # answers in a row that added nothing (``is_dry``)
+        self.dry_block = 0  # ... inside the current block
+        self.dry_key: str | None = None  # that block
+        self.yields: list[bool] = []  # per answer (and skip): dry?
         self.private = self.private_region  # a private region: every answer is private
         self.question = ""
         self.asked = 0
@@ -531,6 +602,21 @@ class InterviewSession:
         self.asked_steps: list[int] = []
         self.timings: list[tuple[str, float]] = []  # (classify | link | compose, seconds)
         self.trace: list[tuple[str, str]] = []  # (step key, what happened), for tests and -v
+        # saving as it goes (brain.interview.saver): finished blocks become memory on a worker
+        # thread that yields to the interview; needs a pipeline that takes ``turns``
+        self.process = process
+        self.gate = Gate()
+        self.saver: BlockSaver | None = None
+        self.memory_client: Any = memory_llm or llm  # settling and memory (tests: a second fake)
+        self.memory_llm: Any = self.memory_client  # ... as the saver's worker calls it
+        if process is not None and save_blocks and record and _accepts(process, "turns"):
+            if background:  # done inline (tests, measurements), it must not wait for itself
+                self.memory_llm = Yielding(
+                    memory_llm or llm, self.gate, grace=SAVE_GRACE, latest=SAVE_LONG_LATEST
+                )
+            self.saver = BlockSaver(self._save, background=background)
+        self.saved_answers = 0  # answers already handed to the saver
+        self.settle_from = 0  # plan steps before this one were settled by the saver
 
     # -- state ------------------------------------------------------------------------------
 
@@ -836,7 +922,58 @@ class InterviewSession:
         self._say(message)
         self.done = True
         self.trace.append((self.item.key if self.plan else self.region_id, event))
-        return Reply(message, done=True, event=event)
+        nxt = self.next_region() if event in NEXT_TIME else None
+        return Reply(message, done=True, event=event, next_region=nxt)
+
+    def next_region(self) -> str | None:
+        """The least covered non-private region other than this one (as ``choose_region``)."""
+        scores = [
+            s
+            for s in region_scores(self.report, ())
+            if s.id != self.region_id and not s.private and s.score > 0
+        ]
+        best = max(scores, key=lambda s: s.score, default=None)
+        return best.id if best else None
+
+    # -- ending on content ------------------------------------------------------------------
+
+    def _block_key(self, idx: int) -> str:
+        return _block(self.plan[idx]) or f"step {idx}"
+
+    def _note_dry(self, dry: bool) -> None:
+        key = self._block_key(min(self.idx, len(self.plan) - 1))
+        if key != self.dry_key:
+            self.dry_key, self.dry_block = key, 0
+        self.dry = self.dry + 1 if dry else 0
+        self.dry_block = self.dry_block + 1 if dry else 0
+        self.yields.append(dry)
+
+    def _dry_end(self) -> Event | None:
+        """``declined`` / ``content`` when the answers stopped adding anything: MAX_DECLINES
+        dry answers in a row, or most of the last few."""
+        size, most = DRY_WINDOW
+        recent = self.yields[-size:]
+        if self.dry < MAX_DECLINES and not (len(recent) == size and sum(recent) >= most):
+            return None
+        return "declined" if self.declines >= MAX_DECLINES else "content"
+
+    def _rest_of_block(self) -> list[int]:
+        """Later steps of the current entity block."""
+        block = _block(self.item)
+        out: list[int] = []
+        for i in range(self.idx + 1, len(self.plan)):
+            if block is None or _block(self.plan[i]) != block:
+                break
+            out.append(i)
+        return out
+
+    def _skip_block(self, event: Event = "question") -> Reply:
+        """Two dry answers in a block: leave the rest of it."""
+        rest = self._rest_of_block()
+        for i in rest:
+            self.trace.append((self.plan[i].key, "skipped: block dry"))
+        self.idx += len(rest)
+        return self._advance(event)
 
     def _advance(self, event: Event = "question") -> Reply:
         previous = self.item if self.plan else None
@@ -844,6 +981,8 @@ class InterviewSession:
         self.follow_ups = 0
         self.context_given = False
         self.private = self.private_region
+        if previous is not None:
+            self._block_finished(previous)
         return self._proceed(event, previous)
 
     def _proceed(self, event: Event, previous: PlanItem | None) -> Reply:
@@ -917,7 +1056,8 @@ class InterviewSession:
             self.done = True
             return Reply(fill(EMPTY_PLAN, label=self.label.casefold()), done=True, event="empty")
         self.started = self.clock()
-        return self._ask("question")
+        with self.gate.busy():
+            return self._ask("question")
 
     def classify(self, answer: str) -> tuple[str, float]:
         """``(answer label, p(new thread))``; a failed or refused call counts as answered."""
@@ -940,11 +1080,16 @@ class InterviewSession:
         return label, thread_d.p_yes or 0.0
 
     def reply(self, text: str) -> Reply:
-        """Handle the owner's message; return what the brain says next."""
+        """Handle the owner's message; return what the brain says next. The saver's worker
+        waits meanwhile (the gate is busy)."""
         if self.done:
             return Reply("", done=True, event="end")
         if not text.strip():
             return Reply("", event="empty")
+        with self.gate.busy():
+            return self._reply(text)
+
+    def _reply(self, text: str) -> Reply:
         if self.awaiting_continue:
             return self._continue(text)
         command, answer = parse_command(text)
@@ -957,6 +1102,12 @@ class InterviewSession:
             self.history.append({"role": "user", "content": "skip"})
             self.skipped.append(self.item.key)
             self.trace.append((self.item.key, "skipped"))
+            self.declines += 1  # three skips end the session as declines do
+            self._note_dry(True)
+            if end := self._dry_end():
+                return self._finish(end)
+            if self.dry_block >= DRY_BLOCK:
+                return self._skip_block("skip")
             return self._advance("skip")
         if command == "private":
             self.private = True
@@ -994,14 +1145,20 @@ class InterviewSession:
                 return self._context(item)
             return self._advance()  # asked back twice: move on
         self.declines = self.declines + 1 if label in ("declined", "refused") else 0
+        dry = is_dry(label, answer)
+        self._note_dry(dry)
         if label in ("answered", "partial"):
             for qid, doubt in self._qids(item):
                 if not doubt and qid not in self.resolved:
                     self.resolved.append(qid)
-        if self.declines >= MAX_DECLINES:
-            return self._finish("declined")
+        if end := self._dry_end():
+            return self._finish(end)
+        if dry and self.dry_block >= DRY_BLOCK and self._rest_of_block():
+            return self._skip_block()
         if self.follow_ups < MAX_FOLLOW_UPS and not hidden and not self.over_time():
-            if label == "partial" or (label == "answered" and p_thread >= FOLLOW_ABOVE):
+            if (label == "partial" and not dry) or (
+                label == "answered" and p_thread >= FOLLOW_ABOVE
+            ):
                 self.follow_ups += 1
                 self.mode = "follow_up"
                 return self._ask("follow_up")
@@ -1025,36 +1182,107 @@ class InterviewSession:
 
     # -- close ------------------------------------------------------------------------------
 
-    def settle(self, result: CloseResult) -> list[str]:
+    def settle_inputs(self, steps: Sequence[int]) -> list[SettleInput]:
+        """Per step with lint doubts and a non-private answer: (questions.md id, doubt) pairs,
+        the exchanges that answer it (its own, or those that answered it), its brief."""
+        out: list[SettleInput] = []
+        for idx in steps:
+            item = self.plan[idx]
+            pairs = [(q, d) for q, d in self._qids(item) if d]
+            exchanges = [
+                (self.exchanges[n].question, self.exchanges[n].answer)
+                for n in self.evidence.get(idx, [])
+                if not self.exchanges[n].private
+            ]
+            if pairs and exchanges:
+                out.append((pairs, exchanges, item.brief))
+        return out
+
+    def _settle(
+        self, llm: Any, inputs: Sequence[SettleInput], now: datetime, settled: list[Settlement]
+    ) -> list[str]:
         """Settle the lint doubts the owner answered (``brain.interview.settle``); the
         questions.md ids that are settled."""
+        if not inputs:
+            return []
         assert self.transcript is not None
         settler = Settler(
             self.vault,
-            self.llm,
+            llm,
             transcript=self.transcript.rel,
-            today=self.clock().date(),
-            now=self.clock(),
+            today=now.date(),
+            now=now,
             infos=self.infos,
         )
         ids: list[str] = []
-        for idx, item in enumerate(self.plan):
-            pairs = [(q, d) for q, d in self._qids(item) if d]
-            if not pairs:
-                continue
-            indexes = self.evidence.get(idx, [])  # its own exchanges, or those that answered it
-            exchanges = [
-                (self.exchanges[n].question, self.exchanges[n].answer)
-                for n in indexes
-                if not self.exchanges[n].private
-            ]
-            if not exchanges:
-                continue
-            outcomes = settler.settle_step([d for _, d in pairs], exchanges, item.brief)
-            result.settled += outcomes
+        for pairs, exchanges, brief in inputs:
+            outcomes = settler.settle_step([d for _, d in pairs], exchanges, brief)
+            settled += outcomes
             done = {o.doubt for o in outcomes if o.settled}
             ids += [q for q, d in pairs if d in done]
         return ids
+
+    def settle(self, result: CloseResult) -> list[str]:
+        """Settle the doubts of the steps the saver has not settled yet."""
+        inputs = self.settle_inputs(range(self.settle_from, len(self.plan)))
+        return self._settle(self.memory_client, inputs, self.clock(), result.settled)
+
+    # -- saving as it goes ------------------------------------------------------------------
+
+    def _block_finished(self, previous: PlanItem) -> None:
+        """At a block boundary, hand the finished block to the saver once SAVE_MIN_ANSWERS
+        answers wait (a short block is carried on to the next boundary). Not at the end of the
+        plan: close saves the rest."""
+        if self.saver is None or self.transcript is None or self.idx >= len(self.plan):
+            return
+        block = _block(previous)
+        if block is not None and _block(self.plan[self.idx]) == block:
+            return
+        if self.answers - self.saved_answers < SAVE_MIN_ANSWERS:
+            return
+        _, turns = self.transcript.read()  # this thread is the transcript's only writer
+        inputs = self.settle_inputs(range(self.settle_from, self.idx))
+        self.settle_from = self.idx
+        self.saved_answers = self.answers
+        self.trace.append((previous.key, f"saving turns ≤ {turns[-1].n}"))
+        job = Job(
+            turns,
+            list(self.private_turns),
+            inputs,
+            label=f"{self.transcript.rel} turns ≤ {turns[-1].n}",
+            now=self.clock(),
+        )
+        self.saver.submit(job)
+
+    def _save(self, job: Job) -> JobResult:
+        """The worker: settle the block's doubts, then the memory pipeline on the turns so far
+        (only the part not segmented yet is segmented; no regeneration or reindex)."""
+        assert self.transcript is not None and self.process is not None
+        now = job.now or datetime.now()
+        result = JobResult(job)
+        if isinstance(self.memory_llm, Yielding):
+            self.memory_llm.job_calls = 0
+        try:
+            result.settled_ids = self._settle(self.memory_llm, job.settle, now, result.settled)
+        except Cancelled:
+            result.cancelled = True
+            return result
+        except Exception as err:  # settling is a bonus: never lose the block over it
+            log.warning("settling lint doubts failed: %s", err)
+        kwargs: dict[str, Any] = {
+            "channel": "interview",
+            "regions_hint": [self.region_id],
+            "today": now.date(),
+            "refresh": False,
+            "turns": job.turns,
+        }
+        if _accepts(self.process, "private_turns"):
+            kwargs["private_turns"] = job.private_turns
+        try:
+            result.report = self.process(self.vault, self.memory_llm, self.transcript, **kwargs)
+        except Cancelled:
+            result.cancelled = True
+        return result
 
     def close(
         self,
@@ -1066,8 +1294,24 @@ class InterviewSession:
         """Save the transcript, settle the lint doubts the owner answered, run the memory
         pipeline on it (``channel="interview"``), tick the questions.md items that were answered,
         and rebuild questions.md when ``db`` is given. A pipeline failure is reported, never
-        raised: the transcript is saved and can be processed later."""
+        raised: the transcript is saved and can be processed later.
+
+        With the saver, the block its worker is on is finished first (it is the only writer
+        meanwhile); the blocks still queued, or waiting for a pause before their first model
+        call, are dropped: the run here settles their doubts and segments everything not saved
+        yet in one go."""
+        start = time.perf_counter()
         result = CloseResult()
+        dropped: list[Job] = []
+        if self.saver is not None:
+            # the owner waits now: the job running finishes at full speed, the queued ones are
+            # left to the run below (one segmentation of the rest instead of one per block)
+            if isinstance(self.memory_llm, Yielding):
+                self.memory_llm.cancel_unstarted = True  # still waiting for a pause: give up
+            self.gate.release()
+            dropped = self.saver.drain(cancel=True)
+            dropped += [p.job for p in self.saver.results if p.cancelled]
+            result.parts = [p for p in self.saver.results if not p.cancelled]
         if self.transcript is None:
             return result
         if commit:
@@ -1076,16 +1320,19 @@ class InterviewSession:
         if not self.answers:
             return result
         today = self.clock().date()
+        settled = [qid for part in result.parts for qid in part.settled_ids]
+        result.settled += [s for part in result.parts for s in part.settled]
         try:
-            settled = self.settle(result)
+            inputs = [i for job in dropped for i in job.settle]
+            settled += self._settle(self.memory_client, inputs, self.clock(), result.settled)
+            settled += self.settle(result)
         except Exception as err:  # settling is a bonus: never lose the interview over it
             log.warning("settling lint doubts failed: %s", err)
-            settled = []
         for qid in settled:  # the graph changed (or the owner confirmed it): done
             if resolve_question(self.vault, qid):
                 result.answered.append(qid)
         try:
-            process = process or default_process()
+            process = process or self.process or default_process()
             kwargs: dict[str, Any] = {
                 "channel": "interview",
                 "regions_hint": [self.region_id],
@@ -1095,7 +1342,8 @@ class InterviewSession:
                 kwargs["private_turns"] = list(self.private_turns)
             if db is not None and _accepts(process, "db"):
                 kwargs["db"] = db  # one connection: questions.md is rebuilt from the same index
-            result.report = process(self.vault, self.llm, self.transcript, **kwargs)
+            report = process(self.vault, self.memory_client, self.transcript, **kwargs)
+            result.report = merge_reports([p.report for p in result.parts], report)
         except Exception as err:
             log.warning("memory pipeline failed on %s: %s", result.transcript, err)
             result.error = f"{type(err).__name__}: {err}"
@@ -1114,4 +1362,12 @@ class InterviewSession:
 
             if gitops.is_dirty(self.vault.root):
                 gitops.commit_all(self.vault.root, "brain: update questions.md after interview")
+        result.seconds = time.perf_counter() - start
         return result
+
+    def abandon(self) -> None:
+        """The interview is dropped without close (an error): let the worker finish the block
+        it is on and nothing more; what is not saved waits for ``--pending``."""
+        if self.saver is not None:
+            self.gate.release()
+            self.saver.drain(cancel=True)
