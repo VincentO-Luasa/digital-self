@@ -657,3 +657,70 @@ The interview used to tick its questions.md items whenever the pipeline returned
 episode had failed; those answers were then neither in memory nor asked again. Items are now
 ticked only when every episode was extracted; otherwise they stay open and the CLI points to
 `brain memory process --pending`.
+
+## 2026-10-27 — Interviews group, link and settle lint doubts (schema v0.6)
+
+A twelve-minute "Projects" interview after `brain lint` was almost all taxonomy, asked doubts
+about one page several turns apart, asked things the owner had just answered (or refused), named
+only the current employer, answered "can you tell me more?" with "which part?", said "You listed
+X as a project" about a page ingest made, and settled nothing: answers reached the graph only
+through extraction, which never demotes, merges or adds `part_of`. Now (`brain.interview`):
+
+- **questions.md `doubt::` (v0.6)**: lint stores the finding key on its item (older items: read
+  from `reason::`). The plan groups an entity's doubts into one block and asks its `type` and
+  `part_of` doubts as one question; at most 4 entities per session, interleaved one for one with
+  coverage steps, and only in the first 40% of the time. Pages with a type or merge doubt get no
+  coverage questions that session (they may disappear).
+- **Employers in questions**: at most two, ranked by evidence (`lint.edges.likely_jobs`: source
+  sentences naming both, a linking fact, the model's pick; overlapping dates count half and never
+  name a job alone: a weekend project overlaps the job of its time). One that stands out is named
+  alone; with no evidence the question is open ("Which of your jobs is X part of, or is it
+  something you do on your own?"). Every employer stays in the typed choice that maps the answer.
+- **Answer linking**: before each planned step and each generated follow-up, one `LLM.decide`
+  call: "already answered?" (open / answered, p ≥ 0.6 skips) and, only after a refusal and for
+  questions sharing a word with a refused one, a predicate "asks again for what was refused, or the
+  same kind?" (p ≥ 0.35 skips). Tried and dropped: "declined" as a third option of one choice
+  (0.7–0.77 for plain questions after "nothing more on that", which skipped a merge doubt); the
+  predicate on every question (drifted to ≥ 0.5 for unrelated ones over a long session).
+  "Refused" is a new answer label, counted only at p ≥ 0.9 ("I'd rather not say" 1.00, "nothing
+  more on that for now" 0.70). The link input is an append-only window of the session (its prefix
+  stays cached: an identical input costs 0.08 s against ~1.2 s cold) with older exchanges naming
+  the step's entities after it; each decide question costs ~0.5 s uncached, so one candidate per
+  call. Follow-ups see "already said" and "declined" lines in the PLAN block.
+- **Asking back**: answer label `asked`; the reply is code-built from what the vault has (title,
+  first sentence, source name: "from your document “homepage”") and repeats the question, once.
+- **Provenance**: prompts say where a fact came from as given, or "I have X filed as…"; a code
+  check (`invented_claim`) rejects "you mentioned/listed/noted X" unless most of X's words are in
+  the owner's answers (the model wrote "You noted Atlas is in testing" on a first question in 2 of
+  3 runs before the confirm-mode wording changed). The card's "To ask" lines are dropped from the
+  interview prompt: the model asked a plan question as a follow-up from them.
+- **Settling** (`brain.interview.settle`, at close, before the memory pipeline): a typed choice per
+  doubt on the step's own non-private exchanges, "does not say" first; the kind choices describe
+  what the owner says (with lint's descriptions, "stream processing", which the owner called a
+  project, was project 0.53 / topic 0.41; with owner-oriented ones 0.97–1.00, and "it's not a
+  project, it's what I work on" never above 0.31 for project). **The owner said it, so p ≥ 0.9
+  applies the change** (origin `user`, source = the transcript; `part_of` is `stated`), like an
+  owner correction: an explicit statement in answer to exactly that question, a closed option set,
+  one change set per doubt in `log.md` and git. 0.5–0.9 or a fallback decision queues the same
+  operation as a review (`part_of` then `inferred`, evidence = transcript + the owner's words);
+  "does not say" or < 0.5 leaves the item open. A project placed at a job (part_of ≥ 0.5) settles
+  its type doubt when "project" was the best answer. Private answers never settle anything.
+- **Soft time limit**: at `--minutes` the current entity block is finished, then "We've covered
+  … Keep going, or stop here?"; a clear yes adds half the time, anything else stops.
+
+Measured with `tests/interview/test_interview_doubts_live.py` (fictional vault: the lint eval
+persona + a homepage listing Stream processing, Ingestion, Fraud alerts and Transaction monitoring
+without employers; four lint doubts; a scripted owner who answers stream processing with "a
+project at Fabrikam … ingestion is not a project", asks back on the duplicates, refuses a client's
+name), local model, five samples (the last runs after the fixes):
+
+| | repeated / already-answered questions | refused info asked again | ask-back answered with the vault's descriptions | doubts settled right | wrong graph changes |
+|---|---|---|---|---|---|
+| first run, 2 samples | 0, 1 | 0, 0 | yes, yes | 3/4, 3/4 | 0, 0 |
+| final, 3 samples | 0, 0, 0 (one flagged by the scripted owner was a new question, "what was the scraper's purpose?": its check was too broad) | 0, 0, 0 | yes ×3 | 4/4 ×3 | 0, 0, 0 |
+| final + memory pipeline, 2 samples | 0, 0 | 0, 0 | yes, yes | 4/4, 4/4 | 0, 0 (after extraction: one `part_of`, neither removed page recreated, no review left) |
+
+Latency on the base M4: a reply that was 5.9 s (classify + compose) on the old code is 7.4 s cold /
+2.4–2.8 s warm on the recorded check; in the long scripted sessions a turn averages 6.4–8.5 s
+(classify 1.15 s, linking 0.9–1.5 s, compose 4.9–5.2 s; a dropped follow-up costs a second
+compose, max ~16 s).

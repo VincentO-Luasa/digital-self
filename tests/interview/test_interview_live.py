@@ -11,13 +11,17 @@ import time
 
 import pytest
 from interview_helpers import LATER, Clock, at  # type: ignore[import-not-found]
-from interview_replay import FIXTURE_DIR, REGIONS, REPLY  # type: ignore[import-not-found]
+from interview_replay import (  # type: ignore[import-not-found]
+    FIXTURE_DIR,
+    REGIONS,
+    REPLY,
+    SeqRecorder,
+)
 
 from brain.config import Settings, load_settings
 from brain.interview.planner import build_plan
 from brain.interview.session import InterviewSession
 from brain.llm import LLM
-from brain.llm.recorder import Recorder
 
 pytestmark = pytest.mark.llm
 RECORD = os.environ.get("BRAIN_RECORD_FIXTURES") == "1"
@@ -46,14 +50,14 @@ def test_first_questions_are_grounded_single_and_natural(env_factory, client: LL
             Settings(vault=env.vault.root),
             clock=Clock(at(LATER)),
         )
-        client.recorder = Recorder(FIXTURE_DIR, prefix=f"{region}-1-") if RECORD else None
+        client.recorder = SeqRecorder(FIXTURE_DIR, prefix=f"{region}-1-") if RECORD else None
         start = time.perf_counter()
         reply = session.opening()
         print(f"\n[{region} {time.perf_counter() - start:.1f}s] {reply.message}")
         assert reply.message and reply.message.count("?") == 1
         assert not any(what.startswith("fallback") for _, what in session.trace), session.trace
         if region in REPLY:
-            client.recorder = Recorder(FIXTURE_DIR, prefix=f"{region}-2-") if RECORD else None
+            client.recorder = SeqRecorder(FIXTURE_DIR, prefix=f"{region}-2-") if RECORD else None
             start = time.perf_counter()
             follow = session.reply(REPLY[region])
             print(f"  you: {REPLY[region]}\n  [{time.perf_counter() - start:.1f}s] {follow}")

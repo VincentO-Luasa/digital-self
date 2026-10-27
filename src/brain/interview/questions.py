@@ -19,8 +19,10 @@ Two kinds of items:
   kept across regenerations; an interview that asks one ticks it (``resolve_question``).
 
 Fields: ``region``, ``about`` (entity wikilink), ``slot``, ``reason``, ``priority`` (1–5, 5 =
-ask first), ``origin``, ``privacy`` (``private`` for private regions or entities: never shown
-to the big model). Values never contain parentheses.
+ask first), ``origin``, ``doubt`` (v0.6: the lint finding's key, ``part_of projects/kiln``,
+``type projects/kiln``, ``merge projects/a projects/b``, ``job f-x2y3z4``…, so an interview can
+settle the doubt from the owner's answer), ``privacy`` (``private`` for private regions or
+entities: never shown to the big model). Values never contain parentheses.
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ COVERAGE = "coverage"
 OWNER = "owner"
 MAX_PER_REGION = 6
 NEED = {"empty": 1.0, "stale": 0.8, "partial": 0.6, "discover": 1.0, "unplaced": 0.7}
-FIELDS = ("region", "about", "slot", "reason", "priority", "origin", "privacy")
+FIELDS = ("region", "about", "slot", "reason", "priority", "origin", "doubt", "privacy")
 
 _ITEM = re.compile(r"^\s*[-*]\s+(?:\[( |x|X)\]\s+)?(.*?)\s*$")
 _BLOCK = re.compile(r"\s*\^(q-[a-z0-9]+)$")
@@ -75,6 +77,7 @@ class GapItem:
     private: bool = False
     done: bool = False
     qid: str = ""  # block id; derived from the item's key when empty
+    doubt: str | None = None  # lint finding key (``part_of projects/kiln``), see ``doubt_key``
 
     @property
     def key(self) -> str:
@@ -99,6 +102,7 @@ class GapItem:
             "reason": _clean(self.reason) or None,
             "priority": str(self.priority),
             "origin": self.origin,
+            "doubt": _clean(self.doubt or "") or None,
             "privacy": "private" if self.private else None,
         }
         tail = "".join(f" ({k}:: {v})" for k, v in fields.items() if v)
@@ -241,6 +245,7 @@ def parse_questions(text: str) -> list[GapItem]:
                 private=fields.get("privacy") == "private",
                 done=(m.group(1) or " ") != " ",
                 qid=qid,
+                doubt=fields.get("doubt") or None,
             )
         )
     return items
@@ -322,10 +327,12 @@ def add_question(
     origin: str = "brain",
     about: str | None = None,
     private: bool | None = None,
+    doubt: str | None = None,
     commit: bool = False,
 ) -> GapItem:
     """Add a question for a later interview (idempotent: the same text and region from the same
-    origin is one item). ``private`` defaults to the region's privacy in the life map."""
+    origin is one item). ``private`` defaults to the region's privacy in the life map; ``doubt``
+    is the lint finding's key (an interview settles the doubt from the answer)."""
     if origin == COVERAGE:
         raise ValueError("coverage items are generated; use another origin")
     if private is None:
@@ -338,6 +345,7 @@ def add_question(
         origin=_clean(origin) or "brain",
         about=about,
         private=private,
+        doubt=doubt,
     )
     items = read_questions(vault)
     if all(i.id != item.id for i in items):
@@ -345,6 +353,17 @@ def add_question(
         if _write(vault, items) and commit:
             _commit(vault, f"brain: question {item.id}")
     return next(i for i in read_questions(vault) if i.id == item.id)
+
+
+def doubt_key(item: GapItem) -> str | None:
+    """The lint finding an item asks about: its ``doubt::`` field, or, for a lint item written
+    before v0.6, the key its reason starts with (``lint part_of projects/kiln: …``)."""
+    if item.doubt:
+        return item.doubt
+    if item.origin == "lint" and item.reason.startswith("lint "):
+        key = item.reason.removeprefix("lint ").partition(":")[0].strip()
+        return key or None
+    return None
 
 
 def resolve_question(vault: Vault, qid: str, *, commit: bool = False) -> bool:

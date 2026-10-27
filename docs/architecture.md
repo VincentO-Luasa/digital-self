@@ -86,11 +86,27 @@ Populating the brain should feel like a conversation, not writing an autobiograp
    table. Per-entity regions (projects, people) score each known entity.
 2. **Pick a region**: `brain interview` chooses `argmax(weight × (1 − coverage))`, boosted by items
    in `questions.md`; `brain interview projects` forces one.
-3. **Ask one thing at a time**, starting from what is already known ("Your site says you moved to
-   the platform team in March — still true?"), following up on answers, ~10–15 minutes or until the
-   region is saturated. The user can say "skip", "private", or "stop".
-4. **Close the session**: the transcript is saved, segmented into topic episodes (usually one per
-   region touched), and extraction runs per episode → many small, reviewable updates.
+3. **Plan**: questions.md items added by the owner or other components first; then lint doubts
+   (`doubt::`) grouped by entity, one combined question per entity ("What is stream processing
+   to you: a project (at Fabrikam Analytics, or on your own), or a topic or tool you work
+   with?"), at most 4 entities per session, interleaved one for one with the region's coverage
+   steps (pages that may be demoted or merged get no coverage questions this time).
+4. **Ask one thing at a time**, starting from what is already known, with where it came from
+   ("Your homepage lists…", "I have … filed as…"; a code check rejects "you mentioned/listed…"
+   that the owner's answers do not back), following up on answers. The user can say "skip",
+   "private", or "stop".
+5. **Link answers** (`LLM.decide`, before every planned step and every generated follow-up):
+   already answered → skipped (and counted as answered); asks again for something the owner
+   refused to tell, or the same kind of thing → skipped. Follow-ups see what the owner already
+   said and refused. An owner asking back ("can you tell me more?") gets what the vault has
+   (one-liners and sources, no model call) and the question again, once.
+6. **Time is soft**: at `--minutes` the current entity block is finished, then "We've covered
+   X and Y. Keep going, or stop here?" (a yes adds half the time). Lint doubts get the first 40%.
+7. **Close the session**: answered lint doubts are settled (a typed choice maps the answer onto
+   the doubt's options: p ≥ 0.9 applies the change, the owner said it; 0.5–0.9 queues it as a
+   review; otherwise the item stays open), then the transcript is segmented into topic episodes
+   (usually one per region touched) and extraction runs per episode → many small, reviewable
+   updates.
 
 Free chat also gets topic-segmented the same way, and may surface at most one gap question per
 session (configurable).
@@ -180,7 +196,7 @@ and retrieved context under ~1.5k tokens.
 |---|---|---|
 | 0 | repo, CLAUDE.md, docs, skills, privacy guardrails, runtime installed + benchmarked | done |
 | 1 | vault init + schema, parser/renderer, SQLite index, `brain ingest` (seed docs), read-only `brain chat` | done |
-| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`), **graph cleaning** (`brain lint`, `brain eval lint`, schema v0.5) |
+| 2 | episodic capture, topic segmentation, extraction, entity resolution, review queue, **interview mode** | done: memory pipeline (`brain.memory`, `brain memory process`, `brain eval memory`), owner corrections, private answers, **interview mode** (`brain interview`, coverage in `brain status`, `questions.md`), **graph cleaning** (`brain lint`, `brain eval lint`, schema v0.5), interviews that group, link and settle lint doubts (schema v0.6) |
 | 3 | router + escalation, handoff packets, escalation providers, MCP server, vault workspace + SessionEnd hook | |
 | 4 | opportunistic "sleep" scheduler, consolidation, reflections, briefing cards, person models, `core.md`, lint in the scheduler, decay | |
 | 5 | personal eval harness (updates, temporal, abstention, multi-hop), tuning; web UI | |
@@ -254,8 +270,8 @@ v3, normalisation guards; see the `ingest` skill). Still open:
   ones.
 - The card uses `at::` only to keep duties and roles of ended jobs out of "Now"; the life story
   does not list duties per job yet.
-- Lint asks no question twice (keyed in `questions.md`), but a doubt the owner answered in an
-  interview is only settled once the answer reaches memory (a merge or edge the owner confirms
-  in words is not turned into an operation yet).
+- Lint asks no question twice (keyed in `questions.md`). An interview settles `part_of`, `type`,
+  `merge` and a duty's `job` doubts from the owner's answer; `located_in`, `subject`, two current
+  values, orphans and date order still reach the graph only through the memory pipeline.
 - The eval is one persona (Alex Rivera) with seeded variants; a second persona would test the
   name rules on other naming habits.

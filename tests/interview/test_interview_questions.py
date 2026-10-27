@@ -8,6 +8,7 @@ from brain.interview.questions import (
     COVERAGE,
     GapItem,
     add_question,
+    doubt_key,
     gap_items,
     parse_questions,
     read_questions,
@@ -124,3 +125,27 @@ def test_parse_tolerates_hand_edits() -> None:
     assert done.done and done.priority == 5 and done.qid == "q-aaaaaa"
     assert odd.priority == 3 and odd.region == "identity" and odd.origin == "owner"
     assert GapItem(text="x", origin="owner").id == GapItem(text="X ", origin="owner").id
+
+
+def test_a_lint_doubt_round_trips_and_older_items_derive_it(env) -> None:
+    item = add_question(
+        env.vault,
+        "Is Kiln a project, or a topic?",
+        region="projects",
+        reason="lint type projects/kiln: topic p 0.72",
+        origin="lint",
+        about="projects/kiln",
+        doubt="type projects/kiln",
+    )
+    text = env.vault.questions_path.read_text(encoding="utf-8")
+    assert "(origin:: lint) (doubt:: type projects/kiln) ^" in text
+    [back] = [i for i in parse_questions(text) if i.id == item.id]
+    assert back == item and doubt_key(back) == "type projects/kiln"
+    legacy = GapItem(
+        "Is Tidepool part of your work at Northwind Labs, or a side project?",
+        region="projects",
+        reason="lint part_of projects/tidepool: no source names it",
+        origin="lint",
+    )
+    assert doubt_key(legacy) == "part_of projects/tidepool"
+    assert doubt_key(GapItem("Any nickname?", reason="lint-ish", origin="owner")) is None

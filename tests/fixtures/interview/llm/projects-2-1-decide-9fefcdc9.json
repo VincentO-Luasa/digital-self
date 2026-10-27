@@ -2,7 +2,7 @@
   "kind": "decide",
   "request": {
     "model": "Qwen3.6-35B-A3B-4bit",
-    "input": "An interviewer is asking the owner about their life, one question at a time.\n\nTopic: Projects: Atlas Migration\nInterviewer: You were testing Atlas in October 2026. Is it still in that phase, or have you launched?\nOwner: We went live in December, a few weeks late. Now I'm cleaning up the old cluster.",
+    "input": "An interviewer is asking the owner about their life, one question at a time.\n\nTopic: Projects: Atlas Migration\nInterviewer: I have Atlas in testing since October 2026: is that still the case?\nOwner: We went live in December, a few weeks late. Now I'm cleaning up the old cluster.",
     "questions": [
       {
         "type": "choice",
@@ -19,11 +19,19 @@
           },
           {
             "value": "declined",
-            "description": "the owner does not know, would rather not say, or it does not apply"
+            "description": "the owner does not know, has nothing to add, or it does not apply"
+          },
+          {
+            "value": "refused",
+            "description": "the owner would rather not say: it is private, confidential or they keep it to themselves"
           },
           {
             "value": "unclear",
             "description": "it is off-topic or cannot be understood"
+          },
+          {
+            "value": "asked",
+            "description": "instead of answering, the owner asks the interviewer something back or asks for more context"
           }
         ]
       },
@@ -45,22 +53,30 @@
         "probabilities": [
           {
             "value": "answered",
-            "probability": 0.998
+            "probability": 0.9951
           },
           {
             "value": "partial",
-            "probability": 0.0016
+            "probability": 0.0041
           },
           {
             "value": "declined",
-            "probability": 0.0003
+            "probability": 0.0004
+          },
+          {
+            "value": "refused",
+            "probability": 0.0
           },
           {
             "value": "unclear",
-            "probability": 0.0
+            "probability": 0.0001
+          },
+          {
+            "value": "asked",
+            "probability": 0.0002
           }
         ],
-        "confidence": 0.9974
+        "confidence": 0.9942
       },
       {
         "type": "predicate",
@@ -69,7 +85,7 @@
       }
     ],
     "usage": {
-      "input_tokens": 344,
+      "input_tokens": 378,
       "output_tokens": 0
     }
   }

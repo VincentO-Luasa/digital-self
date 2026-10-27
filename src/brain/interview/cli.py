@@ -20,6 +20,7 @@ from rich.markup import escape
 from rich.table import Table
 
 from brain.interview.coverage import CoverageReport, coverage_report
+from brain.interview.doubts import entity_infos
 from brain.interview.planner import (
     PlanItem,
     RegionError,
@@ -27,7 +28,7 @@ from brain.interview.planner import (
     choose_region,
     region_scores,
 )
-from brain.interview.questions import GapItem, read_questions, write_questions
+from brain.interview.questions import GapItem, doubt_key, read_questions, write_questions
 from brain.interview.session import (
     InterviewSession,
     ProcessSession,
@@ -76,7 +77,11 @@ def coverage_summary(report: CoverageReport, *, lowest: int = 3) -> str:
 
 
 def describe_plan(plan: Sequence[PlanItem]) -> list[str]:
-    return [f"{n}. [{p.mode}] {p.topic}: {p.hint}" for n, p in enumerate(plan, 1)]
+    out = []
+    for n, p in enumerate(plan, 1):
+        doubts = f" (lint: {'; '.join(p.doubts)})" if p.doubts else ""
+        out.append(f"{n}. [{p.mode}] {p.topic}: {p.hint}{doubts}")
+    return out
 
 
 def _describe_report(report: Any) -> str:
@@ -217,13 +222,17 @@ def interview(
         if choice is None:
             console.print("Nothing left to ask right now: every non-private region is covered.")
             return
-        plan = build_plan(report, choice.id, items)
+        open_doubts = [doubt_key(i) for i in items if i.open and i.region == choice.id]
+        infos = entity_infos(vault, open_doubts, today=today, include_private=choice.private)
+        plan = build_plan(report, choice.id, items, infos=infos)
         if plan_only:
             console.print(f"[bold]{escape(choice.id)}[/] (coverage {choice.coverage:.0%})")
             for line in describe_plan(plan):
                 console.print(escape(line), highlight=False)
             return
-        session = InterviewSession(vault, llm, report, choice.id, plan, settings, minutes=minutes)
+        session = InterviewSession(
+            vault, llm, report, choice.id, plan, settings, minutes=minutes, infos=infos
+        )
         read = _reader(answers) if answers else None
         run_interview(session, console, read=read, echo=answers is not None)
         if session.answers:
@@ -243,6 +252,9 @@ def interview(
         console.print(escape(text if text.startswith("memory:") else f"memory: {text}"))
         if incomplete(result.report):
             console.print("[yellow]`brain memory process --pending` retries what failed[/]")
+    for s in result.settled:
+        if s.action != "open":
+            console.print(escape(f"lint {s.doubt}: {s.action} ({s.detail})"), highlight=False)
     if result.answered:
         console.print(f"answered questions.md items: {', '.join(result.answered)}")
 

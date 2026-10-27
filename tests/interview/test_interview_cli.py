@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 import typer
+from interview_helpers import ScriptedLLM  # type: ignore[import-not-found]
 from typer.testing import CliRunner
 
 from brain import cli as main
 from brain.config import Settings
 from brain.interview import cli as icli
-from brain.llm.fake import FakeLLM
 
 runner = CliRunner()
 app = typer.Typer()
@@ -31,7 +31,7 @@ def decision(label: str) -> list[dict]:
 
 @pytest.fixture
 def cli_env(env, monkeypatch: pytest.MonkeyPatch):
-    state: dict = {"llm": FakeLLM(), "calls": []}
+    state: dict = {"llm": ScriptedLLM(), "calls": []}
     monkeypatch.setattr(main, "get_settings", lambda: Settings(vault=env.vault.root))
     monkeypatch.setattr(main, "make_llm", lambda settings: state["llm"])
 
@@ -65,7 +65,7 @@ def test_coverage_and_plan_are_read_only(cli_env) -> None:
 def test_unknown_region_and_server_down(cli_env) -> None:
     result = runner.invoke(app, ["interview", "garden"])
     assert result.exit_code == 1 and "unknown region" in result.output
-    cli_env["llm"] = FakeLLM(healthy=False)
+    cli_env["llm"] = ScriptedLLM(healthy=False)
     result = runner.invoke(app, ["interview"])
     assert result.exit_code == 1 and "not reachable" in result.output
     result = runner.invoke(app, ["interview", "--coverage"])  # the existing index is enough
@@ -73,7 +73,7 @@ def test_unknown_region_and_server_down(cli_env) -> None:
 
 
 def test_scripted_interview(cli_env, tmp_path: Path) -> None:
-    cli_env["llm"] = FakeLLM(
+    cli_env["llm"] = ScriptedLLM(
         structured_responses=[
             {"reasoning": "r", "message": "Who do you report to?"},
             {"reasoning": "r", "message": "What does a usual week look like?"},
@@ -102,7 +102,7 @@ def test_missing_pipeline_keeps_the_transcript(cli_env, tmp_path: Path, monkeypa
         raise ImportError("no brain.memory yet")
 
     monkeypatch.setattr(icli, "make_process", missing)
-    cli_env["llm"] = FakeLLM(
+    cli_env["llm"] = ScriptedLLM(
         structured_responses=[{"reasoning": "r", "message": "What matters most to you?"}] * 3,
         decisions=[decision("answered")],
     )

@@ -52,6 +52,7 @@ def test_apply_queues_one_review_per_finding_and_asks_once(dirty: tuple[Vault, e
     assert sorted(r.rationale for r in reviews) == sorted(f.summary for f in with_ops)
     asked = [q for q in read_questions(vault) if q.origin == "lint"]
     assert [q.text for q in asked] == ["Where do you live now: Porto or Braga?"]
+    assert [q.doubt for q in asked] == ["two lives_in self"]  # the finding key, for interviews
     assert git(vault, "status", "--porcelain") == "" and last_rev(vault) == gitops.head(vault.root)
     # a second full run proposes the same repairs but adds no question twice
     again = replayed(vault)

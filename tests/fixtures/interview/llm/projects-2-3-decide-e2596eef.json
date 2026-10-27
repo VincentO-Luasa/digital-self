@@ -1,0 +1,50 @@
+{
+  "kind": "decide",
+  "request": {
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "input": "An interviewer is asking the owner about their life, one question at a time. The interview so far:\n\nInterviewer: I have Atlas in testing since October 2026: is that still the case?\nOwner: We went live in December, a few weeks late. Now I'm cleaning up the old cluster.\n\nWhat the owner would not tell:\n- (nothing)",
+    "questions": [
+      {
+        "type": "choice",
+        "name": "q0",
+        "instructions": "The interviewer may ask next: “You mentioned going live in December, a few weeks late: what caused the delay?” Is that already answered?",
+        "choices": [
+          {
+            "value": "open",
+            "description": "no: nothing said so far gives this; asking is new"
+          },
+          {
+            "value": "answered",
+            "description": "yes: the owner already gave this information; asking would make them repeat themselves"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "object": "decision",
+    "model": "Qwen3.6-35B-A3B-4bit",
+    "answers": [
+      {
+        "type": "choice",
+        "name": "q0",
+        "choice": "open",
+        "probabilities": [
+          {
+            "value": "open",
+            "probability": 0.9149
+          },
+          {
+            "value": "answered",
+            "probability": 0.0851
+          }
+        ],
+        "confidence": 0.8298
+      }
+    ],
+    "usage": {
+      "input_tokens": 177,
+      "output_tokens": 0
+    }
+  }
+}

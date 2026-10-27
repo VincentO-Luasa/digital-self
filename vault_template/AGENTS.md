@@ -91,7 +91,7 @@ or a hypothetical. Search first so you don't propose what memory already holds.
   "Proposed 2 updates (review r-…), approve with `brain review`."
 - Leave out `rec`, `src` and block ids. The pipeline sets them, and `src` becomes the review id.
 
-### Operations (fact fields follow vault schema v0.5, see `SCHEMA.md`)
+### Operations (fact fields follow vault schema v0.6, see `SCHEMA.md`)
 
 ```json
 {"op": "create_entity", "id": "projects/atlas-migration", "type": "project", "title": "Atlas Migration", "aliases": ["Atlas"], "regions": ["projects"]}
@@ -122,7 +122,7 @@ confirmed sharing them.
 `subject` is an entity id or `self`. Dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. If the
 `brain_propose` tool schema differs from these examples, the tool schema wins.
 
-### Predicates (v0.5). Use only these, never invent new ones
+### Predicates (v0.6). Use only these, never invent new ones
 
 - identity: `name` `born` `hometown` `lives_in` `nationality`* `speaks`*
 - work: `works_at`* `role` `team` `manager` `responsibility`* `worked_on`* (`role` and `responsibility` take an optional `at`: the employer's `[[orgs/…]]` link)

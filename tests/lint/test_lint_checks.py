@@ -268,7 +268,7 @@ def test_a_doubtful_page_with_facts_is_asked_about(clean_vault: Vault) -> None:
     report = lint(clean_vault, Script(kind={"tool": 0.97, "project": 0.03}), "types")
     [finding] = report.findings
     assert finding.ops == [] and finding.ask
-    assert finding.ask.text == "Is Kubernetes really a project, or a tool?"
+    assert finding.ask.text == "Is Kubernetes a project, or a tool?"
 
 
 def test_demotion_refiles_facts_that_used_the_page_as_a_page(clean_vault: Vault) -> None:
@@ -352,8 +352,83 @@ def test_unclear_edges_become_questions(dirty: tuple[Vault, ev.Gold]) -> None:
     report = lint(vault, script, "edges")
     assert ops(report) == []
     asks = {f.ask.text for f in report.findings if f.ask}
-    assert "Is Tidepool part of your work at Northwind Labs, or a side project?" in asks
+    # its source names one employer: only that one, with a way out (never every job)
+    assert (
+        "Is Tidepool part of your work at Northwind Labs, at another job, or something of your "
+        "own?" in asks
+    )
     assert "Is Fabrikam Analytics based in Lisbon?" in asks
+
+
+def test_part_of_questions_name_at_most_two_jobs(clean_vault: Vault) -> None:
+    """Six employers: a question names the one its sources point at, two when two do, and
+    none (an open question) when nothing does. The typed choice still offers every job."""
+    for employer, start, end in (
+        ("Westbridge University", "2016-09", "2018-06"),
+        ("Kestrel Data Cooperative", "2018-07", "2019-05"),
+        ("University library", "2015-01", "2016-06"),
+        ("Freelance consulting", "2023-06", "2024-06"),
+    ):
+        add(
+            clean_vault,
+            AddFact(
+                subject="self",
+                p="works_at",
+                o=employer,
+                text=f"Worked at {employer}",
+                kind="stated",
+                valid_from=start,
+                valid_to=end,
+            ),
+        )
+    notes = clean_vault.root / "raw" / "docs" / "notes.md"
+    notes.write_text(
+        "Harbour Sync started at Northwind Labs and moved to the Kestrel Data Cooperative.\n",
+        encoding="utf-8",
+    )
+    for page_id, title, src in (
+        ("projects/demand-forecasting", "Demand forecasting dashboards", "raw/docs/cv.md"),
+        ("projects/harbour-sync", "Harbour Sync", "raw/docs/notes.md"),
+    ):
+        cs = ChangeSet(
+            ops=[
+                CreateEntity(id=page_id, type="project", title=title, regions=["projects"]),
+                AddFact(
+                    subject=page_id,
+                    p="stakeholder",
+                    o="[[self]]",
+                    text=f"Alex built {title}",
+                    kind="observed",
+                ),
+            ],
+            origin="user",
+            src=[src],
+        )
+        assert not apply(cs, clean_vault, review=False, now=datetime(2026, 10, 26, 9)).skipped
+    script = Script(part_of=pick("unclear", 0.7))
+    report = lint(clean_vault, script, "edges")
+    asks = {f.key: f.ask.text for f in report.findings if f.ask}
+    assert asks["part_of projects/demand-forecasting"] == (
+        "Was Demand forecasting dashboards part of your work at Fabrikam Analytics, at another "
+        "job, or something of your own?"
+    )
+    assert asks["part_of projects/harbour-sync"] == (
+        "Is Harbour Sync part of your work at Northwind Labs or Kestrel Data Cooperative, or "
+        "something of your own?"
+    )
+    assert asks["part_of projects/kiln"] == (
+        "Which of your jobs is Kiln part of, or is it something you do on your own?"
+    )
+    # the interview maps the owner's free answer onto every job, most likely first
+    from brain.interview.doubts import info_for
+    from brain.interview.settle import part_of_question
+
+    g = Graph(clean_vault, ev.EVAL_TODAY)
+    info = info_for(g, g.pages["projects/harbour-sync"])
+    assert info.named == ("Northwind Labs", "Kestrel Data Cooperative")
+    values = [c.value for c in part_of_question(info.title, info.jobs).choices]
+    assert values[:4] == ["unclear", "on their own", "Northwind Labs", "Kestrel Data Cooperative"]
+    assert len(values) == 2 + 6
 
 
 def test_a_location_is_only_asked_when_a_source_names_one(clean_vault: Vault) -> None:
@@ -429,7 +504,7 @@ def test_a_page_an_episode_lists_is_not_an_orphan(clean_vault: Vault) -> None:
 def test_agents_predicates_are_in_sync(tmp_path) -> None:
     assert agents_problems(TEMPLATE_AGENTS) == []
     broken = tmp_path / "AGENTS.md"
-    text = TEMPLATE_AGENTS.read_text().replace("`hometown` ", "").replace("(v0.5)", "(v0.4)")
+    text = TEMPLATE_AGENTS.read_text().replace("`hometown` ", "").replace("(v0.6)", "(v0.4)")
     broken.write_text(text.replace("`note`*", "`note`* `vibe`"))
     problems = " | ".join(agents_problems(broken))
     assert "v0.4" in problems and "misses predicates: hometown" in problems

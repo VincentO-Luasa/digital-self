@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "0.5"
+SCHEMA_VERSION = "0.6"
 
 Kind = Literal["stated", "observed", "inferred"]
 Privacy = Literal["normal", "private"]

@@ -12,8 +12,9 @@ Spec: `docs/vault-schema.md` ("Graph cleaning operations (v0.5)"), `docs/archite
 
 `run_lint(vault, llm, LintOptions)` reads a `Graph` snapshot and runs the checks in order
 (`CHECKS`); nothing is written. `apply_lint(vault, report)` commits uncommitted hand edits
-apart, adds questions (`brain.interview.questions.add_question`, origin `lint`, never the same
-doubt twice: the key before `:` in `reason`), applies **one change set per finding** (origin
+apart, adds questions (`brain.interview.questions.add_question`, origin `lint`, `doubt::` = the
+finding key, schema v0.6, so an interview can settle it; never the same doubt twice: the key
+before `:` in `reason`), applies **one change set per finding** (origin
 `lint`; every lint op is reviewed, so each repair is its own review) and records the revision in
 `.brain/lint.json`. The next run checks only pages changed since (git) and their neighbours;
 `--all` / `--since REV` override.
@@ -37,7 +38,13 @@ retyped): no other check touches them in the same run. Fallback decisions (runti
   owner (the oracle); below 0.5 nothing.
 - Questions describe the evidence, never the current filing (shown a proposal, the model agrees).
 - Escape options first ("unclear", "none of them", "another place", "a side project"), and never
-  a forced choice: offer employers without a page too. With a listed city first and the true one
+  a forced choice: offer employers without a page too.
+- Owner-facing questions name at most two employers, ranked by evidence (`likely_jobs`:
+  sentences naming both, a linking fact, overlapping dates at 0.5 only, the model's pick); one
+  when it stands out, none ("Which of your jobs is X part of…?") when nothing points anywhere.
+  Never "really a project"; no claim the owner listed anything (ingest made the page).
+- An interview settles `part_of`, `type`, `merge` and `job` doubts from the owner's answer
+  (`brain.interview.settle`, the interview skill); keep finding keys stable (`<kind> <ids>`). With a listed city first and the true one
   absent, the model picked the listed one at 0.98 (decision log).
 - A type change needs a fact or link that says so (`kinds._support`); a verdict on a bare name
   is a report line only (made-up place names read as people's at p ≥ 0.9).

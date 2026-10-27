@@ -168,6 +168,7 @@ def apply_lint(vault: Vault, report: LintReport, *, now: datetime | None = None)
             origin="lint",
             about=ask.about,
             private=ask.private or None,
+            doubt=finding.key,
         )
         report.questions.append(item.id)
     for finding in report.findings:

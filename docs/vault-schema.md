@@ -1,4 +1,4 @@
-# Vault schema (v0.5)
+# Vault schema (v0.6)
 
 The vault is the brain's long-term memory and the **single source of truth**. It is a folder of
 Obsidian-compatible markdown, versioned with a *local-only* git repo, living **outside** this code
@@ -227,6 +227,17 @@ are never silently dropped.
 - `index.md` — `- [[id]] — one-line summary`, grouped by region. Read first by any agent.
 - `log.md` — `## [2026-10-25 14:30] extract | ep-20261025-1412-career | +3 facts, 1 superseded`.
 - `questions.md` — knowledge gaps with region, reason and priority; interviews draw from it.
+  One list item per gap, one line each:
+  `- [ ] <question> (region:: …) (about:: [[id]]) (slot:: …) (reason:: …) (priority:: 1–5)
+  (origin:: coverage|lint|owner|…) (doubt:: <lint key>) (privacy:: private) ^q-xxxxxx`.
+  Only the text is required; values never contain parentheses; `[x]` dismisses or closes an item.
+  **`doubt::` (v0.6)** is the key of the lint finding an item asks about (`part_of
+  projects/kiln`, `type projects/kiln`, `merge projects/a projects/b`, `job f-x2y3z4`,
+  `located_in orgs/x`, `two lives_in self`, `orphan …`, `order f-…`, `subject f-…`). An
+  interview groups items by it (one question per entity) and settles `part_of`, `type`, `merge`
+  and `job` doubts from the owner's answer (see Flow 2 in `docs/architecture.md`). Lint items
+  written before v0.6 have no `doubt::`; their key is read from the start of `reason::`
+  (`lint part_of projects/kiln: …`).
 
 ## Reviews (reviews/pending/)
 

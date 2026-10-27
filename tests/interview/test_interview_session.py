@@ -8,7 +8,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from interview_helpers import LATER, TODAY, Clock, at  # type: ignore[import-not-found]
+from interview_helpers import (  # type: ignore[import-not-found]
+    LATER,
+    TODAY,
+    Clock,
+    ScriptedLLM,
+    at,
+)
 
 from brain.config import Settings
 from brain.interview.planner import build_plan
@@ -23,11 +29,11 @@ from brain.interview.session import (
     InterviewSession,
     date_words,
     fallback,
+    invented_claim,
     one_question,
     parse_command,
     ungrounded,
 )
-from brain.llm.fake import FakeLLM
 from brain.prompts import load_prompt
 from brain.vault.raw import parse_transcript
 
@@ -83,14 +89,14 @@ class PrivateAwareProcess(FakeProcess):
         return {"episodes": 1}
 
 
-def structured_calls(llm: FakeLLM) -> list[list[dict]]:
+def structured_calls(llm: ScriptedLLM) -> list[list[dict]]:
     return [c[1]["messages"] for c in llm.calls if c[0] == "structured"]
 
 
 @pytest.fixture
 def make(env):
     def _make(
-        llm: FakeLLM, region: str = "career.current_job", today=TODAY, step: float = 5.0, **kw
+        llm: ScriptedLLM, region: str = "career.current_job", today=TODAY, step: float = 5.0, **kw
     ) -> InterviewSession:
         report = env.report(today)
         plan = kw.pop("plan", None) or build_plan(report, region, read_questions(env.vault))
@@ -138,7 +144,7 @@ def test_one_question_and_fallbacks(make) -> None:
         "Got it. Who is your manager?"
     )
     assert one_question("Nice.\n Who  is it?") == "Nice. Who is it?"
-    session = make(FakeLLM(), region="projects", today=LATER)
+    session = make(ScriptedLLM(), region="projects", today=LATER)
     item = session.plan[0]
     assert (
         fallback(item, "confirm")
@@ -152,7 +158,7 @@ def test_one_question_and_fallbacks(make) -> None:
 
 
 def test_opening_prompt_layout_and_transcript(make) -> None:
-    llm = FakeLLM(
+    llm = ScriptedLLM(
         structured_responses=[msg("You're on the data platform team: who's your manager?")]
     )
     session = make(llm)
@@ -166,7 +172,7 @@ def test_opening_prompt_layout_and_transcript(make) -> None:
     assert user["role"] == "user"
     assert user["content"].startswith(
         f"{START}\n\nPLAN\ntopic: Current job\nmode: ask\nhint: Who do you report to?\n"
-        "known:\n- (nothing yet)\ncontext:\n- "
+        "about:\n- (nothing)\nknown:\n- (nothing yet)\ncontext:\n- "
     )
     assert "today: 2026-10-26" in user["content"]
     assert turns(session) == [
@@ -180,7 +186,7 @@ def test_opening_prompt_layout_and_transcript(make) -> None:
 
 
 def test_follow_up_then_next_step_with_a_stable_prefix(make) -> None:
-    llm = FakeLLM(
+    llm = ScriptedLLM(
         structured_responses=[
             msg("Who do you report to?"),
             msg("How long has that been?"),
@@ -213,7 +219,7 @@ def test_follow_up_then_next_step_with_a_stable_prefix(make) -> None:
 
 
 def test_partial_answers_get_at_most_two_follow_ups(make) -> None:
-    llm = FakeLLM(decisions=[dec("partial")] * 3, default_reply="unused")
+    llm = ScriptedLLM(decisions=[dec("partial")] * 3, default_reply="unused")
     llm.structured_queue.extend(msg(f"Question {n}?") for n in range(4))
     session = make(llm)
     session.opening()
@@ -223,7 +229,7 @@ def test_partial_answers_get_at_most_two_follow_ups(make) -> None:
 
 
 def test_unclear_is_clarified_once_and_declines_end_the_region(make) -> None:
-    llm = FakeLLM(
+    llm = ScriptedLLM(
         decisions=[
             dec("unclear"),
             dec("unclear"),
@@ -246,7 +252,9 @@ def test_unclear_is_clarified_once_and_declines_end_the_region(make) -> None:
 
 
 def test_skip_and_stop(make) -> None:
-    llm = FakeLLM(structured_responses=[msg("Who do you report to?"), msg("What's a usual week?")])
+    llm = ScriptedLLM(
+        structured_responses=[msg("Who do you report to?"), msg("What's a usual week?")]
+    )
     session = make(llm)
     session.opening()
     reply = session.reply("skip")
@@ -263,7 +271,7 @@ def test_skip_and_stop(make) -> None:
 
 
 def test_private_marks_the_answers_of_the_step(make) -> None:
-    llm = FakeLLM(decisions=[dec("answered", 0.9), dec("answered")])
+    llm = ScriptedLLM(decisions=[dec("answered", 0.9), dec("answered")])
     llm.structured_queue.extend(msg(f"Question {n}?") for n in range(4))
     session = make(llm)
     session.opening()
@@ -288,7 +296,7 @@ def test_private_marks_the_answers_of_the_step(make) -> None:
     assert "struggling" not in seen and PRIVATE_PLACEHOLDER in seen
 
     inline = make(
-        FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+        ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
     )
     inline.opening()
     inline.reply("private: Theo Marchetti")
@@ -299,7 +307,7 @@ def test_private_marks_the_answers_of_the_step(make) -> None:
 
 
 def test_private_region_makes_every_answer_private(make) -> None:
-    llm = FakeLLM(decisions=[dec("answered"), dec("answered")])
+    llm = ScriptedLLM(decisions=[dec("answered"), dec("answered")])
     llm.structured_queue.extend(msg(f"Question {n}?") for n in range(3))
     session = make(llm, region="relationships.friends")
     session.opening()
@@ -308,7 +316,7 @@ def test_private_region_makes_every_answer_private(make) -> None:
 
 
 def test_ungrounded_or_failed_messages_fall_back_to_the_hint(make) -> None:
-    llm = FakeLLM(
+    llm = ScriptedLLM(
         structured_responses=[
             msg("Do you still report to Ingrid in Berlin?"),
             RuntimeError("server hiccup"),
@@ -329,7 +337,7 @@ def test_ungrounded_or_failed_messages_fall_back_to_the_hint(make) -> None:
 
 
 def test_a_repeated_question_falls_back_to_the_hint(make) -> None:
-    llm = FakeLLM(
+    llm = ScriptedLLM(
         structured_responses=[msg("Who is your manager?"), msg("Who is your manager?")],
         decisions=[dec("answered")],
     )
@@ -340,15 +348,63 @@ def test_a_repeated_question_falls_back_to_the_hint(make) -> None:
     assert any("fallback: repeats" in what for _, what in session.trace)
 
 
-def test_time_and_question_limits(make) -> None:
-    llm = FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?")])
+def test_time_is_soft_and_the_owner_decides_to_go_on(make) -> None:
+    # at the limit, between steps: "keep going?" instead of a hard stop
+    llm = ScriptedLLM(decisions=[dec("answered", 0.9)], structured_responses=[msg("Q?")])
     session = make(llm, step=40, minutes=1)
     session.opening()
-    reply = session.reply("Theo.")
-    assert reply.done and reply.event == "time"
-    assert "about 1 minute," in reply.message
+    offer = session.reply("Theo.")  # over time: no follow-up despite the new thread
+    assert offer.event == "continue" and not offer.done
+    assert offer.message == "We've covered current job. Keep going, or stop here?"
+    unclear = session.reply("hmm, the weather is nice")  # anything unclear stops
+    assert unclear.done and unclear.event == "time" and "about 1 minute," in unclear.message
+    assert session.answers == 1  # the reply to the offer is no answer
 
-    llm = FakeLLM(decisions=[dec("answered", 0.9)] * 3)
+    stop = make(
+        ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?")]),
+        step=40,
+        minutes=1,
+    )
+    stop.opening()
+    stop.reply("Theo.")
+    assert stop.reply("no, that's enough").event == "stop"
+
+    llm = ScriptedLLM(decisions=[dec("answered")] * 2)
+    llm.structured_queue.extend(msg(f"Q{n}?") for n in range(3))
+    more = make(llm, step=40, minutes=1)
+    more.opening()
+    more.reply("Theo.")
+    more.clock.step = 1  # type: ignore[attr-defined]
+    again = more.reply("Yes, keep going")
+    assert again.event == "question" and "typical week" in again.message
+    assert more.deadline > more.minutes  # half the time again, from now
+    assert ("career.current_job/responsibilities", "keep going") in more.trace
+
+
+def test_time_limit_finishes_the_entity_block_first(make, env) -> None:
+    for text, doubt in (
+        ("Is Atlas a project of yours, or a topic?", "type projects/atlas-migration"),
+        ("Is Atlas part of your work at Northwind Labs?", "located_in projects/atlas-migration"),
+    ):
+        add_question(
+            env.vault,
+            text,
+            region="projects",
+            origin="lint",
+            about="projects/atlas-migration",
+            doubt=doubt,
+        )
+    llm = ScriptedLLM(decisions=[dec("answered")] * 2)
+    llm.structured_queue.extend(msg(f"Q{n}?") for n in range(3))
+    session = make(llm, region="projects", step=40, minutes=1)
+    assert [p.block for p in session.plan[:2]] == ["projects/atlas-migration"] * 2
+    session.opening()
+    assert session.reply("A project.").event == "question"  # same block: finished first
+    assert session.reply("Yes.").event == "continue"
+
+
+def test_question_limit(make) -> None:
+    llm = ScriptedLLM(decisions=[dec("answered", 0.9)] * 3)
     llm.structured_queue.extend(msg(f"Q{n}?") for n in range(3))
     capped = make(llm, max_questions=2)
     capped.opening()
@@ -357,7 +413,7 @@ def test_time_and_question_limits(make) -> None:
 
 
 def test_empty_plan(make) -> None:
-    session = make(FakeLLM(), plan=None)
+    session = make(ScriptedLLM(), plan=None)
     session.plan = []
     reply = session.opening()
     assert reply.done and reply.event == "empty"
@@ -371,7 +427,7 @@ def test_close_runs_the_memory_pipeline_and_updates_questions(make, env) -> None
     item = add_question(
         env.vault, "Who mentors you at work?", region="career.current_job", origin="lint"
     )
-    llm = FakeLLM(decisions=[dec("answered"), dec("declined")])
+    llm = ScriptedLLM(decisions=[dec("answered"), dec("declined")])
     llm.structured_queue.extend(msg(f"Q{n}?") for n in range(3))
     session = make(llm)
     assert session.plan[0].question_id == item.id
@@ -396,7 +452,7 @@ def test_close_runs_the_memory_pipeline_and_updates_questions(make, env) -> None
 
 
 def test_close_passes_private_turns_when_the_pipeline_takes_them(make, env) -> None:
-    llm = FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+    llm = ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
     session = make(llm)
     session.opening()
     session.reply("private: Theo")
@@ -407,7 +463,7 @@ def test_close_passes_private_turns_when_the_pipeline_takes_them(make, env) -> N
 
     plain = FakeProcess()  # no private_turns parameter: the transcript markers carry it
     session2 = make(
-        FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+        ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
     )
     session2.opening()
     session2.reply("private: Theo")
@@ -416,7 +472,7 @@ def test_close_passes_private_turns_when_the_pipeline_takes_them(make, env) -> N
 
 
 def test_close_without_answers_or_with_a_failing_pipeline(make, env) -> None:
-    session = make(FakeLLM(structured_responses=[msg("Q?")]))
+    session = make(ScriptedLLM(structured_responses=[msg("Q?")]))
     session.opening()
     session.reply("stop")
     process = FakeProcess()
@@ -427,7 +483,7 @@ def test_close_without_answers_or_with_a_failing_pipeline(make, env) -> None:
         env.vault, "Who mentors you at work?", region="career.current_job", origin="lint"
     )
     failing = make(
-        FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+        ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
     )
     failing.opening()
     failing.reply("Theo.")
@@ -442,7 +498,7 @@ def test_questions_stay_open_when_an_episode_failed(make, env) -> None:
         env.vault, "Who mentors you at work?", region="career.current_job", origin="lint"
     )
     session = make(
-        FakeLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
+        ScriptedLLM(decisions=[dec("answered")], structured_responses=[msg("Q?"), msg("Q2?")])
     )
     session.opening()
     session.reply("Theo Marchetti does.")
@@ -454,3 +510,12 @@ def test_questions_stay_open_when_an_episode_failed(make, env) -> None:
     result = session.close(ReportingProcess(failed))
     assert result.error is None and result.answered == []
     assert not next(i for i in read_questions(env.vault) if i.id == item.id).done
+
+
+def test_invented_provenance_is_caught() -> None:
+    said = "We went live in December, a few weeks late."
+    assert invented_claim("You listed Stream processing as a project: is it one?", "")
+    assert invented_claim("You mentioned Atlas entered testing in October. Still so?", said)
+    assert invented_claim("You went live in December: what caused the delay?", said) is None
+    assert invented_claim("You mentioned going live in December: what was late?", said) is None
+    assert invented_claim("Your document “cv” mentions Kiln: is it yours?", "") is None

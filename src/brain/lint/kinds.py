@@ -152,7 +152,7 @@ def _input(ctx: Context, page: Page) -> tuple[str, str]:
     return text, excerpt
 
 
-def _refiles(ctx: Context, page: Page, kind: str) -> list[Operation]:
+def refiles(ctx: Context, page: Page, kind: str) -> list[Operation]:
     ops: list[Operation] = []
     for ref in ctx.graph.incoming.get(page.subject, []):
         if link_target(ref.fact.o) != page.subject:
@@ -197,7 +197,7 @@ def check_kinds(ctx: Context) -> list[Finding]:
         supported = _support(ctx, page, v.choice)
         acts = v.measured and p >= ACT_P and supported
         if acts and v.choice in VALUE_KINDS and not own and not page.notes.strip():
-            finding.ops = [*_refiles(ctx, page, v.choice), DemoteEntity(id=page.id)]
+            finding.ops = [*refiles(ctx, page, v.choice), DemoteEntity(id=page.id)]
             ctx.busy.add(page.id)
         elif acts and v.choice not in VALUE_KINDS:
             finding.ops = [RetypeEntity(id=page.id, type=v.choice)]  # type: ignore[arg-type]
@@ -210,7 +210,7 @@ def check_kinds(ctx: Context) -> list[Finding]:
             elif v.measured and p >= ACT_P:
                 finding.summary += f"; no fact or link fits {_a(word)}"
             finding.ask = Ask(
-                text=f"Is {page.title} really {_a(current)}, or {_a(word)}?",
+                text=f"Is {page.title} {_a(current)}, or {_a(word)}?",
                 reason=f"lint type {page.id}: {v.choice} p {p:.2f}",
                 about=page.id,
                 region=ctx.region(page.id),
